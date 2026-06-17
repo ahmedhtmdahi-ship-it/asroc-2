@@ -1,0 +1,599 @@
+# ASORC Medical Services Management System
+## Source Code Map
+
+---
+
+# Project Purpose
+
+ASORC Medical Services Management System
+
+Internal healthcare workflow management platform.
+
+Built using:
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- Radix UI
+- ShadCN UI
+
+Current version represents Frontend Prototype.
+
+---
+
+# Folder Structure
+
+```text
+src
+│
+├── app
+│   │
+│   ├── routes.tsx
+│   ├── App.tsx
+│   │
+│   ├── pages
+│   ├── components
+│   ├── contexts
+│   ├── shared
+│   └── lib
+│
+├── assets
+│
+└── styles
+```
+
+---
+
+# Core Architecture
+
+```text
+User
+  ↓
+Route
+  ↓
+Page
+  ↓
+Component
+  ↓
+Mock Data
+  ↓
+Future API
+  ↓
+Database
+```
+
+---
+
+# Routes Map
+
+```text
+/
+
+LoginPage
+
+
+/dashboard
+
+DashboardPage
+
+
+/employee/requests
+
+EmployeeRequestsPage
+
+
+/requests/:id
+
+RequestDetailsPage
+
+
+/manager/approvals
+
+ManagerApprovalsPage
+
+
+/security
+
+SecurityPage
+
+
+/security/checkinout
+
+SecurityCheckInOutPage
+
+
+/doctor
+
+DoctorPage
+
+
+/doctor/diagnosis
+
+DoctorDiagnosisPage
+
+
+/pharmacy
+
+PharmacyPage
+
+
+/pharmacy/external
+
+ExternalPharmacyPage
+
+
+/monthly-treatment
+
+MonthlyTreatmentPage
+
+
+/medical-admin
+
+MedicalAdminPage
+
+
+/pension-admin
+
+PensionAdminPage
+
+
+/reports
+
+ReportsPage
+
+
+/print
+
+PrintPage
+
+
+/super-admin
+
+SuperAdminPage
+
+
+/profile
+
+ProfilePage
+```
+
+---
+
+# Pages Overview
+
+## LoginPage
+
+User Authentication
+
+Responsibilities:
+
+- Login
+- User validation
+- Redirect to Dashboard
+
+Future APIs:
+
+POST /api/auth/login
+
+---
+
+## DashboardPage
+
+System overview.
+
+Responsibilities:
+
+- KPIs
+- Active Requests
+- Pending Approvals
+- Emergency Cases
+- Navigation
+
+Future APIs:
+
+GET /api/reports/dashboard
+
+---
+
+## EmployeeRequestsPage
+
+Employee Medical Requests.
+
+Responsibilities:
+
+- Create Request
+- View Requests
+- Request Status
+- Monthly Limits
+
+Future APIs:
+
+GET /api/medical-requests/my
+
+POST /api/medical-requests
+
+---
+
+## RequestDetailsPage
+
+Single Request Lifecycle.
+
+Responsibilities:
+
+- Timeline
+- Approvals
+- Security
+- Diagnosis
+- Prescription
+- Audit
+
+Future APIs:
+
+GET /api/medical-requests/:id
+
+---
+
+## ManagerApprovalsPage
+
+Manager Approval Workflow.
+
+Responsibilities:
+
+- Approve Request
+- Reject Request
+- Postpone Request
+
+Future APIs:
+
+GET /api/manager/approvals
+
+POST /approve
+
+POST /reject
+
+POST /postpone
+
+---
+
+## SecurityPage
+
+Security Workflow.
+
+Responsibilities:
+
+- Check-Out
+- Check-In
+- Late Returns
+
+Future APIs:
+
+GET /api/security
+
+POST /checkout
+
+POST /checkin
+
+---
+
+## DoctorPage
+
+Doctor Queue.
+
+Responsibilities:
+
+- Waiting List
+- Patient Selection
+
+Future APIs:
+
+GET /api/doctor/queue
+
+---
+
+## DoctorDiagnosisPage
+
+Diagnosis Workflow.
+
+Responsibilities:
+
+- Diagnosis
+- Prescription
+- Sick Leave
+- Referral
+- Monthly Treatment Recommendation
+
+Future APIs:
+
+POST /api/diagnoses
+
+POST /api/prescriptions
+
+POST /api/referrals
+
+POST /api/sick-leaves
+
+---
+
+## PharmacyPage
+
+Internal Pharmacy.
+
+Responsibilities:
+
+- Dispense Medications
+- Prescription Verification
+
+Future APIs:
+
+GET /api/pharmacy/prescriptions
+
+POST /api/pharmacy/dispense
+
+---
+
+## ExternalPharmacyPage
+
+External Monthly Treatment Dispensing.
+
+Responsibilities:
+
+- Pensioners
+- Beneficiaries
+- Monthly Treatments
+
+---
+
+## MonthlyTreatmentPage
+
+Chronic Cases Management.
+
+Responsibilities:
+
+- Monthly Treatment Plans
+- Dispensing Cycles
+- Treatment Reviews
+
+---
+
+## MedicalAdminPage
+
+Medical Administration.
+
+Responsibilities:
+
+- Referral Approval
+- Emergency Cases
+- Medical Reviews
+
+---
+
+## PensionAdminPage
+
+Pensioners Management.
+
+Responsibilities:
+
+- Pensioners
+- Beneficiaries
+- Eligibility
+
+---
+
+## ReportsPage
+
+Reports & Analytics.
+
+Responsibilities:
+
+- Operational Reports
+- KPI Reports
+- Security Reports
+- Pharmacy Reports
+
+---
+
+## PrintPage
+
+Printing Center.
+
+Responsibilities:
+
+- Prescriptions
+- Referrals
+- Sick Leaves
+- Medical Forms
+
+---
+
+## SuperAdminPage
+
+System Administration.
+
+Responsibilities:
+
+- Users
+- Roles
+- Permissions
+- Settings
+
+---
+
+# Shared Components
+
+## PageLayout
+
+Shared Layout.
+
+Responsibilities:
+
+- Header
+- Navigation
+- User Menu
+- Routing Links
+
+---
+
+## UI Components
+
+Provided by:
+
+- ShadCN UI
+- Radix UI
+
+Examples:
+
+- Button
+- Card
+- Badge
+- Dialog
+- Tabs
+- Select
+- Input
+- Table
+
+---
+
+# Contexts
+
+## AuthContext
+
+Responsibilities:
+
+- Current User
+- Authentication State
+- Role Management
+- Permissions
+
+---
+
+# Shared Data
+
+Current project uses Mock Data.
+
+Examples:
+
+- Employees
+- Requests
+- Diagnoses
+- Prescriptions
+- Medicines
+- Pensioners
+- Beneficiaries
+
+Backend implementation will replace all Mock Data with APIs.
+
+---
+
+# Backend Modules
+
+```text
+Auth
+
+Users
+
+Roles
+
+Permissions
+
+Employees
+
+Departments
+
+Medical Requests
+
+Approvals
+
+Security
+
+Doctor
+
+Diagnoses
+
+Prescriptions
+
+Pharmacy
+
+Referrals
+
+Monthly Treatment
+
+Pension
+
+Reports
+
+Notifications
+
+Audit Logs
+```
+
+---
+
+# High Level Database
+
+```text
+users
+
+roles
+
+permissions
+
+employees
+
+departments
+
+medical_requests
+
+request_approvals
+
+request_timeline
+
+security_logs
+
+diagnoses
+
+prescriptions
+
+prescription_items
+
+medicines
+
+pharmacy_dispenses
+
+external_referrals
+
+monthly_treatments
+
+monthly_treatment_items
+
+pensioners
+
+beneficiaries
+
+audit_logs
+
+notifications
+```
+
+---
+
+# Current Status
+
+Frontend Prototype
+
+Completed:
+
+- Routing
+- Navigation
+- Pages
+- UI Components
+- Mock Data
+
+Pending:
+
+- Backend
+- APIs
+- Database
+- Authentication Integration
+- Authorization Integration
