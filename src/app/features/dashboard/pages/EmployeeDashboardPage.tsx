@@ -14,6 +14,7 @@ import {
   UserCircle,
 } from "lucide-react";
 
+import { useNavigate } from "react-router";
 import logo from "@/assets/logo.png";
 import loginBg from "@/assets/login-bg.png";
 import { Badge } from "@/app/components/ui/badge";
@@ -52,8 +53,14 @@ function formatDate(value?: string) {
 }
 
 export function EmployeeDashboardPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { requests } = useWorkflow();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   const myRequests = requests
     .filter((request) => {
@@ -113,13 +120,14 @@ export function EmployeeDashboardPage() {
           ))}
         </nav>
 
-        <Link
-          to="/"
-          className="absolute bottom-6 left-4 right-4 flex items-center gap-3 rounded-xl px-4 py-3 text-lg hover:bg-white/10"
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="absolute bottom-6 left-4 right-4 flex items-center gap-3 rounded-xl px-4 py-3 text-lg hover:bg-white/10 text-right w-auto"
         >
           <LogOut className="h-6 w-6" />
           تسجيل الخروج
-        </Link>
+        </button>
       </aside>
 
       <main className="min-h-screen xl:mr-72">

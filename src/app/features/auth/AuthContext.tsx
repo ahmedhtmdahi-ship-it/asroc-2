@@ -56,8 +56,14 @@ export function getRedirectPathByRole(role: UserRole) {
     case "super_admin":
       return "/dashboard";
     default:
-      return "/";
+      return "/employee";
   }
+}
+
+// Returns ythe "home" path for the current role — used for backLinks and logout redirects
+export function getHomePathByRole(role?: UserRole): string {
+  if (!role) return "/";
+  return getRedirectPathByRole(role);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

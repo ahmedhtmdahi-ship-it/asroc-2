@@ -66,6 +66,50 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  // Universal my-requests — all roles can view their own submitted requests
+  {
+    path: "/my-requests",
+    element: (
+      <ProtectedRoute
+        roles={[
+          "employee",
+          "manager",
+          "office_manager",
+          "security",
+          "doctor",
+          "pharmacy",
+          "medical_admin",
+          "pension_admin",
+          "super_admin",
+        ]}
+      >
+        <MyMedicalRequestsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Universal request creation — all authenticated roles can submit a request
+  {
+    path: "/request/new",
+    element: (
+      <ProtectedRoute
+        roles={[
+          "employee",
+          "manager",
+          "office_manager",
+          "security",
+          "doctor",
+          "pharmacy",
+          "medical_admin",
+          "pension_admin",
+          "super_admin",
+        ]}
+      >
+        <EmployeeRequestsPage />
+      </ProtectedRoute>
+    ),
+  },
   {
     path: "/employee/my-requests",
     element: (

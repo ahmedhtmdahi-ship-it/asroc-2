@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { auditStore } from "@/app/store/auditStore";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
+import { useAuth } from "@/app/features/auth/AuthContext";
 
 const workflowSteps: Array<{
   status: RequestStatus;
@@ -100,6 +101,9 @@ function getStepState(
 export function RequestDetailsPage() {
   const { id } = useParams();
   const { requests, refreshRequests } = useWorkflow();
+  const { user } = useAuth();
+  // employees use /employee/my-requests, all other roles use /my-requests
+  const myRequestsLink = user?.role === "employee" ? "/employee/my-requests" : "/my-requests";
 
   const request = requests.find((item) => item.id === id);
 
@@ -115,7 +119,7 @@ export function RequestDetailsPage() {
       <PageLayout
         title="تفاصيل الطلب الطبي"
         subtitle="الطلب غير موجود"
-        backLink="/employee/my-requests"
+        backLink={myRequestsLink}
         icon={<FileText className="h-5 w-5" />}
       >
         <Card>
@@ -125,7 +129,7 @@ export function RequestDetailsPage() {
               قد يكون الطلب غير موجود أو لم يتم إنشاؤه في هذه الجلسة.
             </p>
             <Button asChild className="mt-5">
-              <Link to="/employee/my-requests">
+              <Link to={myRequestsLink}>
                 <ArrowRight className="ml-2 h-4 w-4" />
                 العودة إلى طلباتي
               </Link>
@@ -153,7 +157,7 @@ export function RequestDetailsPage() {
     <PageLayout
       title="تفاصيل الطلب الطبي"
       subtitle={`${requestTypeLabel} / ${request.id}`}
-      backLink="/employee/my-requests"
+      backLink={myRequestsLink}
       icon={<FileText className="h-5 w-5" />}
     >
       <div className="space-y-6">

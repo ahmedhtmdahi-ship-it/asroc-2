@@ -71,7 +71,7 @@ export function SecurityCheckInOutPage() {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" asChild>
-                <Link to="/dashboard">
+                <Link to="/security">
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </Button>
