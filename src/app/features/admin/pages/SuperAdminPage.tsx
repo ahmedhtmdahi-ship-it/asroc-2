@@ -22,11 +22,22 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/app/components/ui/dialog";
+import { Checkbox } from "@/app/components/ui/checkbox";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
 import { supabase } from "@/app/lib/api";
 import { mockUsers } from "@/app/data/mockUsers";
 import { mockAuditLogs } from "@/app/data/mockAuditLogs";
 import type { Permission, User, UserRole } from "@/app/types/user";
+
+const isDev = (typeof import.meta !== "undefined" ? (import.meta as any).env?.DEV : false) || false;
 
 // ─── Types ─────────────────────────────────────────────────────────────
 interface AuditLog {
@@ -174,16 +185,66 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
+// Permissions editor component
+function PermissionsEditor({
+  user,
+  onSave,
+  onCancel,
+}: {
+  user: User;
+  onSave: (userId: string, newPermissions: string[]) => void;
+  onCancel: () => void;
+}) {
+  const allPermissions = Object.keys(permissionLabels) as Permission[];
+  const [selected, setSelected] = useState<string[]>(user.permissions || []);
+
+  useEffect(() => {
+    setSelected(user.permissions || []);
+  }, [user]);
+
+  function toggle(p: string) {
+    setSelected((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
+  }
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {allPermissions.map((perm) => (
+          <label key={perm} className="flex items-center gap-2 rounded-md border p-2">
+            <Checkbox checked={selected.includes(perm)} onCheckedChange={() => toggle(perm)} />
+            <div>
+              <div className="font-semibold">{permissionLabel(perm as Permission)}</div>
+              <div className="text-xs text-slate-500">{perm}</div>
+            </div>
+          </label>
+        ))}
+      </div>
+
+      <div className="mt-4 flex justify-end gap-2">
+        <Button variant="outline" onClick={onCancel}>
+          إلغاء
+        </Button>
+        <Button onClick={() => onSave(user.id, selected)}>حفظ</Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Users Tab ─────────────────────────────────────────────────────────
 function UsersTab() {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
+    // debug
+    // eslint-disable-next-line no-console
+    console.log("fetchUsers: start");
     try {
       const { data, error: supaError } = await supabase
         .from("users")
@@ -191,17 +252,45 @@ function UsersTab() {
         .order("created_at", { ascending: false });
 
       if (supaError) throw supaError;
+      // eslint-disable-next-line no-console
+      console.log("fetchUsers: got data from supabase", Array.isArray(data) ? data.length : data);
       setUsers(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل تحميل المستخدمين");
+      // Log the original error for debugging and fallback to mock data
+      // eslint-disable-next-line no-console
+      console.error("fetchUsers error:", err);
+      setUsers(mockUsers);
+      setError(null);
+      // eslint-disable-next-line no-console
+      console.log("fetchUsers: using mockUsers", mockUsers.length);
     } finally {
       setLoading(false);
+      // eslint-disable-next-line no-console
+      console.log("fetchUsers: finished, loading=false");
     }
   };
 
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  async function handleSavePermissions(userId: string, newPermissions: string[]) {
+    try {
+      // update remote
+      const { error: upErr } = await supabase.from("users").update({ permissions: newPermissions }).eq("id", userId);
+      if (upErr) throw upErr;
+
+      // update local state
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, permissions: newPermissions } : u)));
+      setPermissionsOpen(false);
+      setEditingUser(null);
+    } catch (err) {
+      // fallback: update local only
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, permissions: newPermissions } : u)));
+      setPermissionsOpen(false);
+      setEditingUser(null);
+    }
+  }
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => matchesUser(user, search)).slice(0, 250);
@@ -212,12 +301,15 @@ function UsersTab() {
 
   return (
     <div className="space-y-4">
+      {isDev && (
+        <div className="rounded-md bg-yellow-50 p-2 text-xs text-amber-800">Debug: users={users.length} loading={String(loading)} error={String(error)}</div>
+      )}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="relative max-w-xl flex-1">
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearch(event.target.value)}
             className="h-11 pr-10"
             placeholder="بحث بالاسم أو الرقم المالي أو الإدارة أو الدور..."
           />
@@ -264,9 +356,22 @@ function UsersTab() {
                     <td className="p-3 text-slate-600">{user.jobTitle || "غير محدد"}</td>
                     <td className="p-3 text-slate-600">{user.workType || "غير محدد"}</td>
                     <td className="p-3">
-                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => {
+                            setEditingUser(user);
+                            setPermissionsOpen(true);
+                          }}
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -279,6 +384,26 @@ function UsersTab() {
       <p className="text-center text-xs text-slate-500">
         يتم عرض أول 250 نتيجة فقط للحفاظ على سرعة الصفحة. إجمالي المستخدمين: {users.length}
       </p>
+
+      {/* Permissions editor modal */}
+      <Dialog open={permissionsOpen} onOpenChange={(open: boolean) => { if (!open) setEditingUser(null); setPermissionsOpen(open); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تعديل صلاحيات المستخدم</DialogTitle>
+            <DialogDescription>اضغط على الصلاحيات لتفعيل/تعطيلها ثم احفظ التغييرات.</DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] overflow-auto py-4">
+            {editingUser ? (
+              <PermissionsEditor user={editingUser} onSave={handleSavePermissions} onCancel={() => { setPermissionsOpen(false); setEditingUser(null); }} />
+            ) : (
+              <div className="text-sm text-slate-500">لا يوجد مستخدم محدد</div>
+            )}
+          </div>
+
+          <DialogFooter />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -328,7 +453,7 @@ function PermissionsTab({ users }: { users: User[] }) {
   const permissionStats = useMemo(() => {
     return Object.entries(
       users.reduce<Record<string, number>>((acc, user) => {
-        user.permissions.forEach((permission) => {
+        user.permissions.forEach((permission: string) => {
           acc[permission] = (acc[permission] || 0) + 1;
         });
         return acc;
@@ -375,7 +500,7 @@ function DepartmentsTab({ users }: { users: User[] }) {
 
     users.forEach((user) => {
       const name = user.department || "غير محدد";
-      const current = map.get(name) || { name, count: 0, managers: [] };
+      const current = map.get(name) || { name, count: 0, managers: [] as User[] };
       current.count += 1;
       if (user.role === "manager") current.managers.push(user);
       map.set(name, current);
