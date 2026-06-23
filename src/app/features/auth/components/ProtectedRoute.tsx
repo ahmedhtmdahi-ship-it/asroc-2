@@ -1,5 +1,5 @@
 ﻿import { Navigate } from "react-router";
-import { useAuth } from "@/app/features/auth/AuthContext";
+import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import type { UserRole } from "@/app/types/user";
 
 interface ProtectedRouteProps {
@@ -15,7 +15,8 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
   }
 
   if (roles && !roles.includes(user.role)) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to the user's own home page instead of hardcoded /dashboard
+    return <Navigate to={getHomePathByRole(user.role)} replace />;
   }
 
   return <>{children}</>;

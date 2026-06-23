@@ -1,6 +1,6 @@
 ﻿import { useMemo, useState, type FormEvent } from "react";
-import { Link } from "react-router";
-import { useAuth } from "@/app/features/auth/AuthContext";
+import { Link, useLocation } from "react-router";
+import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { findManagerByDepartment } from "@/app/utils/managerResolver";
 import {
@@ -136,7 +136,14 @@ export function EmployeeRequestsPage() {
   const [notes, setNotes] = useState("");
 
   const { user } = useAuth();
+  const location = useLocation();
   const { requests, createRequest } = useWorkflow();
+
+  // If accessed from /request/new (non-employee role), backLink goes to user's home
+  const isUniversalRoute = location.pathname === "/request/new";
+  const backLink = isUniversalRoute ? getHomePathByRole(user?.role) : "/employee";
+  // Link to view submitted requests — non-employees go to /employee/my-requests too (shared page)
+  const myRequestsLink = "/employee/my-requests";
 
   const employeeDepartment = user?.department || user?.workPlace || "غير محدد";
   const resolvedManager = findManagerByDepartment(employeeDepartment);
@@ -319,8 +326,8 @@ export function EmployeeRequestsPage() {
   return (
     <PageLayout
       title="إنشاء طلب خدمة طبية"
-      subtitle="طلبات الموظفين / طلب جديد"
-      backLink="/dashboard"
+      subtitle="طلب جديد"
+      backLink={backLink}
       icon={<ClipboardList className="w-5 h-5" />}
     >
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">

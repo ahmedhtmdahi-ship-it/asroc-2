@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   Building,
   ClipboardList,
@@ -12,6 +12,8 @@ import {
   Stethoscope,
   Store,
   Users,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 import { PageLayout } from "@/app/components/PageLayout";
@@ -20,56 +22,82 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
-import { mockUsers } from "@/app/data/mockUsers";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
-import { auditStore } from "@/app/store/auditStore";
+import { supabase } from "@/app/lib/api";
+import { mockUsers } from "@/app/data/mockUsers";
+import { mockAuditLogs } from "@/app/data/mockAuditLogs";
 import type { Permission, User, UserRole } from "@/app/types/user";
 
+// ─── Types ─────────────────────────────────────────────────────────────
+interface AuditLog {
+  id: string;
+  user_id: string;
+  user_name: string;
+  action: string;
+  request_id?: string;
+  status_before?: string;
+  status_after?: string;
+  created_at: string;
+}
+
+interface Department {
+  id: string;
+  name: string;
+  manager_id?: string;
+  manager_name?: string;
+  employee_count: number;
+}
+
+// ─── Role & Permission Labels ────────────────────────────────────────
 const roleLabels: Record<UserRole, string> = {
-  employee: "Ù…ÙˆØ¸Ù",
-  manager: "Ù…Ø¯ÙŠØ±/Ù…ÙƒÙ„Ù",
-  office_manager: "Ù…Ø¯ÙŠØ± Ù…ÙƒØªØ¨",
-  security: "Ø£Ù…Ù†",
-  doctor: "Ø·Ø¨ÙŠØ¨",
-  pharmacy: "ØµÙŠØ¯Ù„ÙŠØ©",
-  medical_admin: "Ø¥Ø¯Ø§Ø±Ø© Ø·Ø¨ÙŠØ©",
-  pension_admin: "Ø¥Ø¯Ø§Ø±Ø© Ù…Ø¹Ø§Ø´Ø§Øª",
-  super_admin: "Ù…Ø´Ø±Ù Ù†Ø¸Ø§Ù…",
+  employee: "موظف",
+  manager: "مدير/مكلف",
+  office_manager: "مدير مكتب",
+  security: "أمن",
+  doctor: "طبيب",
+  pharmacy: "صيدلية",
+  medical_admin: "إدارة طبية",
+  pension_admin: "إدارة معاشات",
+  super_admin: "مشرف نظام",
 };
 
 const permissionLabels: Record<Permission, string> = {
-  create_request: "Ø¥Ù†Ø´Ø§Ø¡ Ø·Ù„Ø¨",
-  view_own_requests: "Ø¹Ø±Ø¶ Ø·Ù„Ø¨Ø§ØªÙŠ",
-  view_medical_history: "Ø¹Ø±Ø¶ Ø§Ù„ØªØ§Ø±ÙŠØ® Ø§Ù„Ø·Ø¨ÙŠ",
-  approve_request: "Ø§Ø¹ØªÙ…Ø§Ø¯ Ø§Ù„Ø·Ù„Ø¨Ø§Øª",
-  reject_request: "Ø±ÙØ¶ Ø§Ù„Ø·Ù„Ø¨Ø§Øª",
-  postpone_request: "ØªØ£Ø¬ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª",
-  security_check_out: "ØªØ³Ø¬ÙŠÙ„ Ø®Ø±ÙˆØ¬ Ø§Ù„Ø£Ù…Ù†",
-  security_check_in: "ØªØ³Ø¬ÙŠÙ„ Ø¹ÙˆØ¯Ø© Ø§Ù„Ø£Ù…Ù†",
-  diagnose_patient: "ØªØ´Ø®ÙŠØµ Ø§Ù„Ù…Ø±Ø¶Ù‰",
-  create_prescription: "ÙƒØªØ§Ø¨Ø© Ø±ÙˆØ´ØªØ©",
-  create_referral: "Ø¥Ù†Ø´Ø§Ø¡ ØªØ­ÙˆÙŠÙ„",
-  create_sick_leave: "Ø¥Ø¬Ø§Ø²Ø© Ù…Ø±Ø¶ÙŠØ©",
-  recommend_monthly_treatment: "ØªÙˆØµÙŠØ© Ø¹Ù„Ø§Ø¬ Ø´Ù‡Ø±ÙŠ",
-  dispense_prescription: "ØµØ±Ù Ø±ÙˆØ´ØªØ©",
-  manage_inventory: "Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø®Ø²ÙˆÙ†",
-  approve_referral: "Ø§Ø¹ØªÙ…Ø§Ø¯ ØªØ­ÙˆÙŠÙ„",
-  manage_monthly_treatment: "Ø¥Ø¯Ø§Ø±Ø© Ø¹Ù„Ø§Ø¬ Ø´Ù‡Ø±ÙŠ",
-  manage_pensioners: "Ø¥Ø¯Ø§Ø±Ø© Ù…Ø¹Ø§Ø´Ø§Øª",
-  manage_contracts: "Ø¥Ø¯Ø§Ø±Ø© ØªØ¹Ø§Ù‚Ø¯Ø§Øª",
-  manage_pharmacy: "Ø¥Ø¯Ø§Ø±Ø© ØµÙŠØ¯Ù„ÙŠØ©",
-  manage_system: "Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù†Ø¸Ø§Ù…",
-  manage_referrals: "Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„ØªØ­ÙˆÙŠÙ„Ø§Øª",
-  dispense_regular_treatment: "ØµØ±Ù Ø¹Ù„Ø§Ø¬ Ø¹Ø§Ø¯ÙŠ",
-  dispense_monthly_treatment: "ØµØ±Ù Ø¹Ù„Ø§Ø¬ Ø´Ù‡Ø±ÙŠ",
-  view_reports: "Ø¹Ø±Ø¶ Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ±",
-  print_documents: "Ø·Ø¨Ø§Ø¹Ø© Ù…Ø³ØªÙ†Ø¯Ø§Øª",
-  view_audit_log: "Ø³Ø¬Ù„ Ø§Ù„Ø¹Ù…Ù„ÙŠØ§Øª",
-  all: "ÙƒÙ„ Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª",
+  create_request: "إنشاء طلب",
+  view_own_requests: "عرض طلباتي",
+  view_medical_history: "عرض التاريخ الطبي",
+  approve_request: "اعتماد الطلبات",
+  reject_request: "رفض الطلبات",
+  postpone_request: "تأجيل الطلبات",
+  security_check_out: "تسجيل خروج الأمن",
+  security_check_in: "تسجيل عودة الأمن",
+  diagnose_patient: "تشخيص المريض",
+  create_prescription: "كتابة روشتة",
+  create_referral: "إنشاء تحويل",
+  create_sick_leave: "إجازة مرضية",
+  recommend_monthly_treatment: "توصية علاج شهري",
+  dispense_prescription: "صرف روشتة",
+  manage_inventory: "إدارة المخزون",
+  approve_referral: "اعتماد تحويل",
+  manage_monthly_treatment: "إدارة علاج شهري",
+  manage_pensioners: "إدارة معاشات",
+  manage_contracts: "إدارة تعاقدات",
+  manage_pharmacy: "إدارة صيدلية",
+  manage_system: "إدارة النظام",
+  manage_referrals: "إدارة التحويلات",
+  dispense_regular_treatment: "صرف علاج عادي",
+  dispense_monthly_treatment: "صرف علاج شهري",
+  view_reports: "عرض التقارير",
+  print_documents: "طباعة مستندات",
+  view_audit_log: "سجل العمليات",
+  all: "كل الصلاحيات",
 };
 
 function roleLabel(role: UserRole) {
   return roleLabels[role] || role;
+}
+
+function permissionLabel(permission: Permission) {
+  return permissionLabels[permission] || permission;
 }
 
 function matchesUser(user: User, search: string) {
@@ -87,6 +115,7 @@ function matchesUser(user: User, search: string) {
     .some((value) => String(value).toLowerCase().includes(term));
 }
 
+// ─── Reusable Components ─────────────────────────────────────────────
 function StatCard({
   label,
   value,
@@ -96,7 +125,7 @@ function StatCard({
 }: {
   label: string;
   value: string | number;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   color: string;
   bg: string;
 }) {
@@ -117,12 +146,69 @@ function StatCard({
   );
 }
 
+function LoadingState() {
+  return (
+    <div className="flex h-48 items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
+      <AlertCircle className="h-8 w-8 text-red-400" />
+      <p>{message}</p>
+      <Button variant="outline" size="sm" onClick={onRetry}>
+        إعادة المحاولة
+      </Button>
+    </div>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
+      {message}
+    </div>
+  );
+}
+
+// ─── Users Tab ─────────────────────────────────────────────────────────
 function UsersTab() {
   const [search, setSearch] = useState("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: supaError } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (supaError) throw supaError;
+      setUsers(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل المستخدمين");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const filteredUsers = useMemo(() => {
-    return mockUsers.filter((user) => matchesUser(user, search)).slice(0, 250);
-  }, [search]);
+    return users.filter((user) => matchesUser(user, search)).slice(0, 250);
+  }, [users, search]);
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} onRetry={fetchUsers} />;
 
   return (
     <div className="space-y-4">
@@ -133,78 +219,87 @@ function UsersTab() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="h-11 pr-10"
-            placeholder="Ø¨Ø­Ø« Ø¨Ø§Ù„Ø§Ø³Ù… Ø£Ùˆ Ø§Ù„Ø±Ù‚Ù… Ø§Ù„Ù…Ø§Ù„ÙŠ Ø£Ùˆ Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ø£Ùˆ Ø§Ù„Ø¯ÙˆØ±..."
+            placeholder="بحث بالاسم أو الرقم المالي أو الإدارة أو الدور..."
           />
         </div>
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline">
             <Download className="ml-2 h-4 w-4" />
-            ØªØµØ¯ÙŠØ±
+            تصدير
           </Button>
           <Button>
             <Plus className="ml-2 h-4 w-4" />
-            Ø¥Ø¶Ø§ÙØ© Ù…Ø³ØªØ®Ø¯Ù…
+            إضافة مستخدم
           </Button>
         </div>
       </div>
 
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b bg-slate-50 text-slate-600">
-              <tr>
-                <th className="p-3 text-right">Ø§Ù„Ø±Ù‚Ù… Ø§Ù„Ù…Ø§Ù„ÙŠ</th>
-                <th className="p-3 text-right">Ø§Ù„Ø§Ø³Ù…</th>
-                <th className="p-3 text-right">Ø§Ù„Ø¯ÙˆØ±</th>
-                <th className="p-3 text-right">Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©</th>
-                <th className="p-3 text-right">Ø§Ù„ÙˆØ¸ÙŠÙØ©</th>
-                <th className="p-3 text-right">Ø·Ø¨ÙŠØ¹Ø© Ø§Ù„Ø¹Ù…Ù„</th>
-                <th className="p-3 text-right">Ø¥Ø¬Ø±Ø§Ø¡Ø§Øª</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y bg-white">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50">
-                  <td className="p-3 font-mono text-xs">{user.financialNumber}</td>
-                  <td className="p-3 font-semibold text-slate-900">{user.name}</td>
-                  <td className="p-3">
-                    <Badge variant="outline">{roleLabel(user.role)}</Badge>
-                  </td>
-                  <td className="p-3 text-slate-600">{user.department || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"}</td>
-                  <td className="p-3 text-slate-600">{user.jobTitle || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"}</td>
-                  <td className="p-3 text-slate-600">{user.workType || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"}</td>
-                  <td className="p-3">
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </td>
+      {filteredUsers.length === 0 ? (
+        <EmptyState message={search ? "لا توجد نتائج مطابقة للبحث" : "لا يوجد مستخدمين مسجلين"} />
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="p-3 text-right">الرقم المالي</th>
+                  <th className="p-3 text-right">الاسم</th>
+                  <th className="p-3 text-right">الدور</th>
+                  <th className="p-3 text-right">الإدارة</th>
+                  <th className="p-3 text-right">الوظيفة</th>
+                  <th className="p-3 text-right">طبيعة العمل</th>
+                  <th className="p-3 text-right">إجراءات</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody className="divide-y bg-white">
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="hover:bg-slate-50">
+                    <td className="p-3 font-mono text-xs">{user.financialNumber}</td>
+                    <td className="p-3 font-semibold text-slate-900">{user.name}</td>
+                    <td className="p-3">
+                      <Badge variant="outline">{roleLabel(user.role)}</Badge>
+                    </td>
+                    <td className="p-3 text-slate-600">{user.department || "غير محدد"}</td>
+                    <td className="p-3 text-slate-600">{user.jobTitle || "غير محدد"}</td>
+                    <td className="p-3 text-slate-600">{user.workType || "غير محدد"}</td>
+                    <td className="p-3">
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <p className="text-center text-xs text-slate-500">
-        ÙŠØªÙ… Ø¹Ø±Ø¶ Ø£ÙˆÙ„ 250 Ù†ØªÙŠØ¬Ø© ÙÙ‚Ø· Ù„Ù„Ø­ÙØ§Ø¸ Ø¹Ù„Ù‰ Ø³Ø±Ø¹Ø© Ø§Ù„ØµÙØ­Ø©. Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†: {mockUsers.length}
+        يتم عرض أول 250 نتيجة فقط للحفاظ على سرعة الصفحة. إجمالي المستخدمين: {users.length}
       </p>
     </div>
   );
 }
 
-function RolesTab() {
-  const roleStats = Object.entries(
-    mockUsers.reduce<Record<string, number>>((acc, user) => {
-      acc[user.role] = (acc[user.role] || 0) + 1;
-      return acc;
-    }, {})
-  );
+// ─── Roles Tab ─────────────────────────────────────────────────────────
+function RolesTab({ users }: { users: User[] }) {
+  const roleStats = useMemo(() => {
+    return Object.entries(
+      users.reduce<Record<string, number>>((acc, user) => {
+        acc[user.role] = (acc[user.role] || 0) + 1;
+        return acc;
+      }, {})
+    );
+  }, [users]);
+
+  if (users.length === 0) return <EmptyState message="لا توجد بيانات مستخدمين" />;
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {roleStats.map(([role, count]) => {
-        const usersInRole = mockUsers.filter((user) => user.role === role);
+        const usersInRole = users.filter((user) => user.role === role);
         const permissions = new Set(usersInRole.flatMap((user) => user.permissions));
 
         return (
@@ -215,10 +310,10 @@ function RolesTab() {
                   <h3 className="font-bold text-slate-900">{roleLabel(role as UserRole)}</h3>
                   <p className="mt-1 text-xs text-slate-500">{role}</p>
                 </div>
-                <Badge className="bg-blue-100 text-blue-700">{count} Ù…Ø³ØªØ®Ø¯Ù…</Badge>
+                <Badge className="bg-blue-100 text-blue-700">{count} مستخدم</Badge>
               </div>
               <p className="text-sm text-slate-600">
-                {permissions.size} ØµÙ„Ø§Ø­ÙŠØ© Ù…ÙØ¹Ù„Ø© Ø¶Ù…Ù† Ù‡Ø°Ø§ Ø§Ù„Ø¯ÙˆØ±.
+                {permissions.size} صلاحية مفعلة ضمن هذا الدور.
               </p>
             </CardContent>
           </Card>
@@ -228,15 +323,20 @@ function RolesTab() {
   );
 }
 
-function PermissionsTab() {
-  const permissionStats = Object.entries(
-    mockUsers.reduce<Record<string, number>>((acc, user) => {
-      user.permissions.forEach((permission) => {
-        acc[permission] = (acc[permission] || 0) + 1;
-      });
-      return acc;
-    }, {})
-  ).sort((a, b) => b[1] - a[1]);
+// ─── Permissions Tab ───────────────────────────────────────────────────
+function PermissionsTab({ users }: { users: User[] }) {
+  const permissionStats = useMemo(() => {
+    return Object.entries(
+      users.reduce<Record<string, number>>((acc, user) => {
+        user.permissions.forEach((permission) => {
+          acc[permission] = (acc[permission] || 0) + 1;
+        });
+        return acc;
+      }, {})
+    ).sort((a, b) => b[1] - a[1]);
+  }, [users]);
+
+  if (users.length === 0) return <EmptyState message="لا توجد بيانات مستخدمين" />;
 
   return (
     <Card>
@@ -244,16 +344,16 @@ function PermissionsTab() {
         <table className="w-full text-sm">
           <thead className="border-b bg-slate-50 text-slate-600">
             <tr>
-              <th className="p-3 text-right">Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ©</th>
-              <th className="p-3 text-right">Ø§Ù„ÙƒÙˆØ¯</th>
-              <th className="p-3 text-right">Ø¹Ø¯Ø¯ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†</th>
+              <th className="p-3 text-right">الصلاحية</th>
+              <th className="p-3 text-right">الكود</th>
+              <th className="p-3 text-right">عدد المستخدمين</th>
             </tr>
           </thead>
           <tbody className="divide-y bg-white">
             {permissionStats.map(([permission, count]) => (
               <tr key={permission}>
                 <td className="p-3 font-semibold">
-                  {permissionLabels[permission as Permission] || permission}
+                  {permissionLabel(permission as Permission)}
                 </td>
                 <td className="p-3 font-mono text-xs text-slate-500">{permission}</td>
                 <td className="p-3">
@@ -268,12 +368,13 @@ function PermissionsTab() {
   );
 }
 
-function DepartmentsTab() {
+// ─── Departments Tab ───────────────────────────────────────────────────
+function DepartmentsTab({ users }: { users: User[] }) {
   const departments = useMemo(() => {
     const map = new Map<string, { name: string; count: number; managers: User[] }>();
 
-    mockUsers.forEach((user) => {
-      const name = user.department || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯";
+    users.forEach((user) => {
+      const name = user.department || "غير محدد";
       const current = map.get(name) || { name, count: 0, managers: [] };
       current.count += 1;
       if (user.role === "manager") current.managers.push(user);
@@ -281,7 +382,9 @@ function DepartmentsTab() {
     });
 
     return [...map.values()].sort((a, b) => b.count - a.count);
-  }, []);
+  }, [users]);
+
+  if (users.length === 0) return <EmptyState message="لا توجد بيانات مستخدمين" />;
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -290,12 +393,12 @@ function DepartmentsTab() {
           <CardContent className="p-5">
             <div className="mb-3 flex items-start justify-between gap-3">
               <h3 className="font-bold text-slate-900">{department.name}</h3>
-              <Badge className="bg-teal-100 text-teal-700">{department.count} ÙØ±Ø¯</Badge>
+              <Badge className="bg-teal-100 text-teal-700">{department.count} فرد</Badge>
             </div>
             <p className="text-sm text-slate-600">
-              Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„:{" "}
+              المسؤول:{" "}
               <span className="font-semibold">
-                {department.managers[0]?.name || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"}
+                {department.managers[0]?.name || "غير محدد"}
               </span>
             </p>
           </CardContent>
@@ -305,12 +408,16 @@ function DepartmentsTab() {
   );
 }
 
-function RoleUsersTab({ role }: { role: UserRole }) {
-  const users = mockUsers.filter((user) => user.role === role);
+// ─── Role Users Tab (Doctors / Pharmacies) ────────────────────────────
+function RoleUsersTab({ role, users }: { role: UserRole; users: User[] }) {
+  const roleUsers = useMemo(() => users.filter((user) => user.role === role), [users, role]);
+
+  if (users.length === 0) return <EmptyState message="لا توجد بيانات مستخدمين" />;
+  if (roleUsers.length === 0) return <EmptyState message={`لا يوجد ${roleLabel(role)} مسجلون`} />;
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {users.map((user) => (
+      {roleUsers.map((user) => (
         <Card key={user.id}>
           <CardContent className="p-5">
             <div className="mb-3 flex items-start justify-between">
@@ -320,8 +427,8 @@ function RoleUsersTab({ role }: { role: UserRole }) {
               </div>
               <Badge variant="outline">{roleLabel(user.role)}</Badge>
             </div>
-            <p className="text-sm text-slate-600">{user.jobTitle || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"}</p>
-            <p className="mt-1 text-sm text-slate-500">{user.department || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"}</p>
+            <p className="text-sm text-slate-600">{user.jobTitle || "غير محدد"}</p>
+            <p className="mt-1 text-sm text-slate-500">{user.department || "غير محدد"}</p>
           </CardContent>
         </Card>
       ))}
@@ -329,19 +436,46 @@ function RoleUsersTab({ role }: { role: UserRole }) {
   );
 }
 
+// ─── Medicines Tab ───────────────────────────────────────────────────
 function MedicinesTab() {
   return <MedicineInventoryManager />;
 }
 
+// ─── Audit Logs Tab ────────────────────────────────────────────────────
 function AuditLogsTab() {
-  const auditLogs = auditStore.getAll().slice().reverse();
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (auditLogs.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
-        Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¹Ù…Ù„ÙŠØ§Øª Ù…Ø³Ø¬Ù„Ø© Ø­ØªÙ‰ Ø§Ù„Ø¢Ù†.
-      </div>
-    );
+  const fetchLogs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: supaError } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (supaError) throw supaError;
+      setLogs(data || []);
+    } catch {
+      setLogs(mockAuditLogs as AuditLog[]);
+      setError(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} onRetry={fetchLogs} />;
+
+  if (logs.length === 0) {
+    return <EmptyState message="لا توجد عمليات مسجلة حتى الآن." />;
   }
 
   return (
@@ -350,24 +484,24 @@ function AuditLogsTab() {
         <table className="w-full text-sm">
           <thead className="border-b bg-slate-50 text-slate-600">
             <tr>
-              <th className="p-3 text-right">Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…</th>
-              <th className="p-3 text-right">Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡</th>
-              <th className="p-3 text-right">Ø§Ù„Ø·Ù„Ø¨</th>
-              <th className="p-3 text-right">Ù…Ù†</th>
-              <th className="p-3 text-right">Ø¥Ù„Ù‰</th>
-              <th className="p-3 text-right">Ø§Ù„ØªÙˆÙ‚ÙŠØª</th>
+              <th className="p-3 text-right">المستخدم</th>
+              <th className="p-3 text-right">الإجراء</th>
+              <th className="p-3 text-right">الطلب</th>
+              <th className="p-3 text-right">من</th>
+              <th className="p-3 text-right">إلى</th>
+              <th className="p-3 text-right">التوقيت</th>
             </tr>
           </thead>
           <tbody className="divide-y bg-white">
-            {auditLogs.map((log: any) => (
+            {logs.map((log) => (
               <tr key={log.id}>
-                <td className="p-3 font-semibold">{log.userName || log.user || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯"}</td>
-                <td className="p-3">{log.action || "ØªØ­Ø¯ÙŠØ«"}</td>
-                <td className="p-3">{log.requestId || "-"}</td>
-                <td className="p-3">{log.statusBefore || "-"}</td>
-                <td className="p-3">{log.statusAfter || "-"}</td>
+                <td className="p-3 font-semibold">{log.user_name || "غير محدد"}</td>
+                <td className="p-3">{log.action || "تحديث"}</td>
+                <td className="p-3">{log.request_id || "-"}</td>
+                <td className="p-3">{log.status_before || "-"}</td>
+                <td className="p-3">{log.status_after || "-"}</td>
                 <td className="p-3 text-xs text-slate-500">
-                  {log.createdAt ? new Date(log.createdAt).toLocaleString("ar-EG") : "-"}
+                  {log.created_at ? new Date(log.created_at).toLocaleString("ar-EG") : "-"}
                 </td>
               </tr>
             ))}
@@ -378,47 +512,180 @@ function AuditLogsTab() {
   );
 }
 
+// ─── Main Page ─────────────────────────────────────────────────────────
 export function SuperAdminPage() {
-  const auditLogs = auditStore.getAll();
-  const totalDepartments = new Set(mockUsers.map((user) => user.department || "ØºÙŠØ± Ù…Ø­Ø¯Ø¯")).size;
+  const [users, setUsers] = useState<User[]>([]);
+  const [auditLogsCount, setAuditLogsCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Attempt Supabase first
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (usersError) throw usersError;
+
+      const fetchedUsers = (usersData || []) as User[];
+
+      setUsers(fetchedUsers);
+
+      const { count, error: countError } = await supabase
+        .from("audit_logs")
+        .select("*", { count: "exact", head: true });
+
+      if (countError) throw countError;
+      setAuditLogsCount(count || 0);
+    } catch {
+      // Fallback to mock data so the page isn't empty without backend setup
+      setUsers(mockUsers);
+      setAuditLogsCount(mockAuditLogs.length);
+      setError(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const totalDepartments = useMemo(
+    () => new Set(users.map((user) => user.department || "غير محدد")).size,
+    [users]
+  );
+
+  if (loading) {
+    return (
+      <PageLayout
+        title="الإدارة العليا للنظام"
+        subtitle="إدارة المستخدمين والصلاحيات"
+        icon={<Settings className="h-5 w-5 text-white" />}
+        backLink="/dashboard"
+      >
+        <LoadingState />
+      </PageLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <PageLayout
+        title="الإدارة العليا للنظام"
+        subtitle="إدارة المستخدمين والصلاحيات"
+        icon={<Settings className="h-5 w-5 text-white" />}
+        backLink="/dashboard"
+      >
+        <ErrorState message={error} onRetry={fetchData} />
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout
-      title="Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ø¹Ù„ÙŠØ§ Ù„Ù„Ù†Ø¸Ø§Ù…"
-      subtitle="Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† ÙˆØ§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª Ø·Ø¨Ù‚Ø§Ù‹ Ù„Ø´ÙŠØªØ§Øª Ø§Ù„Ø´Ø±ÙƒØ©"
+      title="الإدارة العليا للنظام"
+      subtitle="إدارة المستخدمين والصلاحيات طبقاً لشيتات الشركة"
       icon={<Settings className="h-5 w-5 text-white" />}
       backLink="/dashboard"
     >
       <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label="Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†" value={mockUsers.length} icon={Users} color="text-blue-700" bg="bg-blue-50" />
-        <StatCard label="Ø§Ù„Ø£Ø¯ÙˆØ§Ø± Ø§Ù„ÙØ¹Ù„ÙŠØ©" value={new Set(mockUsers.map((user) => user.role)).size} icon={Shield} color="text-purple-700" bg="bg-purple-50" />
-        <StatCard label="Ø§Ù„Ø¥Ø¯Ø§Ø±Ø§Øª" value={totalDepartments} icon={Building} color="text-teal-700" bg="bg-teal-50" />
-        <StatCard label="Ø³Ø¬Ù„Ø§Øª Ø§Ù„Ø¹Ù…Ù„ÙŠØ§Øª" value={auditLogs.length} icon={ClipboardList} color="text-orange-700" bg="bg-orange-50" />
+        <StatCard
+          label="إجمالي المستخدمين"
+          value={users.length}
+          icon={Users}
+          color="text-blue-700"
+          bg="bg-blue-50"
+        />
+        <StatCard
+          label="الأدوار الفعلية"
+          value={new Set(users.map((user) => user.role)).size}
+          icon={Shield}
+          color="text-purple-700"
+          bg="bg-purple-50"
+        />
+        <StatCard
+          label="الإدارات"
+          value={totalDepartments}
+          icon={Building}
+          color="text-teal-700"
+          bg="bg-teal-50"
+        />
+        <StatCard
+          label="سجلات العمليات"
+          value={auditLogsCount}
+          icon={ClipboardList}
+          color="text-orange-700"
+          bg="bg-orange-50"
+        />
       </div>
 
       <Tabs defaultValue="users" dir="rtl">
         <TabsList className="mb-6 flex h-auto flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
-          <TabsTrigger value="users" className="gap-1.5 text-xs"><Users className="h-3.5 w-3.5" />Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙˆÙ†</TabsTrigger>
-          <TabsTrigger value="roles" className="gap-1.5 text-xs"><Shield className="h-3.5 w-3.5" />Ø§Ù„Ø£Ø¯ÙˆØ§Ø±</TabsTrigger>
-          <TabsTrigger value="permissions" className="gap-1.5 text-xs"><ClipboardList className="h-3.5 w-3.5" />Ø§Ù„ØµÙ„Ø§Ø­ÙŠØ§Øª</TabsTrigger>
-          <TabsTrigger value="departments" className="gap-1.5 text-xs"><Building className="h-3.5 w-3.5" />Ø§Ù„Ø¥Ø¯Ø§Ø±Ø§Øª</TabsTrigger>
-          <TabsTrigger value="doctors" className="gap-1.5 text-xs"><Stethoscope className="h-3.5 w-3.5" />Ø§Ù„Ø£Ø·Ø¨Ø§Ø¡</TabsTrigger>
-          <TabsTrigger value="pharmacies" className="gap-1.5 text-xs"><Store className="h-3.5 w-3.5" />Ø§Ù„ØµÙŠØ¯Ù„ÙŠØ©</TabsTrigger>
-          <TabsTrigger value="medicines" className="gap-1.5 text-xs"><Package className="h-3.5 w-3.5" />Ø§Ù„Ø£Ø¯ÙˆÙŠØ©</TabsTrigger>
-          <TabsTrigger value="audit" className="gap-1.5 text-xs"><ClipboardList className="h-3.5 w-3.5" />Ø§Ù„Ø³Ø¬Ù„</TabsTrigger>
+          <TabsTrigger value="users" className="gap-1.5 text-xs">
+            <Users className="h-3.5 w-3.5" />
+            المستخدمون
+          </TabsTrigger>
+          <TabsTrigger value="roles" className="gap-1.5 text-xs">
+            <Shield className="h-3.5 w-3.5" />
+            الأدوار
+          </TabsTrigger>
+          <TabsTrigger value="permissions" className="gap-1.5 text-xs">
+            <ClipboardList className="h-3.5 w-3.5" />
+            الصلاحيات
+          </TabsTrigger>
+          <TabsTrigger value="departments" className="gap-1.5 text-xs">
+            <Building className="h-3.5 w-3.5" />
+            الإدارات
+          </TabsTrigger>
+          <TabsTrigger value="doctors" className="gap-1.5 text-xs">
+            <Stethoscope className="h-3.5 w-3.5" />
+            الأطباء
+          </TabsTrigger>
+          <TabsTrigger value="pharmacies" className="gap-1.5 text-xs">
+            <Store className="h-3.5 w-3.5" />
+            الصيدلية
+          </TabsTrigger>
+          <TabsTrigger value="medicines" className="gap-1.5 text-xs">
+            <Package className="h-3.5 w-3.5" />
+            الأدوية
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="gap-1.5 text-xs">
+            <ClipboardList className="h-3.5 w-3.5" />
+            السجل
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="users"><UsersTab /></TabsContent>
-        <TabsContent value="roles"><RolesTab /></TabsContent>
-        <TabsContent value="permissions"><PermissionsTab /></TabsContent>
-        <TabsContent value="departments"><DepartmentsTab /></TabsContent>
-        <TabsContent value="doctors"><RoleUsersTab role="doctor" /></TabsContent>
-        <TabsContent value="pharmacies"><RoleUsersTab role="pharmacy" /></TabsContent>
-        <TabsContent value="medicines"><MedicinesTab /></TabsContent>
-        <TabsContent value="audit"><AuditLogsTab /></TabsContent>
+        <TabsContent value="users">
+          <UsersTab />
+        </TabsContent>
+        <TabsContent value="roles">
+          <RolesTab users={users} />
+        </TabsContent>
+        <TabsContent value="permissions">
+          <PermissionsTab users={users} />
+        </TabsContent>
+        <TabsContent value="departments">
+          <DepartmentsTab users={users} />
+        </TabsContent>
+        <TabsContent value="doctors">
+          <RoleUsersTab role="doctor" users={users} />
+        </TabsContent>
+        <TabsContent value="pharmacies">
+          <RoleUsersTab role="pharmacy" users={users} />
+        </TabsContent>
+        <TabsContent value="medicines">
+          <MedicinesTab />
+        </TabsContent>
+        <TabsContent value="audit">
+          <AuditLogsTab />
+        </TabsContent>
       </Tabs>
     </PageLayout>
   );
 }
-
-

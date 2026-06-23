@@ -10,7 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useWorkflow } from "@/app/context/WorkflowContext";
-import { useAuth } from "@/app/features/auth/AuthContext";
+import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { PageLayout } from "@/app/components/PageLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
@@ -21,6 +21,7 @@ import { Input } from "@/app/components/ui/input";
 export function MyMedicalRequestsPage() {
   const { requests } = useWorkflow();
   const { user } = useAuth();
+  const backLink = user?.role === "employee" ? "/employee" : getHomePathByRole(user?.role);
 
   const myRequests = requests.filter((request) => {
     return (
@@ -79,7 +80,7 @@ export function MyMedicalRequestsPage() {
     <PageLayout
       title="طلباتي الطبية"
       subtitle="متابعة حالة طلبات الكشف الطبي الخاصة بك"
-      backLink="/employee"
+      backLink={backLink}
       icon={<ClipboardList className="w-5 h-5" />}
     >
       <div className="space-y-6">

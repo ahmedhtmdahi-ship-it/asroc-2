@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 
 import logo from "../../assets/logo.png";
-import { useAuth } from "@/app/features/auth/AuthContext";
+import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import type { UserRole } from "@/app/types/user";
 
 interface PageLayoutProps {
@@ -83,6 +83,18 @@ const navItems: NavItem[] = [
     icon: Bell,
     link: "/employee/notifications",
     roles: ["employee"],
+  },
+  {
+    label: "طلب كشف طبي",
+    icon: FileText,
+    link: "/request/new",
+    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
+  },
+  {
+    label: "طلباتي الطبية",
+    icon: ClipboardList,
+    link: "/my-requests",
+    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
   },
   {
     label: "موافقات المدير",
@@ -204,10 +216,16 @@ export function PageLayout({
     ? navItems.filter((item) => item.roles.includes(user.role))
     : [];
 
+  const homePath = getHomePathByRole(user?.role);
+
   const handleLogout = () => {
     logout();
     navigate("/");
   };
+
+  // If backLink is "/dashboard", replace with the user's actual home path
+  const resolvedBackLink =
+    backLink === "/dashboard" ? homePath : backLink;
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]" dir="rtl">
@@ -231,7 +249,14 @@ export function PageLayout({
             const active =
               location.pathname === item.link ||
               (item.link !== "/dashboard" &&
-                location.pathname.startsWith(item.link));
+                item.link !== "/employee" &&
+                item.link !== "/security" &&
+                item.link !== "/doctor" &&
+                item.link !== "/pharmacy" &&
+                item.link !== "/medical-admin" &&
+                item.link !== "/pension-admin" &&
+                item.link !== "/manager/approvals" &&
+                location.pathname.startsWith(item.link + "/"));
 
             return (
               <Link
@@ -271,11 +296,11 @@ export function PageLayout({
                 <Menu className="h-5 w-5" />
               </Button>
 
-              {backLink && (
+              {resolvedBackLink && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate(backLink)}
+                  onClick={() => navigate(resolvedBackLink)}
                   className="ml-1"
                 >
                   <ArrowRight className="h-4 w-4" />

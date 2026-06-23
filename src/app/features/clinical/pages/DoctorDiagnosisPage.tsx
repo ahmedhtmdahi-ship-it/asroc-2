@@ -28,12 +28,16 @@ import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { toast } from "sonner";
 
+import { medicinesSeed } from "@/app/data/medicinesSeed";
+
 type Medication = {
+  medicationId: string;
   name: string;
   dosage: string;
   duration: string;
   instructions: string;
 };
+
 
 export function DoctorDiagnosisPage() {
   const params = useParams();
@@ -50,8 +54,15 @@ export function DoctorDiagnosisPage() {
   const [pulse, setPulse] = useState("");
 
   const [medications, setMedications] = useState<Medication[]>([
-    { name: "", dosage: "", duration: "", instructions: "" },
+    {
+      medicationId: "",
+      name: "",
+      dosage: "",
+      duration: "",
+      instructions: "",
+    },
   ]);
+
 
   const [sickLeaveDays, setSickLeaveDays] = useState("");
   const [sickLeaveReason, setSickLeaveReason] = useState("");
@@ -63,7 +74,13 @@ export function DoctorDiagnosisPage() {
   const addMedication = () => {
     setMedications([
       ...medications,
-      { name: "", dosage: "", duration: "", instructions: "" },
+      {
+        medicationId: "",
+        name: "",
+        dosage: "",
+        duration: "",
+        instructions: "",
+      },
     ]);
   };
 
@@ -375,12 +392,34 @@ export function DoctorDiagnosisPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <Label>اسم الدواء</Label>
-                        <Input
-                          value={med.name}
-                          onChange={(e) => updateMedication(index, "name", e.target.value)}
-                          placeholder="اسم الدواء والتركيز"
-                        />
+                        <Select
+                          value={med.medicationId}
+                          onValueChange={(value) => {
+                            const selected = medicinesSeed.find(
+                              (m) => m.id === value
+                            );
+
+                            updateMedication(index, "medicationId", value);
+                            if (selected) {
+                              updateMedication(index, "name", selected.name);
+                            }
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر الدواء" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {medicinesSeed
+                              .filter((m) => m.isActive)
+                              .map((m) => (
+                                <SelectItem key={m.id} value={m.id}>
+                                  {m.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
                       </div>
+
 
                       <div>
                         <Label>الجرعة</Label>
