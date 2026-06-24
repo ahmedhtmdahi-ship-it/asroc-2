@@ -10,6 +10,7 @@ import {
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { supabase } from "@/app/lib/supabaseClient";
 import type { User, UserRole } from "@/app/types/user";
+import { DEV_TEST_USERS } from "@/app/data/testUsers";
 
 interface AuthContextValue {
   user: User | null;
@@ -112,6 +113,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (username: string, password: string): Promise<User | null> => {
+    if (import.meta.env.DEV) {
+      const testUser = DEV_TEST_USERS.find(
+        (u) => u.username === username.trim().toLowerCase() && u.password === password
+      );
+      if (testUser) {
+        setUser(testUser);
+        return testUser;
+      }
+    }
+
     const email = `${username.trim().toLowerCase()}@asroc.local`;
 
     const { data, error } = await supabase.auth.signInWithPassword({
