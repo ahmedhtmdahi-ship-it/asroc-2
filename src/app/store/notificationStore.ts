@@ -44,9 +44,7 @@ class NotificationStore {
   add(raw: Partial<AppNotification> & { id: string; userId: string; title: string; message: string }) {
     const notification: AppNotification = {
       createdAt: new Date().toISOString(),
-      unread: true,
       ...raw,
-      // normalize legacy isRead field if coming from old code
       unread: raw.unread !== undefined ? raw.unread : !(raw as any).isRead,
     };
     this.notifications.unshift(notification);
