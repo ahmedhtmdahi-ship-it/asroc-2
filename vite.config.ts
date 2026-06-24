@@ -33,4 +33,11 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  // Fix Vite build failure related to inline-css html-proxy.
+  // We don't need html-inline-proxy during production builds.
+  build: {
+    cssCodeSplit: true,
+  },
 })
+
