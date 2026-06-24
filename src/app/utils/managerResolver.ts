@@ -1,5 +1,5 @@
-﻿import { mockDepartments } from "@/app/data/mockDepartments";
-import { mockManagers } from "@/app/data/mockManagers";
+import { departmentsStore } from "@/app/store/departmentsStore";
+import { managersStore } from "@/app/store/managersStore";
 
 export function normalizeArabicText(value?: string) {
   return (value || "")
@@ -12,38 +12,19 @@ export function normalizeArabicText(value?: string) {
 
 export function findDepartmentByName(departmentName?: string) {
   if (!departmentName) return null;
-
-  const normalizedDepartmentName = normalizeArabicText(departmentName);
-
-  return (
-    mockDepartments.find((department) => {
-      return normalizeArabicText(department.name) === normalizedDepartmentName;
-    }) || null
-  );
+  return departmentsStore.getByName(departmentName) ?? null;
 }
 
 export function findManagerByDepartment(departmentName?: string) {
-  const department = findDepartmentByName(departmentName);
-
-  if (!department?.managerFinancialNumber) {
-    return null;
-  }
-
-  return (
-    mockManagers.find((manager) => {
-      return manager.financialNumber === department.managerFinancialNumber;
-    }) || null
-  );
+  const financialNumber = departmentsStore.getManagerFinancialNumber(departmentName);
+  if (!financialNumber) return null;
+  return managersStore.getByFinancialNumber(financialNumber) ?? null;
 }
 
 export function getManagerFinancialNumberByDepartment(departmentName?: string) {
-  const manager = findManagerByDepartment(departmentName);
-
-  return manager?.financialNumber || undefined;
+  return departmentsStore.getManagerFinancialNumber(departmentName);
 }
 
 export function getManagerNameByDepartment(departmentName?: string) {
-  const manager = findManagerByDepartment(departmentName);
-
-  return manager?.name || "غير محدد";
+  return findManagerByDepartment(departmentName)?.name ?? "غير محدد";
 }

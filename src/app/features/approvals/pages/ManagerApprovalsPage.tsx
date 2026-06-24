@@ -13,6 +13,7 @@ import {
   Eye,
 } from "lucide-react";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { PageLayout } from "@/app/components/PageLayout";
 import { Button } from "@/app/components/ui/button";
@@ -76,11 +77,20 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 
 export function ManagerApprovalsPage() {
   const {
-    requests,
+    requests: allRequests,
     approveRequest,
     rejectRequest,
     postponeRequest,
   } = useWorkflow();
+  const { user } = useAuth();
+
+  // Managers only see their own department — super_admin and medical_admin see all
+  const requests = useMemo(() => {
+    if (!user) return allRequests;
+    if (user.role === "super_admin" || user.role === "medical_admin") return allRequests;
+    if (!user.department) return allRequests;
+    return allRequests.filter((r) => r.department === user.department);
+  }, [allRequests, user]);
 
   const pendingRequests = requests.filter(
     (request) => request.status === "pending"

@@ -1,5 +1,4 @@
-﻿import { useMemo, useState, type FormEvent } from "react";
-import { Link, useLocation } from "react-router";
+﻿import { useMemo, useRef, useState, type FormEvent } from "react";import { Link, useLocation } from "react-router";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { findManagerByDepartment } from "@/app/utils/managerResolver";
@@ -134,6 +133,8 @@ export function EmployeeRequestsPage() {
     useState<MonthlyTreatmentType>("renewal");
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user } = useAuth();
   const location = useLocation();
@@ -321,6 +322,7 @@ export function EmployeeRequestsPage() {
     setMonthlyTreatmentType("renewal");
     setReason("");
     setNotes("");
+    setAttachments([]);
   };
 
   return (
@@ -681,18 +683,72 @@ export function EmployeeRequestsPage() {
 
                 <div className="space-y-2">
                   <Label className="text-base font-bold">المرفقات</Label>
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                  <div
+                    className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center cursor-pointer hover:bg-slate-100 transition"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const dropped = Array.from(e.dataTransfer.files).filter(
+                        (f) => f.size <= 5 * 1024 * 1024
+                      );
+                      setAttachments((prev) => [...prev, ...dropped]);
+                    }}
+                  >
                     <UploadCloud className="mx-auto w-9 h-9 text-blue-700 mb-2" />
                     <p className="font-semibold text-slate-700">
                       اسحب وأفلت الملفات هنا أو
                     </p>
-                    <button type="button" className="mt-1 text-blue-700 underline">
+                    <span className="mt-1 text-blue-700 underline text-sm">
                       اختر ملف من جهازك
-                    </button>
+                    </span>
                     <p className="mt-2 text-xs text-slate-500">
                       الملفات المسموحة: PNG, JPG, PDF - الحد الأقصى 5MB
                     </p>
                   </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/png,image/jpeg,application/pdf"
+                    multiple
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.files ?? []).filter(
+                        (f) => f.size <= 5 * 1024 * 1024
+                      );
+                      setAttachments((prev) => [...prev, ...selected]);
+                      e.target.value = "";
+                    }}
+                  />
+
+                  {attachments.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {attachments.map((file, i) => (
+                        <li
+                          key={i}
+                          className="flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm"
+                        >
+                          <span className="flex items-center gap-2 truncate">
+                            <Paperclip className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span className="truncate">{file.name}</span>
+                            <span className="text-xs text-slate-400 shrink-0">
+                              ({(file.size / 1024).toFixed(0)} KB)
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAttachments((prev) => prev.filter((_, j) => j !== i))
+                            }
+                            className="mr-2 text-slate-400 hover:text-red-500"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     <Paperclip className="w-4 h-4" />
@@ -719,6 +775,7 @@ export function EmployeeRequestsPage() {
                       setMonthlyTreatmentType("renewal");
                       setReason("");
                       setNotes("");
+                      setAttachments([]);
                     }}
                   >
                     <X className="w-4 h-4 ml-2" />

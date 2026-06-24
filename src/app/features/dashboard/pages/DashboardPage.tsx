@@ -18,7 +18,7 @@ import { PageLayout } from "@/app/components/PageLayout";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
-import { mockUsers } from "@/app/data/mockUsers";
+import { profilesStore } from "@/app/store/profilesStore";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
@@ -165,7 +165,8 @@ export function DashboardPage() {
     ["checked_out", "in_diagnosis", "prescribed", "dispensed"].includes(request.status)
   );
 
-  const roleCounts = mockUsers.reduce<Record<string, number>>((acc, user) => {
+  const allUsers = profilesStore.getAll();
+  const roleCounts = allUsers.reduce<Record<string, number>>((acc, user) => {
     acc[user.role] = (acc[user.role] || 0) + 1;
     return acc;
   }, {});
@@ -193,7 +194,7 @@ export function DashboardPage() {
           <StatCard label="طلبات اليوم" value={todaysRequests.length} icon={CalendarCheck} color="text-blue-700" bg="bg-blue-50" link="/reports" />
           <StatCard label="حالات طارئة" value={emergencyRequests.length} icon={AlertTriangle} color="text-red-700" bg="bg-red-50" link="/doctor" />
           <StatCard label="علاج شهري" value={monthlyRequests.length} icon={HeartPulse} color="text-indigo-700" bg="bg-indigo-50" link="/monthly-treatment" />
-          <StatCard label="مستخدمون" value={mockUsers.length} icon={Users} color="text-orange-700" bg="bg-orange-50" link="/admin" />
+          <StatCard label="مستخدمون" value={allUsers.length} icon={Users} color="text-orange-700" bg="bg-orange-50" link="/admin" />
           <StatCard label="مكتمل" value={completedRequests.length} icon={CheckCircle2} color="text-teal-700" bg="bg-teal-50" link="/reports" />
           <StatCard label="قائمة الصيدلية" value={pharmacyQueue.length} icon={Pill} color="text-purple-700" bg="bg-purple-50" link="/pharmacy" />
           <StatCard label="خارج الشركة" value={outsideCompany.length} icon={Shield} color="text-green-700" bg="bg-green-50" link="/security" />
