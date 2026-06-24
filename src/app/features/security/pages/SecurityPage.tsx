@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle,
   ClipboardList,
   Clock,
@@ -23,6 +24,8 @@ import type { MedicalRequest } from "@/app/types/request";
 import { toast } from "sonner";
 
 const outsideStatuses = ["checked_out", "in_diagnosis", "prescribed", "dispensed"];
+
+const LATE_THRESHOLD_HOURS = 3;
 
 function formatTime(value?: string) {
   if (!value) return "غير محدد";
@@ -190,6 +193,73 @@ function EmployeesOutsideTab() {
   );
 }
 
+function LateEmployeesTab() {
+  const { requests } = useWorkflow();
+
+  const now = Date.now();
+  const lateRequests = requests
+    .filter((r) => outsideStatuses.includes(r.status))
+    .map((r) => {
+      const outAt = r.checkedOutAt ? new Date(r.checkedOutAt).getTime() : new Date(r.createdAt).getTime();
+      const hoursOut = (now - outAt) / 1000 / 60 / 60;
+      return { request: r, hoursOut };
+    })
+    .filter(({ hoursOut }) => hoursOut >= LATE_THRESHOLD_HOURS)
+    .sort((a, b) => b.hoursOut - a.hoursOut);
+
+  if (lateRequests.length === 0) {
+    return <EmptyState text={`لا يوجد موظفون تجاوزوا ${LATE_THRESHOLD_HOURS} ساعات خارج الشركة.`} />;
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+        الموظفون المعروضون خرجوا منذ أكثر من {LATE_THRESHOLD_HOURS} ساعات ولم يعودوا بعد.
+      </div>
+
+      {lateRequests.map(({ request, hoursOut }) => {
+        const isEmergency = request.requestType === "emergency";
+        const hoursLabel = hoursOut >= 24
+          ? `${Math.floor(hoursOut / 24)} يوم و${Math.floor(hoursOut % 24)} ساعة`
+          : `${Math.floor(hoursOut)} ساعة و${Math.floor((hoursOut % 1) * 60)} دقيقة`;
+
+        return (
+          <Card key={request.id} className="border-r-4 border-r-amber-500">
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-slate-900">{request.employeeName}</span>
+                    <Badge variant="outline">{request.financialNumber}</Badge>
+                    <Badge className={isEmergency ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}>
+                      {isEmergency ? "طوارئ" : "عادي"}
+                    </Badge>
+                    <Badge className="bg-amber-100 text-amber-700">
+                      {requestStatusLabels[request.status]}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-slate-500">
+                    {request.department || "غير محدد"} • {request.id}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <Badge className="bg-red-100 text-red-700 text-sm px-3 py-1">
+                    ⏱ خارج منذ {hoursLabel}
+                  </Badge>
+                  <p className="text-xs text-slate-500">
+                    وقت الخروج: {formatTime(request.checkedOutAt || request.createdAt)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 function SecurityLogsTab() {
   const logs = securityStore.getAll().slice().reverse();
 
@@ -278,14 +348,20 @@ export function SecurityPage() {
   const returnReady = requests.filter((request) => request.status === "dispensed");
   const securityLogs = securityStore.getAll();
 
+  const now = Date.now();
+  const lateCount = outsideRequests.filter((r) => {
+    const outAt = r.checkedOutAt ? new Date(r.checkedOutAt).getTime() : new Date(r.createdAt).getTime();
+    return (now - outAt) / 1000 / 60 / 60 >= LATE_THRESHOLD_HOURS;
+  }).length;
+
   const stats = useMemo(
     () => [
       { label: "طلبات معتمدة", value: approvedRequests.length, color: "text-blue-700" },
       { label: "خارج الشركة الآن", value: outsideRequests.length, color: "text-orange-700" },
       { label: "جاهز للعودة", value: returnReady.length, color: "text-green-700" },
-      { label: "إجمالي الحركات", value: securityLogs.length, color: "text-slate-700" },
+      { label: "متأخرون", value: lateCount, color: lateCount > 0 ? "text-red-700" : "text-slate-400" },
     ],
-    [approvedRequests.length, outsideRequests.length, returnReady.length, securityLogs.length]
+    [approvedRequests.length, outsideRequests.length, returnReady.length, lateCount]
   );
 
   return (
@@ -311,12 +387,20 @@ export function SecurityPage() {
           <TabsTrigger value="approved" className="gap-1.5 text-xs"><CheckCircle className="h-3.5 w-3.5" />الطلبات المعتمدة</TabsTrigger>
           <TabsTrigger value="checkin" className="gap-1.5 text-xs"><LogIn className="h-3.5 w-3.5" />تسجيل عودة</TabsTrigger>
           <TabsTrigger value="outside" className="gap-1.5 text-xs"><Users className="h-3.5 w-3.5" />خارج الشركة</TabsTrigger>
+          <TabsTrigger value="late" className="gap-1.5 text-xs">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            متأخرون
+            {lateCount > 0 && (
+              <span className="mr-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">{lateCount}</span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="logs" className="gap-1.5 text-xs"><ClipboardList className="h-3.5 w-3.5" />سجل الحركة</TabsTrigger>
         </TabsList>
 
         <TabsContent value="approved"><ApprovedRequestsTab /></TabsContent>
         <TabsContent value="checkin"><CheckInTab /></TabsContent>
         <TabsContent value="outside"><EmployeesOutsideTab /></TabsContent>
+        <TabsContent value="late"><LateEmployeesTab /></TabsContent>
         <TabsContent value="logs"><SecurityLogsTab /></TabsContent>
       </Tabs>
     </PageLayout>

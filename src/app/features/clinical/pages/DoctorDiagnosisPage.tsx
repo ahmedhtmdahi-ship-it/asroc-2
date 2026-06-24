@@ -28,7 +28,9 @@ import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { toast } from "sonner";
 
-import { medicinesSeed } from "@/app/data/medicinesSeed";
+import { medicineStore } from "@/app/store/medicineStore";
+import { requestStore } from "@/app/store/requestStore";
+import type { PrescriptionMedication } from "@/app/types/request";
 
 type Medication = {
   medicationId: string;
@@ -121,17 +123,24 @@ export function DoctorDiagnosisPage() {
         startDiagnosis(request.id, "بدأ الطبيب جلسة الكشف الطبي");
       }
 
+      const structuredMeds: PrescriptionMedication[] = filledMedications.map((med) => ({
+        id: med.medicationId || `med-${Date.now()}-${Math.random()}`,
+        name: med.name,
+        dosage: med.dosage,
+        duration: med.duration,
+        instructions: med.instructions,
+      }));
+
+      requestStore.updateFields(request.id, {
+        doctorDiagnosis: diagnosis.trim(),
+        medications: structuredMeds,
+        sickLeaveDays: sickLeaveDays ? Number(sickLeaveDays) : undefined,
+        sickLeaveReason: sickLeaveReason.trim() || undefined,
+      });
+
       prescribeRequest(
         request.id,
-        [
-          `التشخيص: ${diagnosis.trim()}`,
-          notes.trim() ? `ملاحظات: ${notes.trim()}` : "",
-          `الأدوية: ${filledMedications
-            .map((med) => `${med.name} ${med.dosage}`.trim())
-            .join("، ")}`,
-        ]
-          .filter(Boolean)
-          .join(" | ")
+        `التشخيص: ${diagnosis.trim()} | الأدوية: ${filledMedications.map((med) => `${med.name} ${med.dosage}`.trim()).join("، ")}`
       );
 
       toast.success("تم حفظ الكشف وإرسال الروشتة للصيدلية", {
@@ -395,10 +404,9 @@ export function DoctorDiagnosisPage() {
                         <Select
                           value={med.medicationId}
                           onValueChange={(value) => {
-                            const selected = medicinesSeed.find(
+                            const selected = medicineStore.getAll().find(
                               (m) => m.id === value
                             );
-
                             updateMedication(index, "medicationId", value);
                             if (selected) {
                               updateMedication(index, "name", selected.name);
@@ -409,7 +417,7 @@ export function DoctorDiagnosisPage() {
                             <SelectValue placeholder="اختر الدواء" />
                           </SelectTrigger>
                           <SelectContent>
-                            {medicinesSeed
+                            {medicineStore.getAll()
                               .filter((m) => m.isActive)
                               .map((m) => (
                                 <SelectItem key={m.id} value={m.id}>

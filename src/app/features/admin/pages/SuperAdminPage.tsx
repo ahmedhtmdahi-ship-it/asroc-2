@@ -33,6 +33,7 @@ import {
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
 import { supabase } from "@/app/lib/api";
+import { profileRowToUser } from "@/app/features/auth/AuthContext";
 import { mockUsers } from "@/app/data/mockUsers";
 import { mockAuditLogs } from "@/app/data/mockAuditLogs";
 import type { Permission, User, UserRole } from "@/app/types/user";
@@ -238,6 +239,7 @@ function UsersTab() {
   const [error, setError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -247,26 +249,18 @@ function UsersTab() {
     console.log("fetchUsers: start");
     try {
       const { data, error: supaError } = await supabase
-        .from("users")
+        .from("profiles")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("name", { ascending: true });
 
       if (supaError) throw supaError;
-      // eslint-disable-next-line no-console
-      console.log("fetchUsers: got data from supabase", Array.isArray(data) ? data.length : data);
-      setUsers(data || []);
+      setUsers((data ?? []).map(profileRowToUser));
     } catch (err) {
-      // Log the original error for debugging and fallback to mock data
-      // eslint-disable-next-line no-console
       console.error("fetchUsers error:", err);
       setUsers(mockUsers);
       setError(null);
-      // eslint-disable-next-line no-console
-      console.log("fetchUsers: using mockUsers", mockUsers.length);
     } finally {
       setLoading(false);
-      // eslint-disable-next-line no-console
-      console.log("fetchUsers: finished, loading=false");
     }
   };
 
@@ -274,10 +268,23 @@ function UsersTab() {
     fetchUsers();
   }, []);
 
+  async function handleChangeRole(userId: string, newRole: UserRole) {
+    setSavingRoleId(userId);
+    try {
+      const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
+      if (error) throw error;
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+    } catch {
+      // silently keep old value on error
+    } finally {
+      setSavingRoleId(null);
+    }
+  }
+
   async function handleSavePermissions(userId: string, newPermissions: string[]) {
     try {
       // update remote
-      const { error: upErr } = await supabase.from("users").update({ permissions: newPermissions }).eq("id", userId);
+      const { error: upErr } = await supabase.from("profiles").update({ permissions: newPermissions }).eq("id", userId);
       if (upErr) throw upErr;
 
       // update local state
@@ -350,7 +357,22 @@ function UsersTab() {
                     <td className="p-3 font-mono text-xs">{user.financialNumber}</td>
                     <td className="p-3 font-semibold text-slate-900">{user.name}</td>
                     <td className="p-3">
-                      <Badge variant="outline">{roleLabel(user.role)}</Badge>
+                      <select
+                        value={user.role}
+                        disabled={savingRoleId === user.id}
+                        onChange={(e) => handleChangeRole(user.id, e.target.value as UserRole)}
+                        className="rounded border border-slate-200 bg-white px-2 py-1 text-sm text-slate-800 disabled:opacity-50"
+                      >
+                        <option value="employee">موظف</option>
+                        <option value="manager">مدير</option>
+                        <option value="office_manager">مدير مكتب</option>
+                        <option value="security">أمن</option>
+                        <option value="doctor">طبيب</option>
+                        <option value="pharmacy">صيدلي</option>
+                        <option value="medical_admin">إداري طبي</option>
+                        <option value="pension_admin">إداري معاشات</option>
+                        <option value="super_admin">سوبر أدمن</option>
+                      </select>
                     </td>
                     <td className="p-3 text-slate-600">{user.department || "غير محدد"}</td>
                     <td className="p-3 text-slate-600">{user.jobTitle || "غير محدد"}</td>
@@ -651,15 +673,13 @@ export function SuperAdminPage() {
     try {
       // Attempt Supabase first
       const { data: usersData, error: usersError } = await supabase
-        .from("users")
+        .from("profiles")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("name", { ascending: true });
 
       if (usersError) throw usersError;
 
-      const fetchedUsers = (usersData || []) as User[];
-
-      setUsers(fetchedUsers);
+      setUsers((usersData ?? []).map(profileRowToUser));
 
       const { count, error: countError } = await supabase
         .from("audit_logs")

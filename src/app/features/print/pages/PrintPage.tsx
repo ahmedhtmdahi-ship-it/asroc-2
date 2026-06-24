@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useWorkflow } from "@/app/context/WorkflowContext";
-import { mockUsers } from "@/app/data/mockUsers";
+import { profilesStore } from "@/app/store/profilesStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 
@@ -34,8 +34,8 @@ function formatDate(value?: string) {
 
 function getDoctorName(request: MedicalRequest) {
   const doctor = request.doctorId
-    ? mockUsers.find((user) => user.id === request.doctorId || user.financialNumber === request.doctorId)
-    : mockUsers.find((user) => user.role === "doctor");
+    ? profilesStore.getById(request.doctorId)
+    : profilesStore.getByRole("doctor")[0];
 
   return doctor?.name || "الطبيب المختص";
 }
@@ -189,6 +189,8 @@ function RequestSummaryPrint({ request }: { request: MedicalRequest }) {
 }
 
 function PrescriptionPrint({ request }: { request: MedicalRequest }) {
+  const meds = request.medications || [];
+
   return (
     <div>
       <PrintControls title="معاينة الوصفة الطبية" />
@@ -201,13 +203,45 @@ function PrescriptionPrint({ request }: { request: MedicalRequest }) {
           <div className="space-y-3 text-sm">
             <InfoLine label="الطبيب" value={getDoctorName(request)} />
             <InfoLine label="التشخيص" value={request.doctorDiagnosis || request.reason || "غير مسجل"} />
-            <InfoLine label="ملاحظات" value={request.notes || "تظهر تفاصيل الأدوية بعد ربط نموذج الروشتة المنظم"} />
+            {request.sickLeaveDays && (
+              <InfoLine label="إجازة مرضية" value={`${request.sickLeaveDays} يوم — ${request.sickLeaveReason || "راحة طبية"}`} />
+            )}
           </div>
         </div>
 
-        <div className="mb-6 rounded-lg border border-dashed p-4 text-center text-sm text-slate-500">
-          جدول الأدوية التفصيلي يحتاج حفظ الروشتة كبيانات منظمة. حالياً يتم تسجيل انتقال الحالة وملاحظات الطبيب في سجل العمليات.
-        </div>
+        {meds.length > 0 ? (
+          <div className="mb-5 rounded-lg border p-4">
+            <h3 className="mb-3 border-b pb-1 font-bold text-slate-800">الأدوية الموصوفة</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-700">
+                    <th className="border p-2 text-right">#</th>
+                    <th className="border p-2 text-right">اسم الدواء</th>
+                    <th className="border p-2 text-right">الجرعة</th>
+                    <th className="border p-2 text-right">المدة</th>
+                    <th className="border p-2 text-right">تعليمات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {meds.map((med, i) => (
+                    <tr key={med.id} className="even:bg-slate-50">
+                      <td className="border p-2 text-center">{i + 1}</td>
+                      <td className="border p-2 font-semibold">{med.name}</td>
+                      <td className="border p-2">{med.dosage || "—"}</td>
+                      <td className="border p-2">{med.duration || "—"}</td>
+                      <td className="border p-2 text-slate-600">{med.instructions || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-5 rounded-lg border border-dashed p-4 text-center text-sm text-slate-500">
+            لا تتوفر بيانات أدوية منظمة لهذا الطلب.
+          </div>
+        )}
 
         <SignatureBlock first="توقيع الطبيب" second="ختم الصيدلية" />
       </PrintableShell>
