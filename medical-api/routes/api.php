@@ -9,6 +9,7 @@ use App\Http\Controllers\CheckupRequestController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FamilyMemberController;
 use App\Http\Controllers\ManagerApprovalController;
+use App\Http\Controllers\SecurityController;
 
 // ── Auth Routes ──────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
@@ -53,6 +54,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('users/{id}/toggle-status', [UserController::class, 'toggleStatus']);
         Route::apiResource('departments', DepartmentController::class);
         Route::apiResource('employees', EmployeeAdminController::class);
+    });
+
+    // ── Security ──────────────────────────────────────────────────
+    Route::prefix('security')->group(function () {
+        Route::get('/approved-requests', [SecurityController::class, 'approvedRequests']);
+        Route::get('/outside-now', [SecurityController::class, 'outsideNow']);
+        Route::get('/late-employees', [SecurityController::class, 'lateEmployees']);
+        Route::post('/requests/{id}/checkout', [SecurityController::class, 'checkout']);
+        Route::post('/requests/{id}/return', [SecurityController::class, 'return']);
     });
 
 });
