@@ -10,6 +10,11 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\FamilyMemberController;
 use App\Http\Controllers\ManagerApprovalController;
 use App\Http\Controllers\SecurityController;
+use App\Http\Controllers\DoctorController;
+use App\Http\Controllers\DiagnosisController;
+use App\Http\Controllers\PrescriptionController;
+use App\Http\Controllers\SickLeaveController;
+use App\Http\Controllers\ExternalReferralController;
 
 // ── Auth Routes ──────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
@@ -63,6 +68,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/late-employees', [SecurityController::class, 'lateEmployees']);
         Route::post('/requests/{id}/checkout', [SecurityController::class, 'checkout']);
         Route::post('/requests/{id}/return', [SecurityController::class, 'return']);
+    });
+
+    // ── Doctor ────────────────────────────────────────────────────
+    Route::prefix('doctor')->group(function () {
+        Route::get('/queue', [DoctorController::class, 'queue']);
+        Route::get('/requests/{id}', [DoctorController::class, 'show']);
+        Route::post('/requests/{id}/diagnose', [DiagnosisController::class, 'store']);
+        Route::post('/requests/{id}/prescription', [PrescriptionController::class, 'store']);
+        Route::post('/requests/{id}/referral', [ExternalReferralController::class, 'store']);
+        Route::post('/requests/{id}/sick-leave', [SickLeaveController::class, 'store']);
+    });
+
+    // ── Medical Admin (Referrals) ─────────────────────────────────
+    Route::prefix('medical-admin')->group(function () {
+        Route::get('/referrals', [ExternalReferralController::class, 'pending']);
+        Route::post('/referrals/{id}/approve', [ExternalReferralController::class, 'approve']);
+        Route::post('/referrals/{id}/reject', [ExternalReferralController::class, 'reject']);
+        Route::get('/referrals/{id}/pdf', [ExternalReferralController::class, 'downloadPdf']);
     });
 
 });
