@@ -21,6 +21,10 @@ use App\Http\Controllers\MedicineController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\MedicineBatchController;
 use App\Http\Controllers\PharmacyCostReportController;
+use App\Http\Controllers\MonthlyTreatmentController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ExternalProviderController;
 
 // ── Auth Routes ──────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
@@ -141,5 +145,38 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/monthly', [PharmacyCostReportController::class, 'monthly']);
         Route::get('/inventory-value', [PharmacyCostReportController::class, 'inventoryValue']);
     });
+
+    // ── Monthly Treatments ────────────────────────────────────────
+    Route::prefix('monthly-treatments')->group(function () {
+        Route::get('/', [MonthlyTreatmentController::class, 'index']);
+        Route::post('/', [MonthlyTreatmentController::class, 'store']);
+        Route::get('/{id}', [MonthlyTreatmentController::class, 'show']);
+        Route::put('/{id}', [MonthlyTreatmentController::class, 'update']);
+        Route::post('/{id}/pause', [MonthlyTreatmentController::class, 'pause']);
+        Route::post('/{id}/discontinue', [MonthlyTreatmentController::class, 'discontinue']);
+        Route::get('/{id}/history', [MonthlyTreatmentController::class, 'dispensingHistory']);
+    });
+
+    // ── Notifications ─────────────────────────────────────────────
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', [NotificationController::class, 'index']);
+        Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('/read-all', [NotificationController::class, 'markAllRead']);
+        Route::post('/{id}/read', [NotificationController::class, 'markRead']);
+    });
+
+    // ── Reports ───────────────────────────────────────────────────
+    Route::prefix('reports')->group(function () {
+        Route::get('/dashboard', [ReportController::class, 'dashboard']);
+        Route::get('/daily', [ReportController::class, 'daily']);
+        Route::get('/monthly', [ReportController::class, 'monthly']);
+        Route::get('/emergency', [ReportController::class, 'emergency']);
+        Route::get('/referrals', [ReportController::class, 'referrals']);
+        Route::get('/sick-leaves', [ReportController::class, 'sickLeaves']);
+        Route::get('/export', [ReportController::class, 'export']);
+    });
+
+    // ── External Providers ────────────────────────────────────────
+    Route::apiResource('external-providers', ExternalProviderController::class);
 
 });
