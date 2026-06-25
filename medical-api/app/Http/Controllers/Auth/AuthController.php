@@ -5,34 +5,43 @@ namespace App\Http\Controllers\Auth;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Controller;
 
 class AuthController extends Controller
 {
     /**
      * POST /api/auth/login
-     * Authenticate a user and issue a Sanctum token.
+     * Authenticate a user by financial_number (or email) + password.
      */
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required|string',
+        $request->validate([
+            'identifier' => 'required|string',  // financial_number or email
+            'password'   => 'required|string',
         ]);
 
-        if (!Auth::attempt($credentials)) {
+        $identifier = $request->identifier;
+
+        // Try to find employee by financial_number first
+        $employee = \App\Models\Employee::where('financial_number', $identifier)->with('user')->first();
+
+        if ($employee) {
+            $user = $employee->user;
+        } else {
+            // Fallback: try email
+            $user = \App\Models\User::where('email', $identifier)->first();
+        }
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'بيانات الدخول غير صحيحة'], 401);
         }
 
-        $user = Auth::user();
-
         if (!$user->is_active) {
-            Auth::logout();
             return response()->json(['message' => 'الحساب غير مفعّل'], 403);
         }
 
         $user->update(['last_login_at' => now()]);
-
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -40,11 +49,14 @@ class AuthController extends Controller
             'token'      => $token,
             'token_type' => 'Bearer',
             'user'       => [
-                'id'          => $user->id,
-                'name'        => $user->name,
-                'email'       => $user->email,
-                'roles'       => $user->getRoleNames(),
-                'permissions' => $user->getAllPermissions()->pluck('name'),
+                'id'               => $user->id,
+                'name'             => $user->name,
+                'email'            => $user->email,
+                'financial_number' => $user->employee?->financial_number,
+                'department'       => $user->employee?->department?->name,
+                'job_title'        => $user->employee?->job_title,
+                'roles'            => $user->getRoleNames(),
+                'permissions'      => $user->getAllPermissions()->pluck('name'),
             ],
         ]);
     }
@@ -66,16 +78,19 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        $user = $request->user();
+        $user = $request->user()->load(['employee.department']);
 
         return response()->json([
-            'id'            => $user->id,
-            'name'          => $user->name,
-            'email'         => $user->email,
-            'is_active'     => $user->is_active,
-            'last_login_at' => $user->last_login_at,
-            'roles'         => $user->getRoleNames(),
-            'permissions'   => $user->getAllPermissions()->pluck('name'),
+            'id'               => $user->id,
+            'name'             => $user->name,
+            'email'            => $user->email,
+            'financial_number' => $user->employee?->financial_number,
+            'department'       => $user->employee?->department?->name,
+            'job_title'        => $user->employee?->job_title,
+            'is_active'        => $user->is_active,
+            'last_login_at'    => $user->last_login_at,
+            'roles'            => $user->getRoleNames(),
+            'permissions'      => $user->getAllPermissions()->pluck('name'),
         ]);
     }
 
