@@ -29,8 +29,9 @@ class AuthController extends Controller
         if ($employee) {
             $user = $employee->user;
         } else {
-            // Fallback: try email
-            $user = \App\Models\User::where('email', $identifier)->first();
+            // Fallback: try exact email, then generated asorc.local email (case-insensitive)
+            $user = \App\Models\User::whereRaw('LOWER(email) = ?', [strtolower($identifier)])->first()
+                 ?? \App\Models\User::whereRaw('LOWER(email) = ?', [strtolower($identifier) . '@asorc.local'])->first();
         }
 
         if (!$user || !Hash::check($request->password, $user->password)) {
