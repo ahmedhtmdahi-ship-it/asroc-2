@@ -13,10 +13,15 @@ class PrescriptionItem extends Model
         'dosage',
         'duration',
         'is_available',
+        'medicine_batch_id',
+        'unit_cost',
+        'quantity_dispensed',
     ];
 
     protected $casts = [
-        'is_available' => 'boolean',
+        'is_available'      => 'boolean',
+        'unit_cost'         => 'decimal:2',
+        'quantity_dispensed' => 'integer',
     ];
 
     public function prescription()
@@ -27,5 +32,10 @@ class PrescriptionItem extends Model
     public function medicine()
     {
         return $this->belongsTo(Medicine::class);
+    }
+
+    public function medicineBatch()
+    {
+        return $this->belongsTo(MedicineBatch::class, 'medicine_batch_id');
     }
 }

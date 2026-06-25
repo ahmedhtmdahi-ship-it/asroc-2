@@ -19,30 +19,40 @@ class PharmacyService
 
         DB::transaction(function () use ($prescription, $pharmacistId) {
             foreach ($prescription->items as $item) {
-                if ($item->is_available && $item->medicine_id !== null) {
-                    $medicine = $item->medicine;
+                if (!$item->is_available || !$item->medicine_id) continue;
 
-                    if ($medicine->current_stock > 0) {
-                        $medicine->decrement('current_stock');
-                    } else {
-                        $item->is_available = false;
-                        $item->save();
-                    }
+                // FIFO: get earliest-expiry batch with stock
+                $batch = \App\Models\MedicineBatch::where('medicine_id', $item->medicine_id)
+                    ->where('quantity_remaining', '>=', $item->quantity_dispensed)
+                    ->where('expiry_date', '>', now())
+                    ->orderBy('expiry_date')
+                    ->first();
+
+                if ($batch) {
+                    $batch->decrement('quantity_remaining', $item->quantity_dispensed);
+                    $item->update([
+                        'medicine_batch_id' => $batch->id,
+                        'unit_cost' => $batch->purchase_price_per_unit,
+                    ]);
+                    // Update medicine total stock
+                    $batch->medicine->decrement('current_stock', $item->quantity_dispensed);
+                } else {
+                    $item->update(['is_available' => false]);
                 }
             }
 
-            $prescription->dispensed_by = $pharmacistId;
-            $prescription->dispensed_at = now();
-            $prescription->save();
+            $prescription->update([
+                'dispensed_by' => $pharmacistId,
+                'dispensed_at' => now(),
+            ]);
 
-            $prescription->checkupRequest->update([
-                'status' => CheckupStatus::Dispensed,
+            $prescription->checkupRequest()->update([
+                'status' => \App\Enums\CheckupStatus::Dispensed->value,
             ]);
         });
 
-        MedicationDispensed::dispatch($prescription);
-
-        return $prescription->load(['items.medicine', 'checkupRequest', 'dispensedBy']);
+        \App\Events\MedicationDispensed::dispatch($prescription->fresh(['items', 'checkupRequest']));
+        return $prescription->fresh(['items.medicine', 'checkupRequest']);
     }
 
     public function dispenseMonthlyTreatment(MonthlyDispensingRecord $record, int $pharmacistId): MonthlyDispensingRecord

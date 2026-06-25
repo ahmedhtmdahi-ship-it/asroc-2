@@ -18,6 +18,9 @@ use App\Http\Controllers\ExternalReferralController;
 use App\Http\Controllers\InternalPharmacyController;
 use App\Http\Controllers\ExternalPharmacyController;
 use App\Http\Controllers\MedicineController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\MedicineBatchController;
+use App\Http\Controllers\PharmacyCostReportController;
 
 // ── Auth Routes ──────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
@@ -111,6 +114,32 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/import', [MedicineController::class, 'import']);
         Route::get('/{id}', [MedicineController::class, 'show']);
         Route::get('/{id}/alternatives', [MedicineController::class, 'alternatives']);
+    });
+
+    // ── Suppliers ─────────────────────────────────────────────────
+    Route::prefix('suppliers')->group(function () {
+        Route::get('/', [SupplierController::class, 'index']);
+        Route::post('/', [SupplierController::class, 'store']);
+        Route::get('/{id}', [SupplierController::class, 'show']);
+        Route::put('/{id}', [SupplierController::class, 'update']);
+        Route::delete('/{id}', [SupplierController::class, 'destroy']);
+        Route::post('/{id}/toggle-status', [SupplierController::class, 'toggleStatus']);
+    });
+
+    // ── Medicine Batches (Inventory) ──────────────────────────────
+    Route::prefix('medicine-batches')->group(function () {
+        Route::get('/', [MedicineBatchController::class, 'index']);
+        Route::post('/', [MedicineBatchController::class, 'store']);
+        Route::get('/expiring-soon', [MedicineBatchController::class, 'expiringSoon']);
+        Route::get('/expired', [MedicineBatchController::class, 'expired']);
+        Route::get('/{id}', [MedicineBatchController::class, 'show']);
+        Route::post('/{id}/adjust', [MedicineBatchController::class, 'adjust']);
+    });
+
+    // ── Pharmacy Cost Reports ─────────────────────────────────────
+    Route::prefix('pharmacy-reports')->group(function () {
+        Route::get('/monthly', [PharmacyCostReportController::class, 'monthly']);
+        Route::get('/inventory-value', [PharmacyCostReportController::class, 'inventoryValue']);
     });
 
 });
