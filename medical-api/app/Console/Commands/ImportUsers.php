@@ -71,8 +71,8 @@ class ImportUsers extends Command
             // Skip users that already exist (check by financial_number)
             // ADMIN has no employee record — check by email instead
             if ($financialNumber === 'ADMIN') {
-                $email = 'admin@asorc.local';
-                if (User::where('email', $email)->exists()) {
+                $email = strtolower($financialNumber) . '@asorc.local';
+                if (User::whereRaw('LOWER(email) = ?', [strtolower($email)])->exists()) {
                     $skipped++;
                     return;
                 }
@@ -85,7 +85,7 @@ class ImportUsers extends Command
 
             try {
                 DB::transaction(function () use ($userData, $financialNumber, &$imported, &$errors, &$errorList) {
-                    $email    = $financialNumber . '@asorc.local';
+                    $email    = strtolower($financialNumber) . '@asorc.local';
                     $password = Hash::make($userData['password'] ?? $financialNumber);
                     $isActive = $userData['isActive'] ?? true;
 
