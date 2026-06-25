@@ -11,10 +11,12 @@ use App\Events\EmergencyCheckupCreated;
 use App\Events\EmployeeCheckedOut;
 use App\Events\EmployeeReturned;
 use App\Events\ExternalReferralCreated;
+use App\Events\MedicationDispensed;
 use App\Events\ReferralApproved;
 use App\Events\ReferralRejected;
 use App\Listeners\GeneratePdfOnReferralApproval;
 use App\Listeners\NotifyEmployeeOnDecision;
+use App\Listeners\NotifyEmployeeOnDispensing;
 use App\Listeners\NotifyEmployeeOnReferralApproval;
 use App\Listeners\NotifyMedicalAdminOnEmergency;
 use App\Listeners\NotifyMedicalAdminOnReferral;
@@ -61,6 +63,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         ReferralRejected::class => [
             NotifyEmployeeOnReferralApproval::class,
+        ],
+        MedicationDispensed::class => [
+            NotifyEmployeeOnDispensing::class,
         ],
     ];
 }

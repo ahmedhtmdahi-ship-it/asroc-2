@@ -15,6 +15,9 @@ use App\Http\Controllers\DiagnosisController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\SickLeaveController;
 use App\Http\Controllers\ExternalReferralController;
+use App\Http\Controllers\InternalPharmacyController;
+use App\Http\Controllers\ExternalPharmacyController;
+use App\Http\Controllers\MedicineController;
 
 // ── Auth Routes ──────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
@@ -86,6 +89,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/referrals/{id}/approve', [ExternalReferralController::class, 'approve']);
         Route::post('/referrals/{id}/reject', [ExternalReferralController::class, 'reject']);
         Route::get('/referrals/{id}/pdf', [ExternalReferralController::class, 'downloadPdf']);
+    });
+
+    // ── Internal Pharmacy ─────────────────────────────────────────
+    Route::prefix('internal-pharmacy')->group(function () {
+        Route::get('/prescriptions', [InternalPharmacyController::class, 'index']);
+        Route::get('/prescriptions/{id}', [InternalPharmacyController::class, 'show']);
+        Route::post('/prescriptions/{id}/dispense', [InternalPharmacyController::class, 'dispense']);
+    });
+
+    // ── External Pharmacy ─────────────────────────────────────────
+    Route::prefix('external-pharmacy')->group(function () {
+        Route::get('/monthly-treatments', [ExternalPharmacyController::class, 'monthlyTreatments']);
+        Route::post('/treatments/{id}/dispense', [ExternalPharmacyController::class, 'dispense']);
+    });
+
+    // ── Medicines ─────────────────────────────────────────────────
+    Route::prefix('medicines')->group(function () {
+        Route::get('/', [MedicineController::class, 'index']);
+        Route::get('/low-stock', [MedicineController::class, 'lowStock']);
+        Route::post('/import', [MedicineController::class, 'import']);
+        Route::get('/{id}', [MedicineController::class, 'show']);
+        Route::get('/{id}/alternatives', [MedicineController::class, 'alternatives']);
     });
 
 });
