@@ -1,0 +1,96 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Controller;
+
+class AuthController extends Controller
+{
+    /**
+     * POST /api/auth/login
+     * Authenticate a user and issue a Sanctum token.
+     */
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        if (!Auth::attempt($credentials)) {
+            return response()->json(['message' => 'بيانات الدخول غير صحيحة'], 401);
+        }
+
+        $user = Auth::user();
+
+        if (!$user->is_active) {
+            Auth::logout();
+            return response()->json(['message' => 'الحساب غير مفعّل'], 403);
+        }
+
+        $user->update(['last_login_at' => now()]);
+
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        return response()->json([
+            'message'    => 'تم تسجيل الدخول بنجاح',
+            'token'      => $token,
+            'token_type' => 'Bearer',
+            'user'       => [
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'roles'       => $user->getRoleNames(),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
+            ],
+        ]);
+    }
+
+    /**
+     * POST /api/auth/logout
+     * Revoke the current access token.
+     */
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+
+        return response()->json(['message' => 'تم تسجيل الخروج بنجاح']);
+    }
+
+    /**
+     * GET /api/auth/me
+     * Return the authenticated user with roles and permissions.
+     */
+    public function me(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'id'            => $user->id,
+            'name'          => $user->name,
+            'email'         => $user->email,
+            'is_active'     => $user->is_active,
+            'last_login_at' => $user->last_login_at,
+            'roles'         => $user->getRoleNames(),
+            'permissions'   => $user->getAllPermissions()->pluck('name'),
+        ]);
+    }
+
+    /**
+     * PUT /api/auth/fcm-token
+     * Update the authenticated user's FCM push-notification token.
+     */
+    public function updateFcmToken(Request $request)
+    {
+        $request->validate([
+            'fcm_token' => 'required|string',
+        ]);
+
+        $request->user()->update(['fcm_token' => $request->fcm_token]);
+
+        return response()->json(['message' => 'تم تحديث رمز الإشعارات بنجاح']);
+    }
+}
