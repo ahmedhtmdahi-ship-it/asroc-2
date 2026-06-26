@@ -3,24 +3,43 @@ import {
   Building,
   ClipboardList,
   Download,
-  Eye,
   Package,
+  Pencil,
   Plus,
+  Power,
   Search,
   Settings,
   Shield,
   Stethoscope,
   Store,
+  Trash2,
   Users,
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageLayout } from "@/app/components/PageLayout";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
 import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
 import { supabase } from "@/app/lib/api";
@@ -174,12 +193,39 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
+// ─── Backend role options for the form ────────────────────────────────
+const backendRoles: { value: string; label: string }[] = [
+  { value: "employee",           label: "موظف" },
+  { value: "retired_employee",   label: "صاحب معاش" },
+  { value: "manager",            label: "مدير إدارة" },
+  { value: "office_manager",     label: "مدير مكتب" },
+  { value: "security",           label: "أمن" },
+  { value: "doctor",             label: "طبيب" },
+  { value: "internal_pharmacy",  label: "صيدلية داخلية" },
+  { value: "external_pharmacy",  label: "صيدلية خارجية" },
+  { value: "medical_admin",      label: "إدارة طبية" },
+  { value: "system_admin",       label: "مدير النظام" },
+  { value: "top_management",     label: "إدارة عليا" },
+];
+
+type UserForm = { name: string; email: string; password: string; role: string };
+const emptyForm: UserForm = { name: "", email: "", password: "", role: "employee" };
+
 // ─── Users Tab ─────────────────────────────────────────────────────────
 function UsersTab() {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // dialog state
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [form, setForm] = useState<UserForm>(emptyForm);
+
+  // delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -208,42 +254,122 @@ function UsersTab() {
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => matchesUser(user, search)).slice(0, 250);
-  }, [users, search]);
+  const openCreate = () => {
+    setEditingUser(null);
+    setForm(emptyForm);
+    setDialogMode("create");
+  };
+
+  const openEdit = (user: User) => {
+    setEditingUser(user);
+    setForm({ name: user.name, email: user.username, password: "", role: user.role });
+    setDialogMode("edit");
+  };
+
+  const closeDialog = () => { setDialogMode(null); setEditingUser(null); };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.email.trim()) {
+      toast.error("الاسم والبريد الإلكتروني مطلوبان");
+      return;
+    }
+    if (dialogMode === "create" && !form.password.trim()) {
+      toast.error("كلمة المرور مطلوبة عند إنشاء مستخدم جديد");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (dialogMode === "create") {
+        await apiClient.post("/admin/users", {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          password: form.password.trim(),
+          role: form.role,
+        });
+        toast.success("تم إضافة المستخدم بنجاح");
+      } else if (editingUser) {
+        const payload: Record<string, string> = {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          role: form.role,
+        };
+        if (form.password.trim()) payload.password = form.password.trim();
+        await apiClient.put(`/admin/users/${editingUser.id}`, payload);
+        toast.success("تم تعديل بيانات المستخدم");
+      }
+      closeDialog();
+      fetchUsers();
+    } catch (err: any) {
+      const msg = err?.errors
+        ? Object.values(err.errors as Record<string, string[]>).flat().join(" — ")
+        : (err?.message ?? "حدث خطأ");
+      toast.error("فشل الحفظ", { description: msg });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      await apiClient.delete(`/admin/users/${deleteTarget.id}`);
+      toast.success("تم حذف المستخدم");
+      setDeleteTarget(null);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err?.message ?? "فشل الحذف");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (user: User) => {
+    try {
+      await apiClient.post(`/admin/users/${user.id}/toggle-status`);
+      toast.success(user.isActive ? "تم تعطيل الحساب" : "تم تفعيل الحساب");
+      fetchUsers();
+    } catch {
+      toast.error("فشل تغيير حالة الحساب");
+    }
+  };
+
+  const filteredUsers = useMemo(
+    () => users.filter((u) => matchesUser(u, search)).slice(0, 250),
+    [users, search]
+  );
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={fetchUsers} />;
 
   return (
     <div className="space-y-4">
+      {/* Search + actions */}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="relative max-w-xl flex-1">
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="h-11 pr-10"
             placeholder="بحث بالاسم أو الرقم المالي أو الإدارة أو الدور..."
           />
         </div>
-
         <div className="flex flex-wrap gap-2">
           <Button variant="outline">
             <Download className="ml-2 h-4 w-4" />
             تصدير
           </Button>
-          <Button>
+          <Button onClick={openCreate}>
             <Plus className="ml-2 h-4 w-4" />
             إضافة مستخدم
           </Button>
         </div>
       </div>
 
+      {/* Table */}
       {filteredUsers.length === 0 ? (
         <EmptyState message={search ? "لا توجد نتائج مطابقة للبحث" : "لا يوجد مستخدمين مسجلين"} />
       ) : (
@@ -252,30 +378,45 @@ function UsersTab() {
             <table className="w-full text-sm">
               <thead className="border-b bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="p-3 text-right">الرقم المالي</th>
                   <th className="p-3 text-right">الاسم</th>
+                  <th className="p-3 text-right">البريد الإلكتروني</th>
                   <th className="p-3 text-right">الدور</th>
                   <th className="p-3 text-right">الإدارة</th>
-                  <th className="p-3 text-right">الوظيفة</th>
-                  <th className="p-3 text-right">طبيعة العمل</th>
+                  <th className="p-3 text-right">الحالة</th>
                   <th className="p-3 text-right">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y bg-white">
                 {filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50">
-                    <td className="p-3 font-mono text-xs">{user.financialNumber}</td>
                     <td className="p-3 font-semibold text-slate-900">{user.name}</td>
+                    <td className="p-3 font-mono text-xs text-slate-600">{user.username}</td>
                     <td className="p-3">
                       <Badge variant="outline">{roleLabel(user.role)}</Badge>
                     </td>
                     <td className="p-3 text-slate-600">{user.department || "غير محدد"}</td>
-                    <td className="p-3 text-slate-600">{user.jobTitle || "غير محدد"}</td>
-                    <td className="p-3 text-slate-600">{user.workType || "غير محدد"}</td>
                     <td className="p-3">
-                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <Badge className={user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                        {user.isActive ? "مفعّل" : "معطّل"}
+                      </Badge>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="تعديل" onClick={() => openEdit(user)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm" variant="ghost"
+                          className={`h-8 w-8 p-0 ${user.isActive ? "text-orange-600 hover:text-orange-700" : "text-green-600 hover:text-green-700"}`}
+                          title={user.isActive ? "تعطيل" : "تفعيل"}
+                          onClick={() => handleToggle(user)}
+                        >
+                          <Power className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" title="حذف" onClick={() => setDeleteTarget(user)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -286,8 +427,75 @@ function UsersTab() {
       )}
 
       <p className="text-center text-xs text-slate-500">
-        يتم عرض أول 250 نتيجة فقط للحفاظ على سرعة الصفحة. إجمالي المستخدمين: {users.length}
+        يتم عرض أول 250 نتيجة فقط. إجمالي المستخدمين: {users.length}
       </p>
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogMode !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === "create" ? "إضافة مستخدم جديد" : "تعديل بيانات المستخدم"}</DialogTitle>
+            <DialogDescription>
+              {dialogMode === "create" ? "أدخل بيانات المستخدم الجديد." : "عدّل البيانات المطلوبة."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>الاسم الكامل</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="محمد أحمد" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>البريد الإلكتروني</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@company.com" dir="ltr" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{dialogMode === "create" ? "كلمة المرور" : "كلمة المرور الجديدة (اختياري)"}</Label>
+              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={dialogMode === "edit" ? "اترك فارغاً للإبقاء على الحالية" : ""} dir="ltr" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>الدور الوظيفي</Label>
+              <Select value={form.role} onValueChange={(val) => setForm({ ...form, role: val })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {backendRoles.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeDialog} disabled={saving}>إلغاء</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {dialogMode === "create" ? "إضافة" : "حفظ التعديلات"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>تأكيد الحذف</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف المستخدم <span className="font-bold text-slate-900">{deleteTarget?.name}</span>؟ لا يمكن التراجع عن هذا الإجراء.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={saving}>إلغاء</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Trash2 className="ml-2 h-4 w-4" />}
+              حذف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
