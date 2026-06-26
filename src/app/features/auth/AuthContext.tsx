@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -110,6 +111,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => getInitialUser());
   const [isLoading, setIsLoading] = useState(false);
   const [isApiConnected, setIsApiConnected] = useState(false);
+
+  // Restore API connection from stored token on app init
+  useEffect(() => {
+    const token = authService.getToken();
+    if (!token) return;
+
+    setIsLoading(true);
+    authService.me()
+      .then((apiUser) => {
+        const mappedUser = mapApiUserToUser(apiUser);
+        setUser(mappedUser);
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(mappedUser));
+        setIsApiConnected(true);
+      })
+      .catch(() => {
+        // Token expired or invalid — clear it, keep localStorage user for mock fallback
+        localStorage.removeItem('asorc_token');
+        localStorage.removeItem('asorc_api_user');
+        setIsApiConnected(false);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const login = async (username: string, password: string): Promise<User | null> => {
     setIsLoading(true);
