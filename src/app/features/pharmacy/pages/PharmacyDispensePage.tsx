@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   AlertTriangle,
@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   FileText,
   PackageCheck,
+  PackageX,
   Pill,
   Printer,
   User,
@@ -19,7 +20,17 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { apiClient } from "@/app/services/apiClient";
 import { requestStatusLabels } from "@/app/types/workflow";
+
+type PrescriptionItem = {
+  id: number;
+  medicine_name: string;
+  dosage: string;
+  duration?: string;
+  is_available: boolean;
+};
 
 function InfoItem({ label, value }: { label: string; value?: string }) {
   return (
@@ -34,9 +45,22 @@ export default function PharmacyDispensePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { requests, dispenseRequest, dispenseMonthlyTreatment } = useWorkflow();
+  const { isApiConnected } = useAuth();
   const [confirmedReview, setConfirmedReview] = useState(false);
+  const [prescriptionItems, setPrescriptionItems] = useState<PrescriptionItem[]>([]);
 
   const request = requests.find((item) => item.id === id);
+
+  useEffect(() => {
+    if (!isApiConnected || !request?.prescriptionId) return;
+    apiClient
+      .get(`/internal-pharmacy/prescriptions/${request.prescriptionId}`)
+      .then((res: any) => {
+        const data = res?.data ?? res;
+        setPrescriptionItems(data?.items ?? []);
+      })
+      .catch(() => {});
+  }, [isApiConnected, request?.prescriptionId]);
 
   const handleDispense = () => {
     if (!request) return;
@@ -219,6 +243,54 @@ export default function PharmacyDispensePage() {
             </CardContent>
           </Card>
         </div>
+
+        {prescriptionItems.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Pill className="h-5 w-5 text-purple-700" />
+                أدوية الروشتة ({prescriptionItems.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {prescriptionItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`flex items-start justify-between gap-4 rounded-xl border p-4 ${
+                      item.is_available ? "bg-white" : "border-red-200 bg-red-50/40"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${
+                        item.is_available ? "bg-purple-50" : "bg-red-100"
+                      }`}>
+                        <Pill className={`h-4 w-4 ${item.is_available ? "text-purple-700" : "text-red-600"}`} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900">{item.medicine_name}</p>
+                        <p className="mt-0.5 text-sm text-slate-500">{item.dosage}</p>
+                        {item.duration && (
+                          <p className="text-xs text-slate-400">المدة: {item.duration}</p>
+                        )}
+                      </div>
+                    </div>
+                    <Badge className={item.is_available
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-700"
+                    }>
+                      {item.is_available ? (
+                        <><PackageCheck className="ml-1 h-3 w-3" />متوفر</>
+                      ) : (
+                        <><PackageX className="ml-1 h-3 w-3" />غير متوفر</>
+                      )}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
