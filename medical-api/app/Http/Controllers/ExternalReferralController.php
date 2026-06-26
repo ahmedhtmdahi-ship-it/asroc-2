@@ -105,9 +105,8 @@ class ExternalReferralController extends Controller
             'checkupRequest.employee.department',
             'externalProvider',
         ])
-            ->where('status', ReferralStatus::PendingApproval)
             ->latest()
-            ->paginate(10);
+            ->paginate(50);
 
         return ExternalReferralResource::collection($referrals);
     }

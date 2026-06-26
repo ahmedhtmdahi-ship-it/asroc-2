@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient';
+import { apiClient, API_URL } from './apiClient';
 
 export const checkupService = {
   // Employee
@@ -64,6 +64,38 @@ export const checkupService = {
   },
   async writeReferral(id: number, data: unknown) {
     return apiClient.post(`/doctor/requests/${id}/referral`, data);
+  },
+
+  // Medicines
+  async getMedicines(params?: { search?: string; per_page?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set('search', params.search);
+    if (params?.per_page) qs.set('per_page', String(params.per_page));
+    const query = qs.toString() ? `?${qs}` : '';
+    return apiClient.get(`/medicines${query}`);
+  },
+  async createMedicine(data: unknown) {
+    return apiClient.post('/medicines', data);
+  },
+  async updateMedicine(id: number, data: unknown) {
+    return apiClient.put(`/medicines/${id}`, data);
+  },
+  async deleteMedicine(id: number) {
+    return apiClient.delete(`/medicines/${id}`);
+  },
+
+  // Medical Admin — Referrals
+  async getPendingReferrals() {
+    return apiClient.get('/medical-admin/referrals');
+  },
+  async approveReferral(id: number) {
+    return apiClient.post(`/medical-admin/referrals/${id}/approve`);
+  },
+  async rejectReferral(id: number, rejection_reason: string) {
+    return apiClient.post(`/medical-admin/referrals/${id}/reject`, { rejection_reason });
+  },
+  getReferralPdfUrl(id: number): string {
+    return `${API_URL}/medical-admin/referrals/${id}/pdf`;
   },
 
   // Internal Pharmacy

@@ -1,13 +1,16 @@
+import { useEffect, useState } from "react";
 import {
   Activity,
   AlertTriangle,
   CheckCircle2,
   ClipboardCheck,
+  ExternalLink,
   FileText,
   HeartPulse,
   Printer,
   Search,
   TrendingUp,
+  X,
 } from "lucide-react";
 
 import { PageLayout } from "@/app/components/PageLayout";
@@ -16,8 +19,24 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { checkupService } from "@/app/services/checkupService";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
+import { toast } from "sonner";
+
+type Referral = {
+  id: number;
+  status: string;
+  specialty: string;
+  reason: string;
+  notes?: string;
+  rejection_reason?: string;
+  pdf_path?: string;
+  employee_name?: string;
+  financial_number?: string;
+  external_provider?: { name: string; type: string };
+};
 
 function StatCard({ item }: { item: any }) {
   return (
@@ -76,8 +95,131 @@ function RequestSummaryCard({ request }: { request: MedicalRequest }) {
   );
 }
 
+function ReferralCard({
+  referral,
+  onApprove,
+  onReject,
+}: {
+  referral: Referral;
+  onApprove: (id: number) => void;
+  onReject: (id: number) => void;
+}) {
+  const isPending = referral.status === "pending_approval";
+  const isApproved = referral.status === "approved";
+
+  return (
+    <div className="rounded-2xl border bg-white p-4 transition-all hover:shadow-md">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-slate-900">
+              {referral.employee_name ?? "—"}
+            </span>
+            {referral.financial_number && (
+              <Badge variant="outline">{referral.financial_number}</Badge>
+            )}
+            <Badge
+              className={
+                isPending
+                  ? "bg-yellow-100 text-yellow-800"
+                  : isApproved
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
+              }
+            >
+              {isPending ? "بانتظار الموافقة" : isApproved ? "موافق عليه" : "مرفوض"}
+            </Badge>
+          </div>
+          <p className="text-sm text-slate-600">
+            <span className="font-medium">التخصص:</span> {referral.specialty}
+          </p>
+          {referral.external_provider && (
+            <p className="text-sm text-slate-600">
+              <span className="font-medium">الجهة:</span> {referral.external_provider.name}
+            </p>
+          )}
+          <p className="text-sm text-slate-500">{referral.reason}</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {isApproved && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-blue-200 text-blue-700"
+              onClick={() => window.open(checkupService.getReferralPdfUrl(referral.id), "_blank")}
+            >
+              <ExternalLink className="ml-1 h-4 w-4" />
+              PDF التحويل
+            </Button>
+          )}
+          {isPending && (
+            <>
+              <Button
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => onApprove(referral.id)}
+              >
+                <CheckCircle2 className="ml-1 h-4 w-4" />
+                موافقة
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-red-200 text-red-700 hover:bg-red-50"
+                onClick={() => onReject(referral.id)}
+              >
+                <X className="ml-1 h-4 w-4" />
+                رفض
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MedicalAdminPage() {
   const { requests } = useWorkflow();
+  const { isApiConnected } = useAuth();
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+
+  const fetchReferrals = () => {
+    if (!isApiConnected) return;
+    checkupService.getPendingReferrals()
+      .then((res: any) => {
+        const items = Array.isArray(res) ? res : (res?.data ?? []);
+        setReferrals(items);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchReferrals();
+  }, [isApiConnected]);
+
+  const handleApprove = async (id: number) => {
+    try {
+      await checkupService.approveReferral(id);
+      toast.success("تمت الموافقة على التحويل");
+      fetchReferrals();
+    } catch (err) {
+      toast.error("تعذرت الموافقة", { description: err instanceof Error ? err.message : "حدث خطأ" });
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    const reason = window.prompt("سبب الرفض:");
+    if (!reason) return;
+    try {
+      await checkupService.rejectReferral(id, reason);
+      toast.success("تم رفض التحويل");
+      fetchReferrals();
+    } catch (err) {
+      toast.error("تعذر الرفض", { description: err instanceof Error ? err.message : "حدث خطأ" });
+    }
+  };
 
   const today = new Date();
   const todayRequests = requests.filter((request) => {
@@ -96,10 +238,12 @@ export function MedicalAdminPage() {
   const monthlyRequests = requests.filter((request) => request.serviceType === "monthly_treatment");
   const pendingMonthly = requests.filter((request) => request.status === "pending_monthly_doctor");
 
+  const pendingReferrals = referrals.filter((r) => r.status === "pending_approval");
+
   const stats = [
     { label: "طلبات اليوم", value: todayRequests.length, icon: Activity, color: "text-blue-700", bg: "bg-blue-50" },
     { label: "حالات طوارئ", value: emergencyRequests.length, icon: AlertTriangle, color: "text-red-700", bg: "bg-red-50" },
-    { label: "علاج شهري", value: monthlyRequests.length, icon: HeartPulse, color: "text-purple-700", bg: "bg-purple-50" },
+    { label: "تحويلات معلقة", value: pendingReferrals.length, icon: FileText, color: "text-orange-700", bg: "bg-orange-50" },
     { label: "عمليات مكتملة", value: completedRequests.length, icon: CheckCircle2, color: "text-teal-700", bg: "bg-teal-50" },
   ];
 
@@ -167,23 +311,39 @@ export function MedicalAdminPage() {
                 </div>
               </CardContent>
             </Card>
-          </section>
 
-          <aside className="space-y-6 xl:col-span-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-5 w-5 text-purple-700" />
-                  التحويلات الخارجية
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-orange-700" />
+                    التحويلات الخارجية
+                  </span>
+                  <Badge variant="outline">{referrals.length} تحويل</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="rounded-2xl border border-dashed bg-white p-6 text-center text-sm text-slate-500">
-                  لا يوجد ملف تحويلات خارجي مرفوع حتى الآن. عند توفر شيت أو API للتحويلات سيتم ربط هذه القائمة بالبيانات الحقيقية.
-                </div>
+                {referrals.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed p-8 text-center text-slate-500">
+                    {isApiConnected ? "لا توجد تحويلات خارجية حالياً." : "غير متصل بالخادم — تحقق من الاتصال."}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {referrals.map((ref) => (
+                      <ReferralCard
+                        key={ref.id}
+                        referral={ref}
+                        onApprove={handleApprove}
+                        onReject={handleReject}
+                      />
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
+          </section>
 
+          <aside className="space-y-6 xl:col-span-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -193,13 +353,14 @@ export function MedicalAdminPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 {[
-                  ["كشوف عادية", requests.filter((request) => request.serviceType !== "monthly_treatment" && request.requestType !== "emergency").length],
+                  ["كشوف عادية", requests.filter((r) => r.serviceType !== "monthly_treatment" && r.requestType !== "emergency").length],
                   ["كشوف طوارئ", emergencyRequests.length],
                   ["علاج شهري", monthlyRequests.length],
                   ["بانتظار طبيب شهري", pendingMonthly.length],
-                  ["جاهز للصيدلية", requests.filter((request) => ["prescribed", "monthly_ready_pharmacy"].includes(request.status)).length],
+                  ["تحويلات معلقة", pendingReferrals.length],
+                  ["جاهز للصيدلية", requests.filter((r) => ["prescribed", "monthly_ready_pharmacy"].includes(r.status)).length],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between border-b pb-3">
+                  <div key={label as string} className="flex items-center justify-between border-b pb-3">
                     <span className="text-slate-600">{label}</span>
                     <span className="font-bold text-[#0B1F3A]">{value}</span>
                   </div>

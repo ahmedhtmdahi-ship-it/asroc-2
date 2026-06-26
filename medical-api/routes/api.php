@@ -115,9 +115,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Medicines ─────────────────────────────────────────────────
     Route::prefix('medicines')->group(function () {
         Route::get('/', [MedicineController::class, 'index']);
+        Route::post('/', [MedicineController::class, 'store']);
         Route::get('/low-stock', [MedicineController::class, 'lowStock']);
         Route::post('/import', [MedicineController::class, 'import']);
         Route::get('/{id}', [MedicineController::class, 'show']);
+        Route::put('/{id}', [MedicineController::class, 'update']);
+        Route::delete('/{id}', [MedicineController::class, 'destroy']);
         Route::get('/{id}/alternatives', [MedicineController::class, 'alternatives']);
     });
 

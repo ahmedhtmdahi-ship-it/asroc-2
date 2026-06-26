@@ -10,6 +10,10 @@ class ExternalReferralResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $emp = $this->whenLoaded('checkupRequest', fn() =>
+            $this->checkupRequest?->employee
+        );
+
         return [
             'id' => $this->id,
             'specialty' => $this->specialty,
@@ -19,6 +23,12 @@ class ExternalReferralResource extends JsonResource
             'reviewed_at' => $this->reviewed_at,
             'rejection_reason' => $this->rejection_reason,
             'pdf_url' => $this->pdf_path ? Storage::url($this->pdf_path) : null,
+            'employee_name' => $this->whenLoaded('checkupRequest', fn() =>
+                $this->checkupRequest?->employee?->user?->name
+            ),
+            'financial_number' => $this->whenLoaded('checkupRequest', fn() =>
+                $this->checkupRequest?->employee?->financial_number
+            ),
             'external_provider' => $this->whenLoaded('externalProvider', function () {
                 return $this->externalProvider ? [
                     'id' => $this->externalProvider->id,

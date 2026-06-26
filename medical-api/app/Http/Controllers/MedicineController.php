@@ -52,6 +52,48 @@ class MedicineController extends Controller
         return MedicineResource::collection($alternatives);
     }
 
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name'              => ['required', 'string', 'max:255'],
+            'active_ingredient' => ['nullable', 'string', 'max:255'],
+            'category'          => ['nullable', 'string', 'max:100'],
+            'current_stock'     => ['nullable', 'integer', 'min:0'],
+            'minimum_stock'     => ['nullable', 'integer', 'min:0'],
+            'unit'              => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $medicine = Medicine::create($validated);
+
+        return (new MedicineResource($medicine))->response()->setStatusCode(201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $medicine = Medicine::findOrFail($id);
+
+        $validated = $request->validate([
+            'name'              => ['sometimes', 'required', 'string', 'max:255'],
+            'active_ingredient' => ['nullable', 'string', 'max:255'],
+            'category'          => ['nullable', 'string', 'max:100'],
+            'current_stock'     => ['nullable', 'integer', 'min:0'],
+            'minimum_stock'     => ['nullable', 'integer', 'min:0'],
+            'unit'              => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $medicine->update($validated);
+
+        return new MedicineResource($medicine);
+    }
+
+    public function destroy($id)
+    {
+        $medicine = Medicine::findOrFail($id);
+        $medicine->delete();
+
+        return response()->json(['message' => 'تم حذف الدواء بنجاح']);
+    }
+
     public function import(Request $request)
     {
         $request->validate([
