@@ -299,8 +299,14 @@ class ReportController extends Controller
     {
         $request->validate([
             'type'   => ['required', 'in:daily,monthly,emergency,referrals,sick_leaves'],
-            'format' => ['nullable', 'in:json'],
+            'format' => ['nullable', 'in:json,csv'],
         ]);
+
+        $format = $request->get('format', 'json');
+
+        if ($format === 'csv') {
+            return $this->exportCsv($request);
+        }
 
         return match ($request->type) {
             'daily'       => $this->daily($request),
@@ -309,5 +315,109 @@ class ReportController extends Controller
             'referrals'   => $this->referrals($request),
             'sick_leaves' => $this->sickLeaves($request),
         };
+    }
+
+    private function exportCsv(Request $request)
+    {
+        $type = $request->type;
+        [$dateFrom, $dateTo] = $this->resolveDateRange($request);
+
+        $rows = match ($type) {
+            'daily', 'monthly', 'emergency' => $this->getRequestRows($type, $dateFrom, $dateTo),
+            'referrals'  => $this->getReferralRows($dateFrom, $dateTo),
+            'sick_leaves'=> $this->getSickLeaveRows($dateFrom, $dateTo),
+        };
+
+        $filename = "report_{$type}_{$dateFrom->toDateString()}.csv";
+
+        $headers = [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($rows) {
+            $file = fopen('php://output', 'w');
+            // UTF-8 BOM for Excel Arabic support
+            fputs($file, "\xEF\xBB\xBF");
+            foreach ($rows as $row) {
+                fputcsv($file, $row);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    private function getRequestRows(string $type, $dateFrom, $dateTo): array
+    {
+        $query = CheckupRequest::with(['employee.user', 'department'])
+            ->whereBetween('created_at', [$dateFrom, $dateTo]);
+
+        if ($type === 'emergency') {
+            $query->where('type', CheckupType::Emergency->value);
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->get();
+
+        $rows = [['رقم الطلب', 'الموظف', 'الإدارة', 'النوع', 'الحالة', 'الملاحظات', 'تاريخ الإنشاء']];
+
+        foreach ($requests as $req) {
+            $rows[] = [
+                $req->id,
+                $req->employee?->user?->name ?? '',
+                $req->department?->name ?? '',
+                $req->type?->value ?? '',
+                $req->status?->value ?? '',
+                $req->notes ?? '',
+                $req->created_at?->format('Y-m-d H:i') ?? '',
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function getReferralRows($dateFrom, $dateTo): array
+    {
+        $referrals = ExternalReferral::with(['checkupRequest.employee.user', 'externalProvider'])
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $rows = [['رقم التحويل', 'الموظف', 'التخصص', 'الجهة', 'الحالة', 'تاريخ الإنشاء']];
+
+        foreach ($referrals as $ref) {
+            $rows[] = [
+                $ref->id,
+                $ref->checkupRequest?->employee?->user?->name ?? '',
+                $ref->specialty ?? '',
+                $ref->externalProvider?->name ?? '',
+                $ref->status?->value ?? '',
+                $ref->created_at?->format('Y-m-d H:i') ?? '',
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function getSickLeaveRows($dateFrom, $dateTo): array
+    {
+        $leaves = SickLeave::with(['checkupRequest.employee.user'])
+            ->whereBetween('start_date', [$dateFrom->toDateString(), $dateTo->toDateString()])
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+        $rows = [['رقم الراحة', 'الموظف', 'عدد الأيام', 'السبب', 'تاريخ البداية']];
+
+        foreach ($leaves as $leave) {
+            $rows[] = [
+                $leave->id,
+                $leave->checkupRequest?->employee?->user?->name ?? '',
+                $leave->days_count,
+                $leave->reason ?? '',
+                $leave->start_date ?? '',
+            ];
+        }
+
+        return $rows;
     }
 }

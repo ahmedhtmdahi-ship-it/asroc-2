@@ -5,7 +5,9 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  Download,
   FileText,
+  Loader2,
   Printer,
   Users,
   XCircle,
@@ -64,6 +66,7 @@ export function ReportsPage() {
   const { requests } = useWorkflow();
   const { isApiConnected } = useAuth();
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!isApiConnected) return;
@@ -71,6 +74,25 @@ export function ReportsPage() {
       .then((res: any) => setDashboardStats(res ?? null))
       .catch(() => {});
   }, [isApiConnected]);
+
+  const handleExport = async (type: string) => {
+    if (!isApiConnected) { window.print(); return; }
+    setExporting(true);
+    try {
+      const month = selectedMonth || new Date().toISOString().slice(0, 7);
+      const [y, m] = month.split("-");
+      const dateFrom = `${y}-${m}-01`;
+      const dateTo   = new Date(Number(y), Number(m), 0).toISOString().slice(0, 10);
+      await apiClient.download(
+        `/reports/export?type=${type}&format=csv&date_from=${dateFrom}&date_to=${dateTo}`,
+        `report_${type}_${month}.csv`
+      );
+    } catch {
+      // fallback silent
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const filteredRequests = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -188,10 +210,16 @@ export function ReportsPage() {
                 <BarChart3 className="h-5 w-5 text-blue-700" />
                 فلاتر التقرير
               </CardTitle>
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="ml-2 h-4 w-4" />
-                طباعة
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => window.print()}>
+                  <Printer className="ml-2 h-4 w-4" />
+                  طباعة
+                </Button>
+                <Button variant="outline" onClick={() => handleExport("monthly")} disabled={exporting}>
+                  {exporting ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Download className="ml-2 h-4 w-4" />}
+                  تصدير Excel
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

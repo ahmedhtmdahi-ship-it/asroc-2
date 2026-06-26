@@ -72,6 +72,24 @@ class ApiClient {
     }
     return response.json();
   }
+
+  async download(endpoint: string, filename: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'خطأ في التصدير' }));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }
 
 export const apiClient = new ApiClient(API_URL);
