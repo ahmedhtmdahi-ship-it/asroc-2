@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\EmployeeAdminController;
@@ -63,12 +64,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Family Members (retired_employee) ─────────────────────
     Route::apiResource('family-members', FamilyMemberController::class);
 
-    // ── Admin: Users, Departments, Employees ──────────────────
+    // ── Admin: Users, Departments, Employees, Audit Logs ──────
     Route::prefix('admin')->group(function () {
         Route::apiResource('users', UserController::class);
         Route::post('users/{id}/toggle-status', [UserController::class, 'toggleStatus']);
         Route::apiResource('departments', DepartmentController::class);
         Route::apiResource('employees', EmployeeAdminController::class);
+        Route::get('audit-logs', [AuditLogController::class, 'index']);
     });
 
     // ── Security ──────────────────────────────────────────────────

@@ -42,8 +42,6 @@ import {
 } from "@/app/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
-import { supabase } from "@/app/lib/api";
-import { mockAuditLogs } from "@/app/data/mockAuditLogs";
 import { apiClient } from "@/app/services/apiClient";
 import type { Permission, User, UserRole } from "@/app/types/user";
 
@@ -666,17 +664,10 @@ function AuditLogsTab() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: supaError } = await supabase
-        .from("audit_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (supaError) throw supaError;
-      setLogs(data || []);
-    } catch {
-      setLogs(mockAuditLogs as AuditLog[]);
-      setError(null);
+      const res: any = await apiClient.get("/admin/audit-logs?per_page=500");
+      setLogs(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل سجل العمليات");
     } finally {
       setLoading(false);
     }
@@ -755,7 +746,14 @@ export function SuperAdminPage() {
         isActive:        u.is_active !== false,
       }));
       setUsers(fetchedUsers);
-      setAuditLogsCount(fetchedUsers.length);
+
+      // Fetch audit logs count separately (best-effort)
+      try {
+        const logsRes: any = await apiClient.get("/admin/audit-logs?per_page=1");
+        setAuditLogsCount(logsRes?.meta?.total ?? 0);
+      } catch {
+        setAuditLogsCount(0);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل تحميل بيانات المستخدمين");
     } finally {

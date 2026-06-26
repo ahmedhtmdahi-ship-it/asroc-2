@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\CheckupStatus;
 use App\Http\Resources\CheckupRequestResource;
+use App\Models\AuditLog;
 use App\Models\CheckupRequest;
 use App\Services\SecurityService;
 use Illuminate\Http\Request;
@@ -79,6 +80,8 @@ class SecurityController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        AuditLog::record('checkout', (string) $checkupRequest->id, 'approved', 'checked_out');
+
         return new CheckupRequestResource($updated->load(['employee.user', 'department', 'securityOfficer']));
     }
 
@@ -94,6 +97,8 @@ class SecurityController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+
+        AuditLog::record('return', (string) $checkupRequest->id, 'checked_out', 'returned');
 
         return new CheckupRequestResource($updated->load(['employee.user', 'department', 'securityOfficer']));
     }

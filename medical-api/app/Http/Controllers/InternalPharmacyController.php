@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\PrescriptionResource;
+use App\Models\AuditLog;
 use App\Models\Prescription;
 use App\Services\PharmacyService;
 use Illuminate\Http\Request;
@@ -48,6 +49,10 @@ class InternalPharmacyController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+
+        AuditLog::record('dispense_prescription', (string) $prescription->checkup_request_id, 'prescribed', 'dispensed', [
+            'prescription_id' => $prescription->id,
+        ]);
 
         return new PrescriptionResource($prescription);
     }

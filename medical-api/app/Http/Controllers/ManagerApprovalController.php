@@ -8,6 +8,7 @@ use App\Events\CheckupApproved;
 use App\Events\CheckupPostponed;
 use App\Events\CheckupRejected;
 use App\Http\Resources\CheckupRequestResource;
+use App\Models\AuditLog;
 use App\Models\CheckupRequest;
 use App\Models\Department;
 use Illuminate\Http\Request;
@@ -85,6 +86,7 @@ class ManagerApprovalController extends Controller
             'approved_at' => Carbon::now(),
         ]);
 
+        AuditLog::record('approve_request', (string) $checkupRequest->id, 'pending', 'approved');
         CheckupApproved::dispatch($checkupRequest);
 
         return new CheckupRequestResource($checkupRequest->load(['employee.user', 'department', 'createdBy', 'approvedBy']));
@@ -113,6 +115,10 @@ class ManagerApprovalController extends Controller
             'rejection_reason' => $validated['rejection_reason'],
             'approved_by'      => $request->user()->id,
             'approved_at'      => Carbon::now(),
+        ]);
+
+        AuditLog::record('reject_request', (string) $checkupRequest->id, 'pending', 'rejected', [
+            'reason' => $validated['rejection_reason'],
         ]);
 
         // Refund the monthly slot for normal checkups
@@ -153,6 +159,9 @@ class ManagerApprovalController extends Controller
             'notes'           => $validated['notes'] ?? $checkupRequest->notes,
         ]);
 
+        AuditLog::record('postpone_request', (string) $checkupRequest->id, 'pending', 'postponed', [
+            'postponed_until' => $validated['postponed_until'],
+        ]);
         CheckupPostponed::dispatch($checkupRequest);
 
         return new CheckupRequestResource($checkupRequest->load(['employee.user', 'department', 'createdBy', 'approvedBy']));

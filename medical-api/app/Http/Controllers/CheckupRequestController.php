@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\CheckupStatus;
 use App\Enums\CheckupType;
 use App\Http\Resources\CheckupRequestResource;
+use App\Models\AuditLog;
 use App\Models\CheckupRequest;
 use App\Services\CheckupService;
 use Illuminate\Http\Request;
@@ -59,6 +60,10 @@ class CheckupRequestController extends Controller
 
         $checkupRequest = $this->checkupService->createCheckupRequest($employee, $validated);
 
+        AuditLog::record('create_request', (string) $checkupRequest->id, null, 'pending', [
+            'type' => $validated['type'],
+        ]);
+
         return (new CheckupRequestResource($checkupRequest))->response()->setStatusCode(201);
     }
 
@@ -100,7 +105,10 @@ class CheckupRequestController extends Controller
 
         $checkupRequest = CheckupRequest::where('employee_id', $employee->id)->findOrFail($id);
 
+        $statusBefore = $checkupRequest->status->value;
         $this->checkupService->cancelRequest($checkupRequest, $employee);
+
+        AuditLog::record('cancel_request', (string) $checkupRequest->id, $statusBefore, 'cancelled');
 
         return response()->json(['message' => 'Checkup request cancelled successfully.']);
     }
