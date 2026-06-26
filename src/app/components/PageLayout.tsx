@@ -1,4 +1,4 @@
-﻿import { ReactNode } from "react";
+﻿import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import {
@@ -36,6 +36,7 @@ import {
 
 import logo from "../../assets/logo.png";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
+import { notificationService } from "@/app/services/notificationService";
 import type { UserRole } from "@/app/types/user";
 
 interface PageLayoutProps {
@@ -210,7 +211,15 @@ export function PageLayout({
 }: PageLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isApiConnected } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    notificationService.getUnreadCount()
+      .then((res: any) => setUnreadCount(res?.count ?? 0))
+      .catch(() => {});
+  }, [isApiConnected]);
 
   const visibleNavItems = user
     ? navItems.filter((item) => item.roles.includes(user.role))
@@ -332,9 +341,18 @@ export function PageLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="relative">
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative"
+                onClick={() => navigate("/employee/notifications")}
+              >
                 <Bell className="h-4 w-4" />
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Button>
 
               <DropdownMenu>

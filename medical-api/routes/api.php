@@ -81,6 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/late-employees', [SecurityController::class, 'lateEmployees']);
         Route::post('/requests/{id}/checkout', [SecurityController::class, 'checkout']);
         Route::post('/requests/{id}/return', [SecurityController::class, 'return']);
+        Route::get('/logs', [SecurityController::class, 'logs']);
     });
 
     // ── Doctor ────────────────────────────────────────────────────

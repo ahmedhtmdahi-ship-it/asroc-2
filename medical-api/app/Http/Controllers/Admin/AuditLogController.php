@@ -10,7 +10,7 @@ class AuditLogController extends Controller
 {
     public function index(Request $request)
     {
-        $query = AuditLog::with('user')->latest();
+        $query = AuditLog::latest();
 
         if ($request->filled('action')) {
             $query->where('action', $request->action);

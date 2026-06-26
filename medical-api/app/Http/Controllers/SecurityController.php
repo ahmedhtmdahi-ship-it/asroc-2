@@ -86,6 +86,31 @@ class SecurityController extends Controller
     }
 
     /**
+     * Recent checkout/return activity log (last 100 events).
+     */
+    public function logs(Request $request)
+    {
+        $logs = AuditLog::whereIn('action', ['checkout', 'return'])
+            ->latest()
+            ->paginate($request->get('per_page', 50));
+
+        return response()->json([
+            'data' => $logs->map(fn ($log) => [
+                'id'           => $log->id,
+                'action'       => $log->action,
+                'request_id'   => $log->request_id,
+                'performed_by' => $log->user_name,
+                'created_at'   => $log->created_at,
+            ]),
+            'meta' => [
+                'total'        => $logs->total(),
+                'current_page' => $logs->currentPage(),
+                'last_page'    => $logs->lastPage(),
+            ],
+        ]);
+    }
+
+    /**
      * Register return for an employee currently outside.
      */
     public function return($id)
