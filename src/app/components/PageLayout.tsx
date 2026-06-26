@@ -54,7 +54,20 @@ type NavItem = {
   roles: UserRole[];
 };
 
+const ALL_ROLES: UserRole[] = [
+  "employee",
+  "manager",
+  "office_manager",
+  "security",
+  "doctor",
+  "pharmacy",
+  "medical_admin",
+  "pension_admin",
+  "super_admin",
+];
+
 const navItems: NavItem[] = [
+  // ── الرئيسية (حسب الدور) ──────────────────────────────────────────
   {
     label: "الرئيسية",
     icon: Home,
@@ -62,46 +75,36 @@ const navItems: NavItem[] = [
     roles: ["employee"],
   },
   {
-    label: "طلب كشف طبي",
-    icon: FileText,
-    link: "/employee/requests",
-    roles: ["employee"],
+    label: "موافقات المدير",
+    icon: UserCheck,
+    link: "/manager/approvals",
+    roles: ["manager", "office_manager"],
   },
-  {
-    label: "طلباتي",
-    icon: ClipboardList,
-    link: "/employee/my-requests",
-    roles: ["employee"],
-  },
-  {
-    label: "التاريخ الطبي",
-    icon: HeartPulse,
-    link: "/employee/history",
-    roles: ["employee"],
-  },
-  {
-    label: "الإشعارات",
-    icon: Bell,
-    link: "/employee/notifications",
-    roles: ["employee"],
-  },
+
+  // ── متاح لكل الأدوار (كل موظف في الأصل موظف) ─────────────────────
   {
     label: "طلب كشف طبي",
     icon: FileText,
     link: "/request/new",
-    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
+    roles: ALL_ROLES,
   },
   {
     label: "طلباتي الطبية",
     icon: ClipboardList,
     link: "/my-requests",
-    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
+    roles: ALL_ROLES,
   },
   {
-    label: "موافقات المدير",
-    icon: UserCheck,
-    link: "/manager/approvals",
-    roles: ["manager", "office_manager"],
+    label: "التاريخ الطبي",
+    icon: HeartPulse,
+    link: "/employee/history",
+    roles: ALL_ROLES,
+  },
+  {
+    label: "الإشعارات",
+    icon: Bell,
+    link: "/employee/notifications",
+    roles: ALL_ROLES,
   },
   {
     label: "الأمن",

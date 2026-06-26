@@ -113,7 +113,19 @@ export const router = createBrowserRouter([
   {
     path: "/employee/my-requests",
     element: (
-      <ProtectedRoute roles={["employee"]}>
+      <ProtectedRoute
+        roles={[
+          "employee",
+          "manager",
+          "office_manager",
+          "security",
+          "doctor",
+          "pharmacy",
+          "medical_admin",
+          "pension_admin",
+          "super_admin",
+        ]}
+      >
         <MyMedicalRequestsPage />
       </ProtectedRoute>
     ),
@@ -121,7 +133,19 @@ export const router = createBrowserRouter([
   {
     path: "/employee/history",
     element: (
-      <ProtectedRoute roles={["employee"]}>
+      <ProtectedRoute
+        roles={[
+          "employee",
+          "manager",
+          "office_manager",
+          "security",
+          "doctor",
+          "pharmacy",
+          "medical_admin",
+          "pension_admin",
+          "super_admin",
+        ]}
+      >
         <MedicalHistoryPage />
       </ProtectedRoute>
     ),
@@ -129,7 +153,19 @@ export const router = createBrowserRouter([
   {
     path: "/employee/notifications",
     element: (
-      <ProtectedRoute roles={["employee"]}>
+      <ProtectedRoute
+        roles={[
+          "employee",
+          "manager",
+          "office_manager",
+          "security",
+          "doctor",
+          "pharmacy",
+          "medical_admin",
+          "pension_admin",
+          "super_admin",
+        ]}
+      >
         <NotificationsPage />
       </ProtectedRoute>
     ),
