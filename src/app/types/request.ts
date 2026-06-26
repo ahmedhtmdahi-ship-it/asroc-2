@@ -59,6 +59,7 @@ export interface MedicalRequest {
   managerId?: string;
   managerName?: string;
   doctorId?: string;
+  doctorName?: string;
   securityOutUserId?: string;
   securityInUserId?: string;
   pharmacyUserId?: string;

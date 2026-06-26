@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useWorkflow } from "@/app/context/WorkflowContext";
-import { mockUsers } from "@/app/data/mockUsers";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 
@@ -33,11 +32,7 @@ function formatDate(value?: string) {
 }
 
 function getDoctorName(request: MedicalRequest) {
-  const doctor = request.doctorId
-    ? mockUsers.find((user) => user.id === request.doctorId || user.financialNumber === request.doctorId)
-    : mockUsers.find((user) => user.role === "doctor");
-
-  return doctor?.name || "الطبيب المختص";
+  return request.doctorName || "الطبيب المختص";
 }
 
 function PrintControls({ title }: { title: string }) {

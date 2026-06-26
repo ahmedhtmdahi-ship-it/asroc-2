@@ -36,6 +36,8 @@ function apiToMedicalRequest(r: any): MedicalRequest {
     checkedOutAt:     r.checked_out_at,
     returnedAt:       r.returned_at,
     managerDecisionReason: r.rejection_reason,
+    doctorName:            r.diagnosis?.doctor?.name ?? r.doctor_name,
+    doctorDiagnosis:       r.diagnosis?.diagnosis_text,
   };
 }
 

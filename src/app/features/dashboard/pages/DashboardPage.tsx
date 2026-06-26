@@ -19,7 +19,6 @@ import { PageLayout } from "@/app/components/PageLayout";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
-import { mockUsers } from "@/app/data/mockUsers";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { apiClient } from "@/app/services/apiClient";
@@ -154,14 +153,26 @@ function RequestsTable({ requests }: { requests: MedicalRequest[] }) {
 export function DashboardPage() {
   const { requests } = useWorkflow();
   const { isApiConnected } = useAuth();
-  const [userCount, setUserCount] = useState(mockUsers.length);
+  const [userCount, setUserCount] = useState(0);
+  const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!isApiConnected) return;
-    apiClient.get<any>('/admin/users?per_page=1')
+    apiClient.get<any>('/admin/users?per_page=500')
       .then((res) => {
-        const total = res?.meta?.total ?? res?.total ?? null;
-        if (total !== null) setUserCount(total);
+        const items: any[] = Array.isArray(res) ? res : (res?.data ?? []);
+        const total = res?.meta?.total ?? res?.total ?? items.length;
+        setUserCount(total);
+        const counts: Record<string, number> = {};
+        for (const u of items) {
+          let role: string = u.role ?? (u.roles?.[0] ?? '');
+          if (role === 'internal_pharmacy' || role === 'external_pharmacy') role = 'pharmacy';
+          if (role === 'retired_employee') role = 'employee';
+          if (role === 'system_admin' || role === 'top_management') role = 'admin';
+          if (role === 'office_manager') role = 'manager';
+          if (role) counts[role] = (counts[role] || 0) + 1;
+        }
+        setRoleCounts(counts);
       })
       .catch(() => {});
   }, [isApiConnected]);
@@ -179,11 +190,6 @@ export function DashboardPage() {
   const outsideCompany = requests.filter((request) =>
     ["checked_out", "in_diagnosis", "prescribed", "dispensed"].includes(request.status)
   );
-
-  const roleCounts = mockUsers.reduce<Record<string, number>>((acc, user) => {
-    acc[user.role] = (acc[user.role] || 0) + 1;
-    return acc;
-  }, {});
 
   const recentRequests = [...requests]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
