@@ -379,7 +379,6 @@ function UsersTab() {
               <thead className="border-b bg-slate-50 text-slate-600">
                 <tr>
                   <th className="p-3 text-right">الاسم</th>
-                  <th className="p-3 text-right">البريد الإلكتروني</th>
                   <th className="p-3 text-right">الدور</th>
                   <th className="p-3 text-right">الإدارة</th>
                   <th className="p-3 text-right">الحالة</th>
@@ -390,7 +389,6 @@ function UsersTab() {
                 {filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50">
                     <td className="p-3 font-semibold text-slate-900">{user.name}</td>
-                    <td className="p-3 font-mono text-xs text-slate-600">{user.username}</td>
                     <td className="p-3">
                       <Badge variant="outline">{roleLabel(user.role)}</Badge>
                     </td>
