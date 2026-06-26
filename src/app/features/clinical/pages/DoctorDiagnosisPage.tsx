@@ -25,6 +25,8 @@ import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { checkupService } from "@/app/services/checkupService";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { toast } from "sonner";
 
@@ -42,7 +44,8 @@ type Medication = {
 export function DoctorDiagnosisPage() {
   const params = useParams();
   const navigate = useNavigate();
-  const { requests, startDiagnosis, prescribeRequest } = useWorkflow();
+  const { requests, startDiagnosis, prescribeRequest, refreshRequests } = useWorkflow();
+  const { isApiConnected } = useAuth();
   const request = requests.find((item) => item.id === params.id);
 
   const [complaint, setComplaint] = useState(request?.reason || "");
@@ -94,7 +97,7 @@ export function DoctorDiagnosisPage() {
     setMedications(updated);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!request) return;
 
     if (!diagnosis.trim()) {
@@ -117,22 +120,36 @@ export function DoctorDiagnosisPage() {
     }
 
     try {
-      if (request.status === "checked_out") {
-        startDiagnosis(request.id, "بدأ الطبيب جلسة الكشف الطبي");
-      }
+      const numId = Number(request.id);
 
-      prescribeRequest(
-        request.id,
-        [
-          `التشخيص: ${diagnosis.trim()}`,
-          notes.trim() ? `ملاحظات: ${notes.trim()}` : "",
-          `الأدوية: ${filledMedications
-            .map((med) => `${med.name} ${med.dosage}`.trim())
-            .join("، ")}`,
-        ]
-          .filter(Boolean)
-          .join(" | ")
-      );
+      if (isApiConnected) {
+        await checkupService.writeDiagnosis(numId, diagnosis.trim());
+        await checkupService.writePrescription(numId, {
+          notes: notes.trim() || undefined,
+          items: filledMedications.map((med) => ({
+            medicine_name: med.name.trim(),
+            dosage:        med.dosage.trim(),
+            duration:      med.duration.trim() || "غير محدد",
+          })),
+        });
+        refreshRequests();
+      } else {
+        if (request.status === "checked_out") {
+          startDiagnosis(request.id, "بدأ الطبيب جلسة الكشف الطبي");
+        }
+        prescribeRequest(
+          request.id,
+          [
+            `التشخيص: ${diagnosis.trim()}`,
+            notes.trim() ? `ملاحظات: ${notes.trim()}` : "",
+            `الأدوية: ${filledMedications
+              .map((med) => `${med.name} ${med.dosage}`.trim())
+              .join("، ")}`,
+          ]
+            .filter(Boolean)
+            .join(" | ")
+        );
+      }
 
       toast.success("تم حفظ الكشف وإرسال الروشتة للصيدلية", {
         description: "تم تحديث حالة الطلب وإضافة التشخيص الطبي.",

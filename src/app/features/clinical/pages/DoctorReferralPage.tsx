@@ -1,8 +1,8 @@
-﻿import { Link, useParams } from "react-router";
+﻿import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import {
   ArrowRight,
   Building2,
-  CheckCircle2,
   FileText,
   Printer,
   Send,
@@ -12,7 +12,6 @@ import {
 import { PageLayout } from "@/app/components/PageLayout";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
-import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
@@ -24,16 +23,63 @@ import {
   SelectValue,
 } from "@/app/components/ui/select";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { checkupService } from "@/app/services/checkupService";
+import { apiClient } from "@/app/services/apiClient";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { toast } from "sonner";
 
+type Provider = { id: number; name: string; specialty: string; type: string };
+
 export function DoctorReferralPage() {
   const { id } = useParams();
-  const { requests } = useWorkflow();
+  const navigate = useNavigate();
+  const { requests, refreshRequests } = useWorkflow();
+  const { isApiConnected } = useAuth();
   const request = requests.find((item) => item.id === id);
 
-  const handleSubmit = () => {
-    toast.success("تم إرسال التحويل إلى الإدارة الطبية للمراجعة");
+  const [specialty, setSpecialty]             = useState("");
+  const [providerId, setProviderId]           = useState("");
+  const [reason, setReason]                   = useState("");
+  const [notes, setNotes]                     = useState("");
+  const [providers, setProviders]             = useState<Provider[]>([]);
+
+  useEffect(() => {
+    if (isApiConnected) {
+      apiClient.get("/external-providers?per_page=100").then((res: any) => {
+        const items = Array.isArray(res) ? res : (res?.data ?? []);
+        setProviders(items);
+      }).catch(() => {});
+    }
+  }, [isApiConnected]);
+
+  const handleSubmit = async () => {
+    if (!request) return;
+    if (!specialty.trim() || !reason.trim()) {
+      toast.error("التخصص وسبب التحويل مطلوبان");
+      return;
+    }
+    if (isApiConnected && !providerId) {
+      toast.error("برجاء اختيار الجهة الخارجية");
+      return;
+    }
+    try {
+      if (isApiConnected) {
+        await checkupService.writeReferral(Number(request.id), {
+          external_provider_id: Number(providerId),
+          specialty,
+          reason,
+          notes: notes || undefined,
+        });
+        refreshRequests();
+      }
+      toast.success("تم إرسال التحويل إلى الإدارة الطبية للمراجعة");
+      navigate("/doctor");
+    } catch (err) {
+      toast.error("تعذر إرسال التحويل", {
+        description: err instanceof Error ? err.message : "حدث خطأ غير متوقع",
+      });
+    }
   };
 
   if (!request) {
@@ -134,51 +180,47 @@ export function DoctorReferralPage() {
             <CardContent className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>التخصص المطلوب</Label>
-                  <Select>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="اختر التخصص" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="internal">باطنة</SelectItem>
-                      <SelectItem value="heart">قلب</SelectItem>
-                      <SelectItem value="bones">عظام</SelectItem>
-                      <SelectItem value="eyes">عيون</SelectItem>
-                      <SelectItem value="ent">أنف وأذن</SelectItem>
-                      <SelectItem value="surgery">جراحة</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>التخصص المطلوب <span className="text-red-600">*</span></Label>
+                  <Input
+                    value={specialty}
+                    onChange={(e) => setSpecialty(e.target.value)}
+                    placeholder="مثال: باطنة / قلب / عظام..."
+                    className="h-11"
+                  />
                 </div>
 
                 <div>
-                  <Label>درجة الأولوية</Label>
-                  <Select>
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="اختر الأولوية" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal">عادي</SelectItem>
-                      <SelectItem value="urgent">عاجل</SelectItem>
-                      <SelectItem value="emergency">طارئ</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>الجهة المقترحة</Label>
-                  <Input placeholder="اسم المستشفى / المركز الطبي" />
-                </div>
-
-                <div>
-                  <Label>الطبيب الخارجي المقترح</Label>
-                  <Input placeholder="اختياري" />
+                  <Label>الجهة الخارجية {isApiConnected && <span className="text-red-600">*</span>}</Label>
+                  {providers.length > 0 ? (
+                    <Select value={providerId} onValueChange={setProviderId}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="اختر الجهة" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {providers.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            {p.name} — {p.specialty}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={providerId}
+                      onChange={(e) => setProviderId(e.target.value)}
+                      placeholder="رقم / اسم الجهة الخارجية"
+                      className="h-11"
+                    />
+                  )}
                 </div>
               </div>
 
               <div>
-                <Label>سبب التحويل</Label>
+                <Label>سبب التحويل <span className="text-red-600">*</span></Label>
                 <Textarea
                   rows={4}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
                   placeholder="اكتب سبب التحويل الخارجي والتوصية الطبية..."
                 />
               </div>
@@ -187,6 +229,8 @@ export function DoctorReferralPage() {
                 <Label>ملاحظات للإدارة الطبية</Label>
                 <Textarea
                   rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                   placeholder="أي ملاحظات تساعد الإدارة الطبية في مراجعة التحويل..."
                 />
               </div>
