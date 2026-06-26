@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   AlertTriangle,
@@ -20,6 +21,8 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { mockUsers } from "@/app/data/mockUsers";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { apiClient } from "@/app/services/apiClient";
 import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 
@@ -150,6 +153,18 @@ function RequestsTable({ requests }: { requests: MedicalRequest[] }) {
 
 export function DashboardPage() {
   const { requests } = useWorkflow();
+  const { isApiConnected } = useAuth();
+  const [userCount, setUserCount] = useState(mockUsers.length);
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    apiClient.get<any>('/admin/users?per_page=1')
+      .then((res) => {
+        const total = res?.meta?.total ?? res?.total ?? null;
+        if (total !== null) setUserCount(total);
+      })
+      .catch(() => {});
+  }, [isApiConnected]);
 
   const openRequests = requests.filter((request) => activeStatuses.includes(request.status));
   const todaysRequests = requests.filter((request) => isToday(request.createdAt));
@@ -193,7 +208,7 @@ export function DashboardPage() {
           <StatCard label="طلبات اليوم" value={todaysRequests.length} icon={CalendarCheck} color="text-blue-700" bg="bg-blue-50" link="/reports" />
           <StatCard label="حالات طارئة" value={emergencyRequests.length} icon={AlertTriangle} color="text-red-700" bg="bg-red-50" link="/doctor" />
           <StatCard label="علاج شهري" value={monthlyRequests.length} icon={HeartPulse} color="text-indigo-700" bg="bg-indigo-50" link="/monthly-treatment" />
-          <StatCard label="مستخدمون" value={mockUsers.length} icon={Users} color="text-orange-700" bg="bg-orange-50" link="/admin" />
+          <StatCard label="مستخدمون" value={userCount} icon={Users} color="text-orange-700" bg="bg-orange-50" link="/admin" />
           <StatCard label="مكتمل" value={completedRequests.length} icon={CheckCircle2} color="text-teal-700" bg="bg-teal-50" link="/reports" />
           <StatCard label="قائمة الصيدلية" value={pharmacyQueue.length} icon={Pill} color="text-purple-700" bg="bg-purple-50" link="/pharmacy" />
           <StatCard label="خارج الشركة" value={outsideCompany.length} icon={Shield} color="text-green-700" bg="bg-green-50" link="/security" />
