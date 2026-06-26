@@ -1,6 +1,7 @@
 ﻿import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -9,11 +10,16 @@
 import type { MedicalRequest } from "@/app/types/request";
 import type { RequestStatus } from "@/app/types/workflow";
 import { requestStore } from "../store/requestStore";
+import { managersStore } from "../store/managersStore";
+import { departmentsStore } from "../store/departmentsStore";
+import { medicineStore } from "../store/medicineStore";
+import { profilesStore } from "../store/profilesStore";
 import { workflowStore } from "../store/workflowStore";
 import { useAuth } from "@/app/features/auth/AuthContext";
 
 interface WorkflowContextValue {
   requests: MedicalRequest[];
+  syncing: boolean;
   refreshRequests: () => void;
   createRequest: (request: MedicalRequest) => MedicalRequest;
   moveRequest: (requestId: string, nextStatus: RequestStatus, note?: string) => MedicalRequest | null;
@@ -45,10 +51,24 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   const [requests, setRequests] = useState<MedicalRequest[]>(
     requestStore.getAll()
   );
+  const [syncing, setSyncing] = useState(false);
 
   const refreshRequests = () => {
     setRequests([...requestStore.getAll()]);
   };
+
+  useEffect(() => {
+    if (!user) return;
+    setSyncing(true);
+    managersStore.syncFromSupabase();
+    departmentsStore.syncFromSupabase();
+    medicineStore.syncFromSupabase();
+    profilesStore.syncFromSupabase();
+    requestStore.syncFromSupabase().then(() => {
+      refreshRequests();
+      setSyncing(false);
+    });
+  }, [user?.id]);
 
   const createRequest = (request: MedicalRequest) => {
     const created = requestStore.create(request);
@@ -81,6 +101,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   const value = useMemo<WorkflowContextValue>(
     () => ({
       requests,
+      syncing,
       refreshRequests,
       createRequest,
 
@@ -134,7 +155,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       completeMonthlyTreatment: (requestId, note) =>
         moveRequest(requestId, "monthly_completed", note),
     }),
-    [requests, user]
+    [requests, syncing, user]
   );
 
   return (

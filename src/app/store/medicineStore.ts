@@ -1,4 +1,4 @@
-import { medicinesSeed } from "@/app/data/medicinesSeed";
+import { supabase } from "@/app/lib/supabaseClient";
 import type { Medicine, MedicineInput } from "@/app/types/medicine";
 
 const STORAGE_KEY = "asorc_medicines";
@@ -15,17 +15,28 @@ function normalizeMedicine(medicine: Medicine): Medicine {
   };
 }
 
+function fromDb(row: Record<string, unknown>): Medicine {
+  return normalizeMedicine({
+    id: row.id as string,
+    name: row.name as string,
+    unit: (row.unit as string) || "وحدة",
+    currentStock: row.current_stock as number | null,
+    minimumStock: row.minimum_stock as number | null,
+    category: (row.category as string) || "",
+    activeIngredient: (row.active_ingredient as string) || "",
+    isActive: (row.is_active as boolean) ?? true,
+    updatedAt: (row.updated_at as string) ?? undefined,
+  });
+}
+
 function loadMedicines(): Medicine[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return medicinesSeed.map(normalizeMedicine);
-
+    if (!saved) return [];
     const parsed = JSON.parse(saved);
-    return Array.isArray(parsed)
-      ? parsed.map(normalizeMedicine)
-      : medicinesSeed.map(normalizeMedicine);
+    return Array.isArray(parsed) ? parsed.map(normalizeMedicine) : [];
   } catch {
-    return medicinesSeed.map(normalizeMedicine);
+    return [];
   }
 }
 
@@ -82,10 +93,20 @@ class MedicineStore {
     return this.medicines.length < before;
   }
 
-  resetToSeed() {
-    this.medicines = medicinesSeed.map(normalizeMedicine);
-    this.persist();
-    return this.medicines;
+  async syncFromSupabase(): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from("medicines")
+        .select("*")
+        .order("name", { ascending: true });
+
+      if (error || !data || data.length === 0) return;
+
+      this.medicines = (data as Record<string, unknown>[]).map(fromDb);
+      this.persist();
+    } catch {
+      // keep local data as fallback
+    }
   }
 }
 

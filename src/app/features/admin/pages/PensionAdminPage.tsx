@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import {
   ArrowUpRight,
   Calendar,
@@ -33,6 +34,15 @@ function EmptyDataPanel({
   title: string;
   description: string;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    alert(`تم اختيار الملف: ${file.name}`);
+    e.target.value = "";
+  }
+
   return (
     <Card>
       <CardContent className="p-10 text-center">
@@ -42,10 +52,17 @@ function EmptyDataPanel({
         <h3 className="text-lg font-bold text-slate-900">{title}</h3>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-slate-500">{description}</p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
             <Upload className="ml-2 h-4 w-4" />
             رفع ملف البيانات
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileChange}
+          />
           <Button>
             <Plus className="ml-2 h-4 w-4" />
             إضافة سجل يدوي

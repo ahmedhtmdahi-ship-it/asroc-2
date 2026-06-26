@@ -1,4 +1,4 @@
-﻿import { mockUsers } from "@/app/data/mockUsers";
+import { profilesStore } from "@/app/store/profilesStore";
 
 function normalizeArabicText(value?: string) {
   return (value || "")
@@ -10,16 +10,13 @@ function normalizeArabicText(value?: string) {
     .toLowerCase();
 }
 
-const monthlyTreatmentDoctorKeywords = [
-  "روبير",
-  "روبرت",
-  "robert",
-  "rober",
-];
+const monthlyTreatmentDoctorKeywords = ["روبير", "روبرت", "robert", "rober"];
 
 export function findMonthlyTreatmentDoctor() {
+  const users = profilesStore.getAll();
+
   return (
-    mockUsers.find((user) => {
+    users.find((user) => {
       const name = normalizeArabicText(user.name);
       const jobTitle = normalizeArabicText(user.jobTitle);
       const department = normalizeArabicText(user.department || user.workPlace);
@@ -31,15 +28,10 @@ export function findMonthlyTreatmentDoctor() {
         jobTitle.includes("دكتور");
 
       const isMonthlyTreatmentDoctor = monthlyTreatmentDoctorKeywords.some(
-        (keyword) => {
-          const normalizedKeyword = normalizeArabicText(keyword);
-
-          return (
-            name.includes(normalizedKeyword) ||
-            jobTitle.includes(normalizedKeyword) ||
-            department.includes(normalizedKeyword)
-          );
-        }
+        (keyword) =>
+          name.includes(normalizeArabicText(keyword)) ||
+          jobTitle.includes(normalizeArabicText(keyword)) ||
+          department.includes(normalizeArabicText(keyword))
       );
 
       return isDoctor && isMonthlyTreatmentDoctor;
@@ -48,13 +40,9 @@ export function findMonthlyTreatmentDoctor() {
 }
 
 export function getMonthlyTreatmentDoctorId() {
-  const doctor = findMonthlyTreatmentDoctor();
-
-  return doctor?.id;
+  return findMonthlyTreatmentDoctor()?.id;
 }
 
 export function getMonthlyTreatmentDoctorName() {
-  const doctor = findMonthlyTreatmentDoctor();
-
-  return doctor?.name || "دكتور العلاج الشهري";
+  return findMonthlyTreatmentDoctor()?.name || "دكتور العلاج الشهري";
 }
