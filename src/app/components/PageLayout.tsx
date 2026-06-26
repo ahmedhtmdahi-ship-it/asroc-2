@@ -32,6 +32,7 @@ import {
   Home,
   ClipboardList,
   HeartPulse,
+  Building2,
 } from "lucide-react";
 
 import logo from "../../assets/logo.png";
@@ -153,6 +154,18 @@ const navItems: NavItem[] = [
     icon: Store,
     link: "/pharmacy/external",
     roles: ["pension_admin", "pharmacy"],
+  },
+  {
+    label: "دُفعات الأدوية",
+    icon: ClipboardList,
+    link: "/pharmacy/batches",
+    roles: ["pharmacy", "medical_admin", "super_admin"],
+  },
+  {
+    label: "الموردون",
+    icon: Building2,
+    link: "/pharmacy/suppliers",
+    roles: ["medical_admin", "super_admin"],
   },
   {
     label: "لوحة التحكم",

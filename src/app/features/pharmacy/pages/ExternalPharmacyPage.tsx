@@ -118,6 +118,56 @@ type BeneficiaryResult = {
   }>;
 };
 
+function DispensingHistoryTab({ isApiConnected }: { isApiConnected: boolean }) {
+  const [records, setRecords] = useState<MonthlyTreatment[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    setLoading(true);
+    apiClient.get("/external-pharmacy/monthly-treatments?per_page=200")
+      .then((res: any) => {
+        const all: MonthlyTreatment[] = Array.isArray(res) ? res : (res?.data ?? []);
+        setRecords(all.filter((r) => r.dispensing_status === "dispensed"));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [isApiConnected]);
+
+  if (!isApiConnected) return <Card><CardContent className="p-10 text-center text-slate-500">غير متصل بالخادم.</CardContent></Card>;
+  if (loading) return <div className="flex h-40 items-center justify-center text-slate-400">جاري التحميل...</div>;
+  if (records.length === 0) return <Card><CardContent className="p-10 text-center text-slate-500">لا يوجد سجل صرف لهذا الشهر.</CardContent></Card>;
+
+  return (
+    <div className="overflow-x-auto rounded-xl border bg-white">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50">
+          <tr>
+            {["المستفيد", "الرقم المالي", "المرض", "الشهر", "الحالة"].map((h) => (
+              <th key={h} className="p-3 text-right font-medium text-slate-600">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {records.map((r) => (
+            <tr key={r.id} className="hover:bg-slate-50">
+              <td className="p-3 font-medium">{r.employee_name ?? r.employee?.name ?? "—"}</td>
+              <td className="p-3 text-slate-500">{r.financial_number ?? r.employee?.financial_number ?? "—"}</td>
+              <td className="p-3 text-slate-600">{r.disease_name}</td>
+              <td className="p-3 text-slate-500">{r.dispensing_month ?? "—"}</td>
+              <td className="p-3">
+                <Badge className="bg-green-100 text-green-700">
+                  <Check className="ml-1 h-3 w-3" />تم الصرف
+                </Badge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function BeneficiarySearchTab({ isApiConnected }: { isApiConnected: boolean }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BeneficiaryResult[]>([]);
@@ -299,10 +349,7 @@ export function ExternalPharmacyPage() {
         </TabsContent>
 
         <TabsContent value="history">
-          <EmptyExternalData
-            title="سجل الصرف"
-            description="سيظهر هنا سجل العلاجات الشهرية التي تم صرفها."
-          />
+          <DispensingHistoryTab isApiConnected={isApiConnected} />
         </TabsContent>
 
         <TabsContent value="receipt">

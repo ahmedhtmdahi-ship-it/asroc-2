@@ -27,6 +27,8 @@ import { DoctorReferralPage } from "./features/clinical/pages/DoctorReferralPage
 import { PharmacyPage } from "./features/pharmacy/pages/PharmacyPage";
 import PharmacyDispensePage from "./features/pharmacy/pages/PharmacyDispensePage";
 import { ExternalPharmacyPage } from "./features/pharmacy/pages/ExternalPharmacyPage";
+import { SuppliersPage } from "./features/pharmacy/pages/SuppliersPage";
+import { MedicineBatchesPage } from "./features/pharmacy/pages/MedicineBatchesPage";
 
 import { MonthlyTreatmentPage } from "./features/treatments/pages/MonthlyTreatmentPage";
 import { MedicalAdminPage } from "./features/admin/pages/MedicalAdminPage";
@@ -284,6 +286,22 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute roles={["pharmacy", "pension_admin"]}>
         <ExternalPharmacyPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/pharmacy/batches",
+    element: (
+      <ProtectedRoute roles={["pharmacy", "medical_admin", "super_admin"]}>
+        <MedicineBatchesPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/pharmacy/suppliers",
+    element: (
+      <ProtectedRoute roles={["medical_admin", "super_admin"]}>
+        <SuppliersPage />
       </ProtectedRoute>
     ),
   },
