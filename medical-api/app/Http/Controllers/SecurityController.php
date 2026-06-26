@@ -41,6 +41,7 @@ class SecurityController extends Controller
                 CheckupStatus::CheckedOut,
                 CheckupStatus::InDiagnosis,
                 CheckupStatus::Prescribed,
+                CheckupStatus::Dispensed,
             ])
             ->latest('checked_out_at')
             ->paginate(15);

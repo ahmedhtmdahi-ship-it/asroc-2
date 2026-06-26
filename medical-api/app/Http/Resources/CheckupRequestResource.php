@@ -9,26 +9,39 @@ class CheckupRequestResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $dept = $this->relationLoaded('department') ? $this->department : null;
+        $emp  = $this->relationLoaded('employee')   ? $this->employee   : null;
+        $empDept = $emp?->relationLoaded('department') ? $emp->department : null;
+
         return [
-            'id' => $this->id,
-            'type' => $this->type?->value,
-            'status' => $this->status?->value,
-            'notes' => $this->notes,
-            'approved_at' => $this->approved_at,
+            'id'               => $this->id,
+            'type'             => $this->type?->value,
+            'status'           => $this->status?->value,
+            'notes'            => $this->notes,
+            'approved_at'      => $this->approved_at,
             'rejection_reason' => $this->rejection_reason,
-            'postponed_until' => $this->postponed_until,
-            'checked_out_at' => $this->checked_out_at,
-            'returned_at' => $this->returned_at,
-            'created_at' => $this->created_at,
+            'postponed_until'  => $this->postponed_until,
+            'checked_out_at'   => $this->checked_out_at,
+            'returned_at'      => $this->returned_at,
+            'created_at'       => $this->created_at,
+
+            // Flat fields for easy frontend mapping
+            'employee_name'    => $emp?->user?->name,
+            'financial_number' => $emp?->financial_number,
+            'department_name'  => $dept?->name ?? $empDept?->name,
+            'job_title'        => $emp?->job_title,
+
             'employee' => $this->whenLoaded('employee', function () {
                 return $this->employee ? [
-                    'id' => $this->employee->id,
-                    'name' => $this->employee->user?->name,
+                    'id'               => $this->employee->id,
+                    'name'             => $this->employee->user?->name,
+                    'financial_number' => $this->employee->financial_number,
+                    'job_title'        => $this->employee->job_title,
                 ] : null;
             }),
             'department' => $this->whenLoaded('department', function () {
                 return $this->department ? [
-                    'id' => $this->department->id,
+                    'id'   => $this->department->id,
                     'name' => $this->department->name,
                 ] : null;
             }),

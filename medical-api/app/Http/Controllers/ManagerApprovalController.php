@@ -157,4 +157,27 @@ class ManagerApprovalController extends Controller
 
         return new CheckupRequestResource($checkupRequest->load(['employee.user', 'department', 'createdBy', 'approvedBy']));
     }
+
+    /**
+     * All requests across ALL departments — for medical_admin / system_admin / top_management.
+     * Supports: status, type, department_id filters. Paginated 50/page.
+     */
+    public function globalRequests(Request $request)
+    {
+        $query = CheckupRequest::with(['employee.user', 'department', 'createdBy', 'approvedBy']);
+
+        if ($request->filled('status')) {
+            $query->where('status', CheckupStatus::from($request->status));
+        }
+        if ($request->filled('type')) {
+            $query->where('type', CheckupType::from($request->type));
+        }
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        $requests = $query->latest()->paginate(50);
+
+        return CheckupRequestResource::collection($requests);
+    }
 }

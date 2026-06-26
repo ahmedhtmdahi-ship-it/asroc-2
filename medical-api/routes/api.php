@@ -96,6 +96,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/referrals/{id}/approve', [ExternalReferralController::class, 'approve']);
         Route::post('/referrals/{id}/reject', [ExternalReferralController::class, 'reject']);
         Route::get('/referrals/{id}/pdf', [ExternalReferralController::class, 'downloadPdf']);
+        Route::get('/requests', [ManagerApprovalController::class, 'globalRequests']);
     });
 
     // ── Internal Pharmacy ─────────────────────────────────────────
