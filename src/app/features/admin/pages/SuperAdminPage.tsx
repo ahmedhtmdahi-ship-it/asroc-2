@@ -24,7 +24,6 @@ import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
 import { supabase } from "@/app/lib/api";
-import { mockUsers } from "@/app/data/mockUsers";
 import { mockAuditLogs } from "@/app/data/mockAuditLogs";
 import { apiClient } from "@/app/services/apiClient";
 import type { Permission, User, UserRole } from "@/app/types/user";
@@ -551,10 +550,8 @@ export function SuperAdminPage() {
       }));
       setUsers(fetchedUsers);
       setAuditLogsCount(fetchedUsers.length);
-    } catch {
-      setUsers(mockUsers);
-      setAuditLogsCount(mockAuditLogs.length);
-      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل بيانات المستخدمين");
     } finally {
       setLoading(false);
     }
