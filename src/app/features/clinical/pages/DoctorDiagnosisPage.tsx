@@ -132,6 +132,13 @@ export function DoctorDiagnosisPage() {
             duration:      med.duration.trim() || "غير محدد",
           })),
         });
+        if (sickLeaveDays && Number(sickLeaveDays) > 0) {
+          await checkupService.writeSickLeave(numId, {
+            days_count: Number(sickLeaveDays),
+            reason:     sickLeaveReason.trim() || "راحة مرضية",
+            start_date: new Date().toISOString().slice(0, 10),
+          });
+        }
         refreshRequests();
       } else {
         if (request.status === "checked_out") {
