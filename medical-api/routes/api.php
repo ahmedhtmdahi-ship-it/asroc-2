@@ -70,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('users/{id}/toggle-status', [UserController::class, 'toggleStatus']);
         Route::apiResource('departments', DepartmentController::class);
         Route::apiResource('employees', EmployeeAdminController::class);
+        Route::get('employees/{id}/family-members', [EmployeeAdminController::class, 'familyMembers']);
         Route::get('audit-logs', [AuditLogController::class, 'index']);
     });
 

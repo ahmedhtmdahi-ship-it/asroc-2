@@ -15,12 +15,51 @@ class EmployeeAdminController extends Controller
     /**
      * GET /api/admin/employees
      * Paginate all employees with user and department.
+     * Filters: type (active|retired), department_id, search
      */
-    public function index()
+    public function index(Request $request)
     {
-        $employees = Employee::with(['user', 'department'])->paginate(15);
+        $query = Employee::with(['user', 'department']);
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('search')) {
+            $term = $request->search;
+            $query->where(function ($q) use ($term) {
+                $q->where('financial_number', 'like', "%{$term}%")
+                  ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$term}%"));
+            });
+        }
+
+        $employees = $query->paginate($request->get('per_page', 15));
 
         return EmployeeResource::collection($employees);
+    }
+
+    /**
+     * GET /api/admin/employees/{id}/family-members
+     * Return all family members of a specific employee (admin access).
+     */
+    public function familyMembers($id)
+    {
+        $employee = Employee::with('familyMembers')->findOrFail($id);
+
+        return response()->json([
+            'data' => $employee->familyMembers->map(fn ($fm) => [
+                'id'          => $fm->id,
+                'name'        => $fm->name,
+                'national_id' => $fm->national_id,
+                'relation'    => $fm->relation,
+                'birth_date'  => $fm->birth_date?->format('Y-m-d'),
+                'is_active'   => $fm->is_active,
+            ]),
+        ]);
     }
 
     /**
