@@ -189,7 +189,16 @@ export function DoctorDiagnosisPage() {
       const numId = Number(request.id);
 
       if (isApiConnected) {
-        await checkupService.writeDiagnosis(numId, diagnosis.trim());
+        const vitalParts = [
+          temperature.trim() ? `حرارة: ${temperature}` : null,
+          pressure.trim()    ? `ضغط: ${pressure}`      : null,
+          pulse.trim()       ? `نبض: ${pulse}`          : null,
+        ].filter(Boolean);
+        const fullDiagnosis = vitalParts.length
+          ? `العلامات الحيوية — ${vitalParts.join(" | ")}\n${diagnosis.trim()}`
+          : diagnosis.trim();
+
+        await checkupService.writeDiagnosis(numId, fullDiagnosis);
         await checkupService.writePrescription(numId, {
           notes: notes.trim() || undefined,
           items: filledMedications.map((med) => ({
@@ -203,6 +212,14 @@ export function DoctorDiagnosisPage() {
             days_count: Number(sickLeaveDays),
             reason:     sickLeaveReason.trim() || "راحة مرضية",
             start_date: new Date().toISOString().slice(0, 10),
+          });
+        }
+        if (referralSpecialty.trim() || referralReason.trim()) {
+          await checkupService.writeReferral(numId, {
+            specialty:            referralSpecialty.trim() || "عام",
+            reason:               referralReason.trim() || "تحويل طبي",
+            notes:                referralPlace.trim() || undefined,
+            external_provider_id: undefined,
           });
         }
         refreshRequests();
@@ -748,7 +765,10 @@ export function DoctorDiagnosisPage() {
                       </Link>
                     </Button>
 
-                    <Button variant="outline">
+                    <Button
+                      variant="outline"
+                      onClick={() => toast.info("المسودات غير متاحة حالياً — استخدم حفظ وإرسال للصيدلية")}
+                    >
                       <Save className="w-4 h-4 ml-2" />
                       حفظ كمسودة
                     </Button>

@@ -235,6 +235,7 @@ export function PageLayout({
   const location = useLocation();
   const { user, logout, isApiConnected } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isApiConnected) return;
@@ -260,6 +261,72 @@ export function PageLayout({
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]" dir="rtl">
+      {/* Mobile sidebar overlay */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 xl:hidden">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <aside className="absolute right-0 top-0 h-full w-72 bg-[#0B1F3A] text-white flex flex-col shadow-2xl">
+            <div className="flex h-20 items-center justify-between border-b border-white/10 px-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1.5">
+                  <img src={logo} alt="ASORC Logo" className="h-full w-full object-contain" />
+                </div>
+                <div>
+                  <p className="text-lg font-extrabold tracking-wide">ASORC</p>
+                  <p className="text-xs text-white/60">الخدمات الطبية</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileSidebarOpen(false)}
+                className="rounded-lg p-1 text-white/60 hover:bg-white/10 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+              {visibleNavItems.map((item) => {
+                const active =
+                  location.pathname === item.link ||
+                  (item.link !== "/dashboard" &&
+                    item.link !== "/employee" &&
+                    item.link !== "/security" &&
+                    item.link !== "/doctor" &&
+                    item.link !== "/pharmacy" &&
+                    item.link !== "/medical-admin" &&
+                    item.link !== "/pension-admin" &&
+                    item.link !== "/manager/approvals" &&
+                    location.pathname.startsWith(item.link + "/"));
+                return (
+                  <Link
+                    key={item.link}
+                    to={item.link}
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all ${
+                      active
+                        ? "bg-[#14B8A6] text-white shadow-lg shadow-teal-900/20"
+                        : "text-white/70 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="border-t border-white/10 p-4">
+              <div className="rounded-2xl bg-white/10 p-3">
+                <p className="text-xs text-white/50">المستخدم الحالي</p>
+                <p className="mt-1 text-sm font-bold">{user?.name || "غير مسجل"}</p>
+                <p className="text-xs text-teal-300">{getRoleLabel(user?.role)}</p>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
       <aside className="fixed right-0 top-0 z-50 hidden h-screen w-72 border-l border-white/10 bg-[#0B1F3A] text-white xl:flex xl:flex-col">
         <div className="flex h-20 items-center gap-3 border-b border-white/10 px-5">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1.5">
@@ -323,7 +390,7 @@ export function PageLayout({
         <header className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur">
           <div className="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="xl:hidden">
+              <Button variant="ghost" size="icon" className="xl:hidden" onClick={() => setMobileSidebarOpen(true)}>
                 <Menu className="h-5 w-5" />
               </Button>
 

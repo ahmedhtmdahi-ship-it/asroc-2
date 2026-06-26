@@ -121,7 +121,6 @@ export function EmployeeDashboardPage() {
             ["التاريخ الطبي", HeartPulse, "/employee/history"],
             ["الإشعارات", Bell, "/employee/notifications"],
             ["الملف الشخصي", UserCircle, "/profile"],
-            ["المساعدة والدعم", HelpCircle, "#"],
           ].map(([label, Icon, path], index) => (
             <Link
               key={label as string}
@@ -161,8 +160,12 @@ export function EmployeeDashboardPage() {
           </div>
 
           <div className="flex items-center gap-3 text-slate-500">
-            <Bell className="h-5 w-5" />
-            <ClipboardList className="h-5 w-5" />
+            <Link to="/employee/notifications">
+              <Bell className="h-5 w-5 hover:text-slate-800 transition-colors" />
+            </Link>
+            <Link to="/my-requests">
+              <ClipboardList className="h-5 w-5 hover:text-slate-800 transition-colors" />
+            </Link>
           </div>
         </header>
 

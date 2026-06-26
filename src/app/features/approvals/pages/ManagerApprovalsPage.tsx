@@ -41,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select";
+import { Link } from "react-router";
 import { toast } from "sonner";
 
 type ActionType = "approve" | "reject" | "postpone";
@@ -269,10 +270,6 @@ export function ManagerApprovalsPage() {
                 </SelectContent>
               </Select>
 
-              <Button variant="outline" className="h-11">
-                <Filter className="w-4 h-4 ml-2" />
-                تصفية
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -485,10 +482,10 @@ export function ManagerApprovalsPage() {
                   </div>
 
                   <Button variant="outline" className="w-full" asChild>
-                    <a href={`/requests/${selectedRequest.id}`}>
+                    <Link to={`/requests/${selectedRequest.id}`}>
                       <Eye className="w-4 h-4 ml-2" />
                       عرض تفاصيل الطلب
-                    </a>
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>

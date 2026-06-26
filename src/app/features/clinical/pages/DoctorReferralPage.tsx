@@ -261,11 +261,6 @@ export function DoctorReferralPage() {
               </Link>
             </Button>
 
-            <Button variant="outline">
-              <Printer className="w-4 h-4 ml-2" />
-              معاينة مبدئية
-            </Button>
-
             <Button onClick={handleSubmit} className="bg-teal-600 hover:bg-teal-700">
               <Send className="w-4 h-4 ml-2" />
               إرسال للإدارة الطبية
