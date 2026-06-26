@@ -1,4 +1,5 @@
-﻿import { useNavigate } from "react-router";
+﻿import { useEffect, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -11,6 +12,8 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { checkupService } from "@/app/services/checkupService";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
 import { medicineStore } from "@/app/store/medicineStore";
@@ -51,22 +54,42 @@ function StatCard({
 export function PharmacyPage() {
   const navigate = useNavigate();
   const { requests } = useWorkflow();
+  const { isApiConnected } = useAuth();
+  const [unavailableCount, setUnavailableCount] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
+
+  useEffect(() => {
+    if (isApiConnected) {
+      checkupService.getMedicines({ per_page: 500 })
+        .then((res: any) => {
+          const items: any[] = Array.isArray(res) ? res : (res?.data ?? []);
+          setUnavailableCount(items.filter((m) => (m.current_stock ?? 0) <= 0).length);
+          setLowStockCount(items.filter((m) =>
+            m.current_stock > 0 && m.minimum_stock != null && m.current_stock <= m.minimum_stock
+          ).length);
+        })
+        .catch(() => {
+          const meds = medicineStore.getAll();
+          setUnavailableCount(meds.filter((m) => typeof m.currentStock === "number" && m.currentStock <= 0).length);
+          setLowStockCount(meds.filter((m) =>
+            typeof m.currentStock === "number" && m.currentStock > 0 &&
+            typeof m.minimumStock === "number" && m.currentStock <= m.minimumStock
+          ).length);
+        });
+    } else {
+      const meds = medicineStore.getAll();
+      setUnavailableCount(meds.filter((m) => typeof m.currentStock === "number" && m.currentStock <= 0).length);
+      setLowStockCount(meds.filter((m) =>
+        typeof m.currentStock === "number" && m.currentStock > 0 &&
+        typeof m.minimumStock === "number" && m.currentStock <= m.minimumStock
+      ).length);
+    }
+  }, [isApiConnected]);
 
   const prescriptionQueue = requests.filter(
     (request) =>
       request.status === "prescribed" ||
       request.status === "monthly_ready_pharmacy"
-  );
-  const medicines = medicineStore.getAll();
-  const unavailable = medicines.filter(
-    (medicine) => typeof medicine.currentStock === "number" && medicine.currentStock <= 0
-  );
-  const lowStock = medicines.filter(
-    (medicine) =>
-      typeof medicine.currentStock === "number" &&
-      medicine.currentStock > 0 &&
-      typeof medicine.minimumStock === "number" &&
-      medicine.currentStock <= medicine.minimumStock
   );
 
   return (
@@ -79,7 +102,7 @@ export function PharmacyPage() {
       <div className="space-y-6">
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard
-            value={unavailable.length.toString()}
+            value={unavailableCount.toString()}
             label="أدوية غير متوفرة"
             icon={PackageX}
             color="text-red-600"
@@ -87,7 +110,7 @@ export function PharmacyPage() {
           />
 
           <StatCard
-            value={lowStock.length.toString()}
+            value={lowStockCount.toString()}
             label="أصناف مخزون منخفض"
             icon={AlertTriangle}
             color="text-orange-600"
