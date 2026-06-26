@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Edit3,
+  FileSpreadsheet,
   Package,
   PackageCheck,
   PackageX,
@@ -25,6 +26,9 @@ import {
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { medicineStore } from "@/app/store/medicineStore";
+import { checkupService } from "@/app/services/checkupService";
+import { apiClient } from "@/app/services/apiClient";
+import { useAuth } from "@/app/features/auth/AuthContext";
 import type { Medicine } from "@/app/types/medicine";
 
 type MedicineForm = {
@@ -114,12 +118,44 @@ function StatCard({
   );
 }
 
+function apiMedicineToMedicine(m: any): Medicine {
+  return {
+    id: String(m.id),
+    name: m.name,
+    unit: m.unit ?? 'وحدة',
+    currentStock: m.current_stock ?? null,
+    minimumStock: m.minimum_stock ?? null,
+    category: m.category ?? '',
+    activeIngredient: m.active_ingredient ?? '',
+    isActive: m.is_active ?? true,
+  };
+}
+
 export function MedicineInventoryManager({ compact = false }: { compact?: boolean }) {
+  const { isApiConnected } = useAuth();
   const [medicines, setMedicines] = useState<Medicine[]>(() => medicineStore.getAll());
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Medicine | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<MedicineForm>(emptyForm);
+  const [importing, setImporting] = useState(false);
+
+  const loadFromApi = () => {
+    checkupService.getMedicines({ per_page: 500 })
+      .then((res: any) => {
+        const items = Array.isArray(res) ? res : (res?.data ?? []);
+        setMedicines(items.map(apiMedicineToMedicine));
+      })
+      .catch(() => setMedicines(medicineStore.getAll()));
+  };
+
+  useEffect(() => {
+    if (isApiConnected) {
+      loadFromApi();
+    } else {
+      setMedicines(medicineStore.getAll());
+    }
+  }, [isApiConnected]);
 
   const trackedMedicines = medicines.filter(
     (medicine) => typeof medicine.currentStock === "number"
@@ -154,7 +190,13 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
     return list.slice(0, compact ? 80 : 250);
   }, [compact, medicines, search]);
 
-  const refresh = () => setMedicines([...medicineStore.getAll()]);
+  const refresh = () => {
+    if (isApiConnected) {
+      loadFromApi();
+    } else {
+      setMedicines([...medicineStore.getAll()]);
+    }
+  };
 
   const openAddDialog = () => {
     setEditing(null);
@@ -168,44 +210,105 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) {
       toast.error("اكتب اسم الدواء");
       return;
     }
 
-    const payload = {
+    const apiPayload = {
       name: form.name.trim(),
       unit: form.unit.trim() || "وحدة",
-      currentStock: numberOrNull(form.currentStock),
-      minimumStock: numberOrNull(form.minimumStock),
-      category: form.category.trim(),
-      activeIngredient: form.activeIngredient.trim(),
-      isActive: true,
+      current_stock: numberOrNull(form.currentStock),
+      minimum_stock: numberOrNull(form.minimumStock),
+      category: form.category.trim() || null,
+      active_ingredient: form.activeIngredient.trim() || null,
     };
 
-    if (editing) {
-      medicineStore.update(editing.id, payload);
-      toast.success("تم تعديل الدواء");
+    if (isApiConnected) {
+      try {
+        if (editing) {
+          await checkupService.updateMedicine(Number(editing.id), apiPayload);
+          toast.success("تم تعديل الدواء");
+        } else {
+          await checkupService.createMedicine(apiPayload);
+          toast.success("تم إضافة الدواء");
+        }
+        loadFromApi();
+      } catch (err) {
+        toast.error("تعذر الحفظ", { description: err instanceof Error ? err.message : "حدث خطأ" });
+        return;
+      }
     } else {
-      medicineStore.add(payload);
-      toast.success("تم إضافة الدواء");
+      const localPayload = {
+        name: apiPayload.name,
+        unit: apiPayload.unit,
+        currentStock: apiPayload.current_stock,
+        minimumStock: apiPayload.minimum_stock,
+        category: apiPayload.category ?? '',
+        activeIngredient: apiPayload.active_ingredient ?? '',
+        isActive: true,
+      };
+      if (editing) {
+        medicineStore.update(editing.id, localPayload);
+        toast.success("تم تعديل الدواء");
+      } else {
+        medicineStore.add(localPayload);
+        toast.success("تم إضافة الدواء");
+      }
+      refresh();
     }
 
-    refresh();
     setDialogOpen(false);
   };
 
-  const handleDelete = (medicine: Medicine) => {
-    medicineStore.remove(medicine.id);
-    refresh();
-    toast.success("تم حذف الدواء من الكتالوج المحلي");
+  const handleDelete = async (medicine: Medicine) => {
+    if (isApiConnected) {
+      try {
+        await checkupService.deleteMedicine(Number(medicine.id));
+        toast.success("تم حذف الدواء");
+        loadFromApi();
+      } catch (err) {
+        toast.error("تعذر الحذف", { description: err instanceof Error ? err.message : "حدث خطأ" });
+      }
+    } else {
+      medicineStore.remove(medicine.id);
+      refresh();
+      toast.success("تم حذف الدواء من الكتالوج المحلي");
+    }
   };
 
   const handleReset = () => {
-    medicineStore.resetToSeed();
-    refresh();
-    toast.success("تم استرجاع كتالوج الأدوية الأصلي من الشيت");
+    if (isApiConnected) {
+      loadFromApi();
+      toast.success("تم تحديث قائمة الأدوية من الخادم");
+    } else {
+      medicineStore.resetToSeed();
+      refresh();
+      toast.success("تم استرجاع كتالوج الأدوية الأصلي من الشيت");
+    }
+  };
+
+  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!isApiConnected) {
+      toast.error("يجب الاتصال بالخادم لاستيراد Excel");
+      return;
+    }
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res: any = await apiClient.upload("/medicines/import", fd);
+      toast.success(`تم الاستيراد بنجاح — ${res?.imported ?? ""} صنف`);
+      loadFromApi();
+    } catch (err) {
+      toast.error("فشل الاستيراد", { description: err instanceof Error ? err.message : "حدث خطأ" });
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
@@ -250,6 +353,23 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
                 <RotateCcw className="ml-2 h-4 w-4" />
                 استرجاع الشيت
               </Button>
+              {isApiConnected && (
+                <label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="sr-only"
+                    onChange={handleImportExcel}
+                    disabled={importing}
+                  />
+                  <Button variant="outline" size="sm" asChild disabled={importing}>
+                    <span>
+                      <FileSpreadsheet className="ml-2 h-4 w-4" />
+                      {importing ? "جاري الاستيراد..." : "استيراد Excel"}
+                    </span>
+                  </Button>
+                </label>
+              )}
               <Button size="sm" onClick={openAddDialog}>
                 <Plus className="ml-2 h-4 w-4" />
                 إضافة دواء

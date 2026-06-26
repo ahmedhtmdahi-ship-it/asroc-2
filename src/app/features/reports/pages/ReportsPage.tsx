@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
   CheckCircle2,
   ClipboardList,
   Clock,
+  Download,
   FileText,
+  Loader2,
   Printer,
   Users,
   XCircle,
@@ -16,8 +18,17 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { apiClient } from "@/app/services/apiClient";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels } from "@/app/types/workflow";
+
+interface DashboardStats {
+  today: { new_requests: number; approved: number; rejected: number; outside_now: number };
+  this_month: { total_requests: number; normal: number; emergency: number; completed: number; pending: number; rejected: number };
+  pharmacy: { prescriptions_dispensed: number; low_stock_medicines: number };
+  referrals: { pending_approval: number; approved_this_month: number; rejected_this_month: number };
+}
 
 function StatCard({
   value,
@@ -53,6 +64,35 @@ export function ReportsPage() {
   const [selectedMonth, setSelectedMonth] = useState("2026-06");
   const [searchTerm, setSearchTerm] = useState("");
   const { requests } = useWorkflow();
+  const { isApiConnected } = useAuth();
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    apiClient.get("/reports/dashboard")
+      .then((res: any) => setDashboardStats(res ?? null))
+      .catch(() => {});
+  }, [isApiConnected]);
+
+  const handleExport = async (type: string) => {
+    if (!isApiConnected) { window.print(); return; }
+    setExporting(true);
+    try {
+      const month = selectedMonth || new Date().toISOString().slice(0, 7);
+      const [y, m] = month.split("-");
+      const dateFrom = `${y}-${m}-01`;
+      const dateTo   = new Date(Number(y), Number(m), 0).toISOString().slice(0, 10);
+      await apiClient.download(
+        `/reports/export?type=${type}&format=csv&date_from=${dateFrom}&date_to=${dateTo}`,
+        `report_${type}_${month}.csv`
+      );
+    } catch {
+      // fallback silent
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const filteredRequests = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -120,42 +160,42 @@ export function ReportsPage() {
       <div className="space-y-6">
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
           <StatCard
-            value={totalRequests.toString()}
-            label="إجمالي الطلبات"
+            value={(dashboardStats?.this_month.total_requests ?? totalRequests).toString()}
+            label="إجمالي الطلبات (الشهر)"
             icon={ClipboardList}
             color="text-blue-600"
             bg="bg-blue-50"
           />
           <StatCard
-            value={pendingRequests.toString()}
+            value={(dashboardStats?.this_month.pending ?? pendingRequests).toString()}
             label="بانتظار الاعتماد"
             icon={Clock}
             color="text-yellow-600"
             bg="bg-yellow-50"
           />
           <StatCard
-            value={approvedRequests.toString()}
-            label="طلبات معتمدة"
+            value={(dashboardStats?.today.approved ?? approvedRequests).toString()}
+            label="معتمدة اليوم"
             icon={CheckCircle2}
             color="text-teal-600"
             bg="bg-teal-50"
           />
           <StatCard
-            value={completedRequests.toString()}
+            value={(dashboardStats?.this_month.completed ?? completedRequests).toString()}
             label="مكتملة"
             icon={CheckCircle2}
             color="text-green-600"
             bg="bg-green-50"
           />
           <StatCard
-            value={emergencyRequests.toString()}
+            value={(dashboardStats?.this_month.emergency ?? emergencyRequests).toString()}
             label="طوارئ"
             icon={AlertTriangle}
             color="text-red-600"
             bg="bg-red-50"
           />
           <StatCard
-            value={outsideEmployees.toString()}
+            value={(dashboardStats?.today.outside_now ?? outsideEmployees).toString()}
             label="خارج الشركة"
             icon={Users}
             color="text-orange-600"
@@ -170,10 +210,16 @@ export function ReportsPage() {
                 <BarChart3 className="h-5 w-5 text-blue-700" />
                 فلاتر التقرير
               </CardTitle>
-              <Button variant="outline" onClick={() => window.print()}>
-                <Printer className="ml-2 h-4 w-4" />
-                طباعة
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => window.print()}>
+                  <Printer className="ml-2 h-4 w-4" />
+                  طباعة
+                </Button>
+                <Button variant="outline" onClick={() => handleExport("monthly")} disabled={exporting}>
+                  {exporting ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Download className="ml-2 h-4 w-4" />}
+                  تصدير Excel
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -205,10 +251,10 @@ export function ReportsPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               {[
-                ["روشتات مصروفة", dispensedRequests],
-                ["طلبات علاج شهري", monthlyTreatmentRequests],
-                ["طلبات مرفوضة", rejectedRequests],
-                ["طلبات عادية", totalRequests - emergencyRequests],
+                ["روشتات مصروفة", dashboardStats?.pharmacy.prescriptions_dispensed ?? dispensedRequests],
+                ["تحويلات معلقة", dashboardStats?.referrals.pending_approval ?? 0],
+                ["طلبات مرفوضة", dashboardStats?.this_month.rejected ?? rejectedRequests],
+                ["طلبات عادية", dashboardStats?.this_month.normal ?? (totalRequests - emergencyRequests)],
               ].map(([label, value]) => (
                 <div
                   key={label}

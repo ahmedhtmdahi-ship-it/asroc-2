@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   AlertTriangle,
@@ -18,8 +19,9 @@ import { PageLayout } from "@/app/components/PageLayout";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
-import { mockUsers } from "@/app/data/mockUsers";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { apiClient } from "@/app/services/apiClient";
 import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 
@@ -150,6 +152,30 @@ function RequestsTable({ requests }: { requests: MedicalRequest[] }) {
 
 export function DashboardPage() {
   const { requests } = useWorkflow();
+  const { isApiConnected } = useAuth();
+  const [userCount, setUserCount] = useState(0);
+  const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    apiClient.get<any>('/admin/users?per_page=500')
+      .then((res) => {
+        const items: any[] = Array.isArray(res) ? res : (res?.data ?? []);
+        const total = res?.meta?.total ?? res?.total ?? items.length;
+        setUserCount(total);
+        const counts: Record<string, number> = {};
+        for (const u of items) {
+          let role: string = u.role ?? (u.roles?.[0] ?? '');
+          if (role === 'internal_pharmacy' || role === 'external_pharmacy') role = 'pharmacy';
+          if (role === 'retired_employee') role = 'employee';
+          if (role === 'system_admin' || role === 'top_management') role = 'admin';
+          if (role === 'office_manager') role = 'manager';
+          if (role) counts[role] = (counts[role] || 0) + 1;
+        }
+        setRoleCounts(counts);
+      })
+      .catch(() => {});
+  }, [isApiConnected]);
 
   const openRequests = requests.filter((request) => activeStatuses.includes(request.status));
   const todaysRequests = requests.filter((request) => isToday(request.createdAt));
@@ -164,11 +190,6 @@ export function DashboardPage() {
   const outsideCompany = requests.filter((request) =>
     ["checked_out", "in_diagnosis", "prescribed", "dispensed"].includes(request.status)
   );
-
-  const roleCounts = mockUsers.reduce<Record<string, number>>((acc, user) => {
-    acc[user.role] = (acc[user.role] || 0) + 1;
-    return acc;
-  }, {});
 
   const recentRequests = [...requests]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -193,7 +214,7 @@ export function DashboardPage() {
           <StatCard label="طلبات اليوم" value={todaysRequests.length} icon={CalendarCheck} color="text-blue-700" bg="bg-blue-50" link="/reports" />
           <StatCard label="حالات طارئة" value={emergencyRequests.length} icon={AlertTriangle} color="text-red-700" bg="bg-red-50" link="/doctor" />
           <StatCard label="علاج شهري" value={monthlyRequests.length} icon={HeartPulse} color="text-indigo-700" bg="bg-indigo-50" link="/monthly-treatment" />
-          <StatCard label="مستخدمون" value={mockUsers.length} icon={Users} color="text-orange-700" bg="bg-orange-50" link="/admin" />
+          <StatCard label="مستخدمون" value={userCount} icon={Users} color="text-orange-700" bg="bg-orange-50" link="/admin" />
           <StatCard label="مكتمل" value={completedRequests.length} icon={CheckCircle2} color="text-teal-700" bg="bg-teal-50" link="/reports" />
           <StatCard label="قائمة الصيدلية" value={pharmacyQueue.length} icon={Pill} color="text-purple-700" bg="bg-purple-50" link="/pharmacy" />
           <StatCard label="خارج الشركة" value={outsideCompany.length} icon={Shield} color="text-green-700" bg="bg-green-50" link="/security" />

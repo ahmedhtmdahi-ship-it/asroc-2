@@ -1,4 +1,4 @@
-﻿import { ReactNode } from "react";
+﻿import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import {
@@ -36,6 +36,7 @@ import {
 
 import logo from "../../assets/logo.png";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
+import { notificationService } from "@/app/services/notificationService";
 import type { UserRole } from "@/app/types/user";
 
 interface PageLayoutProps {
@@ -53,7 +54,20 @@ type NavItem = {
   roles: UserRole[];
 };
 
+const ALL_ROLES: UserRole[] = [
+  "employee",
+  "manager",
+  "office_manager",
+  "security",
+  "doctor",
+  "pharmacy",
+  "medical_admin",
+  "pension_admin",
+  "super_admin",
+];
+
 const navItems: NavItem[] = [
+  // ── الرئيسية (حسب الدور) ──────────────────────────────────────────
   {
     label: "الرئيسية",
     icon: Home,
@@ -61,46 +75,36 @@ const navItems: NavItem[] = [
     roles: ["employee"],
   },
   {
-    label: "طلب كشف طبي",
-    icon: FileText,
-    link: "/employee/requests",
-    roles: ["employee"],
+    label: "موافقات المدير",
+    icon: UserCheck,
+    link: "/manager/approvals",
+    roles: ["manager", "office_manager"],
   },
-  {
-    label: "طلباتي",
-    icon: ClipboardList,
-    link: "/employee/my-requests",
-    roles: ["employee"],
-  },
-  {
-    label: "التاريخ الطبي",
-    icon: HeartPulse,
-    link: "/employee/history",
-    roles: ["employee"],
-  },
-  {
-    label: "الإشعارات",
-    icon: Bell,
-    link: "/employee/notifications",
-    roles: ["employee"],
-  },
+
+  // ── متاح لكل الأدوار (كل موظف في الأصل موظف) ─────────────────────
   {
     label: "طلب كشف طبي",
     icon: FileText,
     link: "/request/new",
-    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
+    roles: ALL_ROLES,
   },
   {
     label: "طلباتي الطبية",
     icon: ClipboardList,
     link: "/my-requests",
-    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
+    roles: ALL_ROLES,
   },
   {
-    label: "موافقات المدير",
-    icon: UserCheck,
-    link: "/manager/approvals",
-    roles: ["manager", "office_manager"],
+    label: "التاريخ الطبي",
+    icon: HeartPulse,
+    link: "/employee/history",
+    roles: ALL_ROLES,
+  },
+  {
+    label: "الإشعارات",
+    icon: Bell,
+    link: "/employee/notifications",
+    roles: ALL_ROLES,
   },
   {
     label: "الأمن",
@@ -163,6 +167,12 @@ const navItems: NavItem[] = [
     roles: ["super_admin"],
   },
   {
+    label: "مقدمو الخدمات الخارجية",
+    icon: Stethoscope,
+    link: "/external-providers",
+    roles: ["medical_admin", "super_admin", "doctor"],
+  },
+  {
     label: "التقارير",
     icon: BarChart3,
     link: "/reports",
@@ -210,7 +220,15 @@ export function PageLayout({
 }: PageLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isApiConnected } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    notificationService.getUnreadCount()
+      .then((res: any) => setUnreadCount(res?.count ?? 0))
+      .catch(() => {});
+  }, [isApiConnected]);
 
   const visibleNavItems = user
     ? navItems.filter((item) => item.roles.includes(user.role))
@@ -332,9 +350,18 @@ export function PageLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="relative">
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative"
+                onClick={() => navigate("/employee/notifications")}
+              >
                 <Bell className="h-4 w-4" />
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Button>
 
               <DropdownMenu>

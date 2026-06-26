@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   AlertTriangle,
@@ -25,10 +25,14 @@ import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { checkupService } from "@/app/services/checkupService";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { toast } from "sonner";
 
 import { medicinesSeed } from "@/app/data/medicinesSeed";
+
+type ApiMedicine = { id: string | number; name: string; isActive?: boolean; is_active?: boolean };
 
 type Medication = {
   medicationId: string;
@@ -42,8 +46,23 @@ type Medication = {
 export function DoctorDiagnosisPage() {
   const params = useParams();
   const navigate = useNavigate();
-  const { requests, startDiagnosis, prescribeRequest } = useWorkflow();
+  const { requests, startDiagnosis, prescribeRequest, refreshRequests } = useWorkflow();
+  const { isApiConnected } = useAuth();
   const request = requests.find((item) => item.id === params.id);
+
+  const [availableMedicines, setAvailableMedicines] = useState<ApiMedicine[]>(
+    medicinesSeed.filter((m) => m.isActive)
+  );
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    checkupService.getMedicines({ per_page: 500 })
+      .then((res: any) => {
+        const items: any[] = Array.isArray(res) ? res : (res?.data ?? []);
+        if (items.length > 0) setAvailableMedicines(items);
+      })
+      .catch(() => {});
+  }, [isApiConnected]);
 
   const [complaint, setComplaint] = useState(request?.reason || "");
   const [diagnosis, setDiagnosis] = useState("");
@@ -94,7 +113,7 @@ export function DoctorDiagnosisPage() {
     setMedications(updated);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!request) return;
 
     if (!diagnosis.trim()) {
@@ -117,22 +136,43 @@ export function DoctorDiagnosisPage() {
     }
 
     try {
-      if (request.status === "checked_out") {
-        startDiagnosis(request.id, "بدأ الطبيب جلسة الكشف الطبي");
-      }
+      const numId = Number(request.id);
 
-      prescribeRequest(
-        request.id,
-        [
-          `التشخيص: ${diagnosis.trim()}`,
-          notes.trim() ? `ملاحظات: ${notes.trim()}` : "",
-          `الأدوية: ${filledMedications
-            .map((med) => `${med.name} ${med.dosage}`.trim())
-            .join("، ")}`,
-        ]
-          .filter(Boolean)
-          .join(" | ")
-      );
+      if (isApiConnected) {
+        await checkupService.writeDiagnosis(numId, diagnosis.trim());
+        await checkupService.writePrescription(numId, {
+          notes: notes.trim() || undefined,
+          items: filledMedications.map((med) => ({
+            medicine_name: med.name.trim(),
+            dosage:        med.dosage.trim(),
+            duration:      med.duration.trim() || "غير محدد",
+          })),
+        });
+        if (sickLeaveDays && Number(sickLeaveDays) > 0) {
+          await checkupService.writeSickLeave(numId, {
+            days_count: Number(sickLeaveDays),
+            reason:     sickLeaveReason.trim() || "راحة مرضية",
+            start_date: new Date().toISOString().slice(0, 10),
+          });
+        }
+        refreshRequests();
+      } else {
+        if (request.status === "checked_out") {
+          startDiagnosis(request.id, "بدأ الطبيب جلسة الكشف الطبي");
+        }
+        prescribeRequest(
+          request.id,
+          [
+            `التشخيص: ${diagnosis.trim()}`,
+            notes.trim() ? `ملاحظات: ${notes.trim()}` : "",
+            `الأدوية: ${filledMedications
+              .map((med) => `${med.name} ${med.dosage}`.trim())
+              .join("، ")}`,
+          ]
+            .filter(Boolean)
+            .join(" | ")
+        );
+      }
 
       toast.success("تم حفظ الكشف وإرسال الروشتة للصيدلية", {
         description: "تم تحديث حالة الطلب وإضافة التشخيص الطبي.",
@@ -395,8 +435,8 @@ export function DoctorDiagnosisPage() {
                         <Select
                           value={med.medicationId}
                           onValueChange={(value) => {
-                            const selected = medicinesSeed.find(
-                              (m) => m.id === value
+                            const selected = availableMedicines.find(
+                              (m) => String(m.id) === value
                             );
 
                             updateMedication(index, "medicationId", value);
@@ -409,10 +449,10 @@ export function DoctorDiagnosisPage() {
                             <SelectValue placeholder="اختر الدواء" />
                           </SelectTrigger>
                           <SelectContent>
-                            {medicinesSeed
-                              .filter((m) => m.isActive)
+                            {availableMedicines
+                              .filter((m) => m.isActive !== false && m.is_active !== false)
                               .map((m) => (
-                                <SelectItem key={m.id} value={m.id}>
+                                <SelectItem key={String(m.id)} value={String(m.id)}>
                                   {m.name}
                                 </SelectItem>
                               ))}

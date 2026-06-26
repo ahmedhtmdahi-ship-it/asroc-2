@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle,
   ClipboardList,
@@ -17,6 +17,8 @@ import { Card, CardContent } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { apiClient } from "@/app/services/apiClient";
 import { securityStore } from "@/app/store/securityStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
@@ -191,7 +193,18 @@ function EmployeesOutsideTab() {
 }
 
 function SecurityLogsTab() {
-  const logs = securityStore.getAll().slice().reverse();
+  const { isApiConnected } = useAuth();
+  const [logs, setLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isApiConnected) {
+      setLogs(securityStore.getAll().slice().reverse());
+      return;
+    }
+    apiClient.get("/security/logs?per_page=100")
+      .then((res: any) => setLogs(res?.data ?? []))
+      .catch(() => setLogs(securityStore.getAll().slice().reverse()));
+  }, [isApiConnected]);
 
   if (logs.length === 0) {
     return <EmptyState text="لا توجد حركات أمن مسجلة حتى الآن." />;
@@ -204,8 +217,6 @@ function SecurityLogsTab() {
           <thead className="border-b bg-slate-50 text-slate-600">
             <tr>
               <th className="p-3 text-right">الوقت</th>
-              <th className="p-3 text-right">الرقم المالي</th>
-              <th className="p-3 text-right">الاسم</th>
               <th className="p-3 text-right">الإجراء</th>
               <th className="p-3 text-right">رقم الطلب</th>
               <th className="p-3 text-right">مسؤول الأمن</th>
@@ -215,15 +226,15 @@ function SecurityLogsTab() {
             {logs.map((log: any) => (
               <tr key={log.id}>
                 <td className="p-3 text-xs text-slate-500">
-                  {log.createdAt ? new Date(log.createdAt).toLocaleString("ar-EG") : log.time || "-"}
+                  {log.created_at ? new Date(log.created_at).toLocaleString("ar-EG") : log.time || "-"}
                 </td>
-                <td className="p-3">{log.employeeId}</td>
-                <td className="p-3 font-semibold">{log.employeeName || log.name}</td>
                 <td className="p-3">
-                  {log.action === "CHECK_OUT" ? "تسجيل خروج" : log.action === "CHECK_IN" ? "تسجيل عودة" : log.action}
+                  <Badge variant="outline">
+                    {log.action === "checkout" ? "تسجيل خروج" : log.action === "return" ? "تسجيل عودة" : log.action}
+                  </Badge>
                 </td>
-                <td className="p-3">{log.requestId}</td>
-                <td className="p-3">{log.doneBy || log.securityOfficer || "غير محدد"}</td>
+                <td className="p-3 font-semibold text-blue-700">{log.request_id ?? log.requestId ?? "-"}</td>
+                <td className="p-3">{log.performed_by ?? log.doneBy ?? "غير محدد"}</td>
               </tr>
             ))}
           </tbody>
@@ -272,20 +283,28 @@ function EmptyState({ text }: { text: string }) {
 
 export function SecurityPage() {
   const { requests } = useWorkflow();
+  const { isApiConnected } = useAuth();
+  const [logCount, setLogCount] = useState(securityStore.getAll().length);
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    apiClient.get("/security/logs?per_page=1")
+      .then((res: any) => setLogCount(res?.meta?.total ?? 0))
+      .catch(() => {});
+  }, [isApiConnected]);
 
   const approvedRequests = requests.filter((request) => request.status === "approved");
   const outsideRequests = requests.filter((request) => outsideStatuses.includes(request.status));
   const returnReady = requests.filter((request) => request.status === "dispensed");
-  const securityLogs = securityStore.getAll();
 
   const stats = useMemo(
     () => [
       { label: "طلبات معتمدة", value: approvedRequests.length, color: "text-blue-700" },
       { label: "خارج الشركة الآن", value: outsideRequests.length, color: "text-orange-700" },
       { label: "جاهز للعودة", value: returnReady.length, color: "text-green-700" },
-      { label: "إجمالي الحركات", value: securityLogs.length, color: "text-slate-700" },
+      { label: "إجمالي الحركات", value: logCount, color: "text-slate-700" },
     ],
-    [approvedRequests.length, outsideRequests.length, returnReady.length, securityLogs.length]
+    [approvedRequests.length, outsideRequests.length, returnReady.length, logCount]
   );
 
   return (

@@ -94,6 +94,7 @@ export function ManagerApprovalsPage() {
   );
   const [actionType, setActionType] = useState<ActionType | null>(null);
   const [decisionReason, setDecisionReason] = useState("");
+  const [postponeDate, setPostponeDate] = useState("");
 
   const todayKey = new Date().toDateString();
   const decisions = [
@@ -165,7 +166,7 @@ export function ManagerApprovalsPage() {
     }
 
     if (actionType === "reject") {
-      rejectRequest(selectedRequest.id);
+      rejectRequest(selectedRequest.id, decisionReason || "مرفوض");
 
       toast.error("تم رفض الطلب", {
         description: "سيتم إخطار الموظف وإرجاع الرصيد الشهري.",
@@ -173,7 +174,9 @@ export function ManagerApprovalsPage() {
     }
 
     if (actionType === "postpone") {
-      postponeRequest(selectedRequest.id);
+      // note format: "date|reason" parsed by WorkflowContext
+      const defaultDate = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      postponeRequest(selectedRequest.id, `${postponeDate || defaultDate}|${decisionReason}`);
 
       toast.info("تم تأجيل الطلب", {
         description: "يمكن للموظف إعادة تقديم الطلب لاحقًا.",
@@ -182,6 +185,7 @@ export function ManagerApprovalsPage() {
 
     setActionType(null);
     setDecisionReason("");
+    setPostponeDate("");
     setSelectedRequest(null);
   };
 
@@ -510,11 +514,23 @@ export function ManagerApprovalsPage() {
           </DialogHeader>
 
           <div className="space-y-3 py-4">
+            {actionType === "postpone" && (
+              <div className="space-y-1">
+                <Label htmlFor="postponeDate">تاريخ التأجيل <span className="text-red-500">*</span></Label>
+                <Input
+                  id="postponeDate"
+                  type="date"
+                  value={postponeDate}
+                  min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
+                  onChange={(e) => setPostponeDate(e.target.value)}
+                />
+              </div>
+            )}
             <Label htmlFor="decisionReason">
               {actionType === "approve"
                 ? "ملاحظات القرار"
                 : actionType === "reject"
-                ? "سبب الرفض"
+                ? "سبب الرفض (مطلوب)"
                 : "سبب التأجيل"}
             </Label>
             <Textarea

@@ -1,7 +1,8 @@
-﻿import { useMemo, useState, type FormEvent } from "react";
+﻿import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useLocation } from "react-router";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { checkupService } from "@/app/services/checkupService";
 import { findManagerByDepartment } from "@/app/utils/managerResolver";
 import {
   getMonthlyTreatmentDoctorId,
@@ -135,9 +136,18 @@ export function EmployeeRequestsPage() {
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
 
-  const { user } = useAuth();
+  const { user, isApiConnected } = useAuth();
   const location = useLocation();
   const { requests, createRequest } = useWorkflow();
+  const [apiBalance, setApiBalance] = useState<{ used: number; remaining: number; limit: number } | null>(null);
+
+  useEffect(() => {
+    if (isApiConnected && (user?.role === "employee" || user?.role === "retired_employee")) {
+      checkupService.getCheckupBalance().then((res: any) => {
+        setApiBalance({ used: res.used ?? 0, remaining: res.remaining ?? 3, limit: res.limit ?? 3 });
+      }).catch(() => {});
+    }
+  }, [isApiConnected, user?.role]);
 
   // If accessed from /request/new (non-employee role), backLink goes to user's home
   const isUniversalRoute = location.pathname === "/request/new";
@@ -173,11 +183,12 @@ export function EmployeeRequestsPage() {
   });
 
   const monthlyLimit = useMemo(() => {
+    if (apiBalance) {
+      return { total: apiBalance.limit, used: apiBalance.used, remaining: apiBalance.remaining };
+    }
     const now = new Date();
-
     const used = employeeRequests.filter((request) => {
       const requestDate = new Date(request.createdAt);
-
       return (
         request.serviceType === "checkup" &&
         request.requestType === "normal" &&
@@ -186,15 +197,9 @@ export function EmployeeRequestsPage() {
         requestDate.getFullYear() === now.getFullYear()
       );
     }).length;
-
     const total = 3;
-
-    return {
-      total,
-      used,
-      remaining: Math.max(total - used, 0),
-    };
-  }, [employeeRequests]);
+    return { total, used, remaining: Math.max(total - used, 0) };
+  }, [employeeRequests, apiBalance]);
 
   const usedPercent = Math.round((monthlyLimit.used / monthlyLimit.total) * 100);
   const recentRequests = employeeRequests.slice(0, 5);
@@ -240,14 +245,14 @@ export function EmployeeRequestsPage() {
       return;
     }
 
-    if (serviceType === "checkup" && requestType === "normal" && !resolvedManager) {
+    if (!isApiConnected && serviceType === "checkup" && requestType === "normal" && !resolvedManager) {
       toast.error("لم يتم العثور على المدير المسؤول لهذه الإدارة", {
         description: "راجع بيانات الإدارة أو ملف المديرين.",
       });
       return;
     }
 
-    if (serviceType === "monthly_treatment" && !monthlyDoctorId) {
+    if (!isApiConnected && serviceType === "monthly_treatment" && !monthlyDoctorId) {
       toast.error("لم يتم العثور على طبيب العلاج الشهري", {
         description: "راجع صلاحيات دكتور روبير في ملف المستخدمين.",
       });

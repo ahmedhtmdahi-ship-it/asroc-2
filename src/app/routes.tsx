@@ -34,6 +34,7 @@ import { PensionAdminPage } from "./features/admin/pages/PensionAdminPage";
 import { SuperAdminPage } from "./features/admin/pages/SuperAdminPage";
 import { ReportsPage } from "./features/reports/pages/ReportsPage";
 import { PrintPage } from "./features/print/pages/PrintPage";
+import { ExternalProvidersPage } from "./features/providers/pages/ExternalProvidersPage";
 
 export const router = createBrowserRouter([
   {
@@ -113,7 +114,19 @@ export const router = createBrowserRouter([
   {
     path: "/employee/my-requests",
     element: (
-      <ProtectedRoute roles={["employee"]}>
+      <ProtectedRoute
+        roles={[
+          "employee",
+          "manager",
+          "office_manager",
+          "security",
+          "doctor",
+          "pharmacy",
+          "medical_admin",
+          "pension_admin",
+          "super_admin",
+        ]}
+      >
         <MyMedicalRequestsPage />
       </ProtectedRoute>
     ),
@@ -121,7 +134,19 @@ export const router = createBrowserRouter([
   {
     path: "/employee/history",
     element: (
-      <ProtectedRoute roles={["employee"]}>
+      <ProtectedRoute
+        roles={[
+          "employee",
+          "manager",
+          "office_manager",
+          "security",
+          "doctor",
+          "pharmacy",
+          "medical_admin",
+          "pension_admin",
+          "super_admin",
+        ]}
+      >
         <MedicalHistoryPage />
       </ProtectedRoute>
     ),
@@ -129,7 +154,19 @@ export const router = createBrowserRouter([
   {
     path: "/employee/notifications",
     element: (
-      <ProtectedRoute roles={["employee"]}>
+      <ProtectedRoute
+        roles={[
+          "employee",
+          "manager",
+          "office_manager",
+          "security",
+          "doctor",
+          "pharmacy",
+          "medical_admin",
+          "pension_admin",
+          "super_admin",
+        ]}
+      >
         <NotificationsPage />
       </ProtectedRoute>
     ),
@@ -283,6 +320,15 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute roles={["super_admin"]}>
         <SuperAdminPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/external-providers",
+    element: (
+      <ProtectedRoute roles={["medical_admin", "super_admin", "doctor"]}>
+        <ExternalProvidersPage />
       </ProtectedRoute>
     ),
   },

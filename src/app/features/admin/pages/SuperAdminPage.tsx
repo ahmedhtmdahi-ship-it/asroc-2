@@ -3,29 +3,48 @@ import {
   Building,
   ClipboardList,
   Download,
-  Eye,
   Package,
+  Pencil,
+  Phone,
   Plus,
+  Power,
   Search,
   Settings,
   Shield,
   Stethoscope,
   Store,
+  Trash2,
+  UserCheck,
   Users,
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageLayout } from "@/app/components/PageLayout";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
 import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
-import { supabase } from "@/app/lib/api";
-import { mockUsers } from "@/app/data/mockUsers";
-import { mockAuditLogs } from "@/app/data/mockAuditLogs";
+import { apiClient } from "@/app/services/apiClient";
 import type { Permission, User, UserRole } from "@/app/types/user";
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -174,24 +193,60 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
+// ─── Backend role options for the form ────────────────────────────────
+const backendRoles: { value: string; label: string }[] = [
+  { value: "employee",           label: "موظف" },
+  { value: "retired_employee",   label: "صاحب معاش" },
+  { value: "manager",            label: "مدير إدارة" },
+  { value: "office_manager",     label: "مدير مكتب" },
+  { value: "security",           label: "أمن" },
+  { value: "doctor",             label: "طبيب" },
+  { value: "internal_pharmacy",  label: "صيدلية داخلية" },
+  { value: "external_pharmacy",  label: "صيدلية خارجية" },
+  { value: "medical_admin",      label: "إدارة طبية" },
+  { value: "system_admin",       label: "مدير النظام" },
+  { value: "top_management",     label: "إدارة عليا" },
+];
+
+type UserForm = { name: string; email: string; password: string; role: string };
+const emptyForm: UserForm = { name: "", email: "", password: "", role: "employee" };
+
 // ─── Users Tab ─────────────────────────────────────────────────────────
 function UsersTab() {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // dialog state
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [form, setForm] = useState<UserForm>(emptyForm);
+
+  // delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: supaError } = await supabase
-        .from("users")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (supaError) throw supaError;
-      setUsers(data || []);
+      const res: any = await apiClient.get("/admin/users?per_page=500");
+      const items = Array.isArray(res) ? res : (res?.data ?? []);
+      const mapped: User[] = items.map((u: any) => ({
+        id:              String(u.id),
+        username:        u.email ?? "",
+        password:        "",
+        name:            u.name ?? "",
+        financialNumber: u.financial_number ?? "",
+        jobTitle:        u.job_title ?? "",
+        department:      u.department ?? "",
+        workType:        u.work_type ?? "",
+        role:            (Array.isArray(u.roles) ? u.roles[0] : u.role) ?? "employee",
+        permissions:     [],
+        isActive:        u.is_active !== false,
+      }));
+      setUsers(mapped);
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل تحميل المستخدمين");
     } finally {
@@ -199,42 +254,122 @@ function UsersTab() {
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => matchesUser(user, search)).slice(0, 250);
-  }, [users, search]);
+  const openCreate = () => {
+    setEditingUser(null);
+    setForm(emptyForm);
+    setDialogMode("create");
+  };
+
+  const openEdit = (user: User) => {
+    setEditingUser(user);
+    setForm({ name: user.name, email: user.username, password: "", role: user.role });
+    setDialogMode("edit");
+  };
+
+  const closeDialog = () => { setDialogMode(null); setEditingUser(null); };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.email.trim()) {
+      toast.error("الاسم والبريد الإلكتروني مطلوبان");
+      return;
+    }
+    if (dialogMode === "create" && !form.password.trim()) {
+      toast.error("كلمة المرور مطلوبة عند إنشاء مستخدم جديد");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (dialogMode === "create") {
+        await apiClient.post("/admin/users", {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          password: form.password.trim(),
+          role: form.role,
+        });
+        toast.success("تم إضافة المستخدم بنجاح");
+      } else if (editingUser) {
+        const payload: Record<string, string> = {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          role: form.role,
+        };
+        if (form.password.trim()) payload.password = form.password.trim();
+        await apiClient.put(`/admin/users/${editingUser.id}`, payload);
+        toast.success("تم تعديل بيانات المستخدم");
+      }
+      closeDialog();
+      fetchUsers();
+    } catch (err: any) {
+      const msg = err?.errors
+        ? Object.values(err.errors as Record<string, string[]>).flat().join(" — ")
+        : (err?.message ?? "حدث خطأ");
+      toast.error("فشل الحفظ", { description: msg });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      await apiClient.delete(`/admin/users/${deleteTarget.id}`);
+      toast.success("تم حذف المستخدم");
+      setDeleteTarget(null);
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err?.message ?? "فشل الحذف");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (user: User) => {
+    try {
+      await apiClient.post(`/admin/users/${user.id}/toggle-status`);
+      toast.success(user.isActive ? "تم تعطيل الحساب" : "تم تفعيل الحساب");
+      fetchUsers();
+    } catch {
+      toast.error("فشل تغيير حالة الحساب");
+    }
+  };
+
+  const filteredUsers = useMemo(
+    () => users.filter((u) => matchesUser(u, search)).slice(0, 250),
+    [users, search]
+  );
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={fetchUsers} />;
 
   return (
     <div className="space-y-4">
+      {/* Search + actions */}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="relative max-w-xl flex-1">
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="h-11 pr-10"
             placeholder="بحث بالاسم أو الرقم المالي أو الإدارة أو الدور..."
           />
         </div>
-
         <div className="flex flex-wrap gap-2">
           <Button variant="outline">
             <Download className="ml-2 h-4 w-4" />
             تصدير
           </Button>
-          <Button>
+          <Button onClick={openCreate}>
             <Plus className="ml-2 h-4 w-4" />
             إضافة مستخدم
           </Button>
         </div>
       </div>
 
+      {/* Table */}
       {filteredUsers.length === 0 ? (
         <EmptyState message={search ? "لا توجد نتائج مطابقة للبحث" : "لا يوجد مستخدمين مسجلين"} />
       ) : (
@@ -243,30 +378,43 @@ function UsersTab() {
             <table className="w-full text-sm">
               <thead className="border-b bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="p-3 text-right">الرقم المالي</th>
                   <th className="p-3 text-right">الاسم</th>
                   <th className="p-3 text-right">الدور</th>
                   <th className="p-3 text-right">الإدارة</th>
-                  <th className="p-3 text-right">الوظيفة</th>
-                  <th className="p-3 text-right">طبيعة العمل</th>
+                  <th className="p-3 text-right">الحالة</th>
                   <th className="p-3 text-right">إجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y bg-white">
                 {filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50">
-                    <td className="p-3 font-mono text-xs">{user.financialNumber}</td>
                     <td className="p-3 font-semibold text-slate-900">{user.name}</td>
                     <td className="p-3">
                       <Badge variant="outline">{roleLabel(user.role)}</Badge>
                     </td>
                     <td className="p-3 text-slate-600">{user.department || "غير محدد"}</td>
-                    <td className="p-3 text-slate-600">{user.jobTitle || "غير محدد"}</td>
-                    <td className="p-3 text-slate-600">{user.workType || "غير محدد"}</td>
                     <td className="p-3">
-                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <Badge className={user.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}>
+                        {user.isActive ? "مفعّل" : "معطّل"}
+                      </Badge>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="تعديل" onClick={() => openEdit(user)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm" variant="ghost"
+                          className={`h-8 w-8 p-0 ${user.isActive ? "text-orange-600 hover:text-orange-700" : "text-green-600 hover:text-green-700"}`}
+                          title={user.isActive ? "تعطيل" : "تفعيل"}
+                          onClick={() => handleToggle(user)}
+                        >
+                          <Power className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" title="حذف" onClick={() => setDeleteTarget(user)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -277,8 +425,75 @@ function UsersTab() {
       )}
 
       <p className="text-center text-xs text-slate-500">
-        يتم عرض أول 250 نتيجة فقط للحفاظ على سرعة الصفحة. إجمالي المستخدمين: {users.length}
+        يتم عرض أول 250 نتيجة فقط. إجمالي المستخدمين: {users.length}
       </p>
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogMode !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === "create" ? "إضافة مستخدم جديد" : "تعديل بيانات المستخدم"}</DialogTitle>
+            <DialogDescription>
+              {dialogMode === "create" ? "أدخل بيانات المستخدم الجديد." : "عدّل البيانات المطلوبة."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>الاسم الكامل</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="محمد أحمد" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>البريد الإلكتروني</Label>
+              <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@company.com" dir="ltr" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{dialogMode === "create" ? "كلمة المرور" : "كلمة المرور الجديدة (اختياري)"}</Label>
+              <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={dialogMode === "edit" ? "اترك فارغاً للإبقاء على الحالية" : ""} dir="ltr" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>الدور الوظيفي</Label>
+              <Select value={form.role} onValueChange={(val) => setForm({ ...form, role: val })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {backendRoles.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeDialog} disabled={saving}>إلغاء</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {dialogMode === "create" ? "إضافة" : "حفظ التعديلات"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>تأكيد الحذف</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف المستخدم <span className="font-bold text-slate-900">{deleteTarget?.name}</span>؟ لا يمكن التراجع عن هذا الإجراء.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={saving}>إلغاء</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Trash2 className="ml-2 h-4 w-4" />}
+              حذف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -369,41 +584,524 @@ function PermissionsTab({ users }: { users: User[] }) {
 }
 
 // ─── Departments Tab ───────────────────────────────────────────────────
-function DepartmentsTab({ users }: { users: User[] }) {
-  const departments = useMemo(() => {
-    const map = new Map<string, { name: string; count: number; managers: User[] }>();
+interface ApiDepartment {
+  id: string;
+  name: string;
+  manager_id?: string | null;
+  manager_name?: string | null;
+  employee_count?: number;
+}
 
-    users.forEach((user) => {
-      const name = user.department || "غير محدد";
-      const current = map.get(name) || { name, count: 0, managers: [] };
-      current.count += 1;
-      if (user.role === "manager") current.managers.push(user);
-      map.set(name, current);
-    });
+type DeptForm = { name: string; manager_id: string };
+const emptyDeptForm: DeptForm = { name: "", manager_id: "" };
 
-    return [...map.values()].sort((a, b) => b.count - a.count);
-  }, [users]);
+function DepartmentsTab() {
+  const [departments, setDepartments] = useState<ApiDepartment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
-  if (users.length === 0) return <EmptyState message="لا توجد بيانات مستخدمين" />;
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  const [editingDept, setEditingDept] = useState<ApiDepartment | null>(null);
+  const [form, setForm] = useState<DeptForm>(emptyDeptForm);
+  const [deleteTarget, setDeleteTarget] = useState<ApiDepartment | null>(null);
+
+  // We also need a list of users to pick a manager. Fetch them separately.
+  const [managers, setManagers] = useState<{ id: string; name: string }[]>([]);
+
+  const fetchDepartments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res: any = await apiClient.get("/admin/departments");
+      const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setDepartments(items.map((d: any) => ({
+        id:             String(d.id),
+        name:           d.name,
+        manager_id:     d.manager_id ? String(d.manager_id) : null,
+        manager_name:   d.manager?.name ?? null,
+        employee_count: d.employee_count ?? 0,
+      })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل الإدارات");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchManagers = async () => {
+    try {
+      const res: any = await apiClient.get("/admin/users?per_page=500");
+      const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setManagers(items.map((u: any) => ({ id: String(u.id), name: u.name ?? "" })));
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => { fetchDepartments(); fetchManagers(); }, []);
+
+  const openCreate = () => {
+    setEditingDept(null);
+    setForm(emptyDeptForm);
+    setDialogMode("create");
+  };
+
+  const openEdit = (dept: ApiDepartment) => {
+    setEditingDept(dept);
+    setForm({ name: dept.name, manager_id: dept.manager_id ?? "" });
+    setDialogMode("edit");
+  };
+
+  const closeDialog = () => { setDialogMode(null); setEditingDept(null); };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error("اسم الإدارة مطلوب"); return; }
+    setSaving(true);
+    try {
+      const payload: Record<string, string | null> = {
+        name: form.name.trim(),
+        manager_id: form.manager_id || null,
+      };
+      if (dialogMode === "create") {
+        await apiClient.post("/admin/departments", payload);
+        toast.success("تم إنشاء الإدارة");
+      } else if (editingDept) {
+        await apiClient.put(`/admin/departments/${editingDept.id}`, payload);
+        toast.success("تم تعديل الإدارة");
+      }
+      closeDialog();
+      fetchDepartments();
+    } catch (err: any) {
+      toast.error("فشل الحفظ", { description: err?.message ?? "حدث خطأ" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      await apiClient.delete(`/admin/departments/${deleteTarget.id}`);
+      toast.success("تم حذف الإدارة");
+      setDeleteTarget(null);
+      fetchDepartments();
+    } catch (err: any) {
+      toast.error(err?.message ?? "فشل الحذف");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return term
+      ? departments.filter((d) => d.name.toLowerCase().includes(term) || (d.manager_name ?? "").toLowerCase().includes(term))
+      : departments;
+  }, [departments, search]);
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} onRetry={fetchDepartments} />;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {departments.map((department) => (
-        <Card key={department.name}>
-          <CardContent className="p-5">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <h3 className="font-bold text-slate-900">{department.name}</h3>
-              <Badge className="bg-teal-100 text-teal-700">{department.count} فرد</Badge>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative max-w-xl flex-1">
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-11 pr-10"
+            placeholder="بحث باسم الإدارة أو المدير..."
+          />
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="ml-2 h-4 w-4" />
+          إضافة إدارة
+        </Button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState message={search ? "لا توجد نتائج مطابقة" : "لا توجد إدارات مسجلة"} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((dept) => (
+            <Card key={dept.id}>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <h3 className="font-bold text-slate-900">{dept.name}</h3>
+                  {dept.employee_count !== undefined && dept.employee_count > 0 && (
+                    <Badge className="bg-teal-100 text-teal-700">{dept.employee_count} فرد</Badge>
+                  )}
+                </div>
+                <p className="text-sm text-slate-600">
+                  المسؤول: <span className="font-semibold">{dept.manager_name || "غير محدد"}</span>
+                </p>
+                <div className="mt-3 flex gap-1">
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(dept)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-600" onClick={() => setDeleteTarget(dept)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogMode !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === "create" ? "إضافة إدارة جديدة" : "تعديل الإدارة"}</DialogTitle>
+            <DialogDescription>
+              {dialogMode === "create" ? "أدخل بيانات الإدارة الجديدة." : "عدّل البيانات المطلوبة."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>اسم الإدارة</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="مثال: إدارة الموارد البشرية"
+              />
             </div>
-            <p className="text-sm text-slate-600">
-              المسؤول:{" "}
-              <span className="font-semibold">
-                {department.managers[0]?.name || "غير محدد"}
-              </span>
-            </p>
-          </CardContent>
+            <div className="space-y-1.5">
+              <Label>المدير المسؤول (اختياري)</Label>
+              <Select value={form.manager_id || "none"} onValueChange={(v) => setForm({ ...form, manager_id: v === "none" ? "" : v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر مديراً" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون مدير</SelectItem>
+                  {managers.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeDialog} disabled={saving}>إلغاء</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {dialogMode === "create" ? "إضافة" : "حفظ التعديلات"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>تأكيد الحذف</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف إدارة <span className="font-bold text-slate-900">{deleteTarget?.name}</span>؟
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={saving}>إلغاء</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Trash2 className="ml-2 h-4 w-4" />}
+              حذف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─── Employees Tab ────────────────────────────────────────────────────
+type ApiEmployee = {
+  id: number;
+  financial_number: string;
+  national_id?: string;
+  job_title?: string;
+  type: "active" | "retired";
+  phone?: string;
+  department?: { id: number; name: string };
+  user?: { id: number; name: string; email: string; is_active: boolean };
+};
+
+type EmpForm = {
+  name: string; email: string; password: string;
+  financial_number: string; national_id: string;
+  department_id: string; job_title: string;
+  type: "active" | "retired"; phone: string;
+};
+
+const emptyEmpForm: EmpForm = {
+  name: "", email: "", password: "",
+  financial_number: "", national_id: "",
+  department_id: "", job_title: "",
+  type: "active", phone: "",
+};
+
+function EmployeesTab() {
+  const [employees, setEmployees] = useState<ApiEmployee[]>([]);
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const [dialogMode, setDialogMode]     = useState<"create" | "edit" | null>(null);
+  const [editingEmp, setEditingEmp]     = useState<ApiEmployee | null>(null);
+  const [form, setForm]                 = useState<EmpForm>(emptyEmpForm);
+  const [deleteTarget, setDeleteTarget] = useState<ApiEmployee | null>(null);
+
+  const fetchEmployees = async () => {
+    setLoading(true); setError(null);
+    try {
+      const res: any = await apiClient.get("/admin/employees?per_page=500");
+      setEmployees(Array.isArray(res) ? res : (res?.data ?? []));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل الموظفين");
+    } finally { setLoading(false); }
+  };
+
+  const fetchDepts = async () => {
+    try {
+      const res: any = await apiClient.get("/admin/departments");
+      const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setDepartments(items.map((d: any) => ({ id: String(d.id), name: d.name })));
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { fetchEmployees(); fetchDepts(); }, []);
+
+  const openCreate = () => { setEditingEmp(null); setForm(emptyEmpForm); setDialogMode("create"); };
+  const openEdit = (emp: ApiEmployee) => {
+    setEditingEmp(emp);
+    setForm({
+      name: emp.user?.name ?? "", email: emp.user?.email ?? "", password: "",
+      financial_number: emp.financial_number, national_id: emp.national_id ?? "",
+      department_id: emp.department ? String(emp.department.id) : "",
+      job_title: emp.job_title ?? "", type: emp.type, phone: emp.phone ?? "",
+    });
+    setDialogMode("edit");
+  };
+  const closeDialog = () => { setDialogMode(null); setEditingEmp(null); };
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.financial_number.trim()) {
+      toast.error("الاسم والرقم المالي مطلوبان"); return;
+    }
+    if (dialogMode === "create" && (!form.email.trim() || !form.password.trim())) {
+      toast.error("البريد الإلكتروني وكلمة المرور مطلوبان للإضافة"); return;
+    }
+    setSaving(true);
+    try {
+      const payload: Record<string, string | null> = {
+        name: form.name.trim(), email: form.email.trim(),
+        financial_number: form.financial_number.trim(),
+        national_id: form.national_id.trim() || null,
+        department_id: form.department_id || null,
+        job_title: form.job_title.trim() || null,
+        type: form.type, phone: form.phone.trim() || null,
+      };
+      if (form.password.trim()) payload.password = form.password.trim();
+
+      if (dialogMode === "create") {
+        await apiClient.post("/admin/employees", payload);
+        toast.success("تم إضافة الموظف بنجاح");
+      } else if (editingEmp) {
+        await apiClient.put(`/admin/employees/${editingEmp.id}`, payload);
+        toast.success("تم تعديل بيانات الموظف");
+      }
+      closeDialog(); fetchEmployees();
+    } catch (err: any) {
+      const msg = err?.errors
+        ? Object.values(err.errors as Record<string, string[]>).flat().join(" — ")
+        : (err?.message ?? "حدث خطأ");
+      toast.error("فشل الحفظ", { description: msg });
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      await apiClient.delete(`/admin/employees/${deleteTarget.id}`);
+      toast.success("تم حذف الموظف");
+      setDeleteTarget(null); fetchEmployees();
+    } catch (err: any) {
+      toast.error(err?.message ?? "فشل الحذف");
+    } finally { setSaving(false); }
+  };
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return employees;
+    return employees.filter((e) =>
+      (e.user?.name ?? "").toLowerCase().includes(term) ||
+      e.financial_number.toLowerCase().includes(term) ||
+      (e.department?.name ?? "").toLowerCase().includes(term) ||
+      (e.job_title ?? "").toLowerCase().includes(term)
+    );
+  }, [employees, search]);
+
+  if (loading) return <LoadingState />;
+  if (error)   return <ErrorState message={error} onRetry={fetchEmployees} />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative max-w-xl flex-1">
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)}
+            className="h-11 pr-10" placeholder="بحث بالاسم أو الرقم المالي أو الإدارة..." />
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="ml-2 h-4 w-4" />إضافة موظف
+        </Button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState message={search ? "لا توجد نتائج مطابقة" : "لا يوجد موظفون مسجلون"} />
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="p-3 text-right">الاسم</th>
+                  <th className="p-3 text-right">الرقم المالي</th>
+                  <th className="p-3 text-right">الإدارة</th>
+                  <th className="p-3 text-right">المسمى الوظيفي</th>
+                  <th className="p-3 text-right">النوع</th>
+                  <th className="p-3 text-right">التليفون</th>
+                  <th className="p-3 text-right">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y bg-white">
+                {filtered.map((emp) => (
+                  <tr key={emp.id} className="hover:bg-slate-50">
+                    <td className="p-3 font-semibold text-slate-900">{emp.user?.name ?? "—"}</td>
+                    <td className="p-3 font-mono text-slate-700">{emp.financial_number}</td>
+                    <td className="p-3 text-slate-600">{emp.department?.name ?? "غير محدد"}</td>
+                    <td className="p-3 text-slate-600">{emp.job_title ?? "غير محدد"}</td>
+                    <td className="p-3">
+                      <Badge className={emp.type === "active" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}>
+                        {emp.type === "active" ? "موظف" : "معاش"}
+                      </Badge>
+                    </td>
+                    <td className="p-3 text-slate-500">
+                      {emp.phone ? (
+                        <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{emp.phone}</span>
+                      ) : "—"}
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(emp)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-600" onClick={() => setDeleteTarget(emp)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
-      ))}
+      )}
+
+      <p className="text-center text-xs text-slate-500">إجمالي الموظفين: {employees.length}</p>
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogMode !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === "create" ? "إضافة موظف جديد" : "تعديل بيانات الموظف"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="col-span-2 space-y-1.5">
+              <Label>الاسم الكامل</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="محمد أحمد علي" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>البريد الإلكتروني</Label>
+              <Input type="email" dir="ltr" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@asorc.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>{dialogMode === "create" ? "كلمة المرور" : "كلمة المرور الجديدة (اختياري)"}</Label>
+              <Input type="password" dir="ltr" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>الرقم المالي</Label>
+              <Input dir="ltr" value={form.financial_number} onChange={(e) => setForm({ ...form, financial_number: e.target.value })} placeholder="EMP-001" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>الرقم القومي</Label>
+              <Input dir="ltr" maxLength={14} value={form.national_id} onChange={(e) => setForm({ ...form, national_id: e.target.value })} placeholder="12345678901234" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>الإدارة</Label>
+              <Select value={form.department_id || "none"} onValueChange={(v) => setForm({ ...form, department_id: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="اختر إدارة" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون إدارة</SelectItem>
+                  {departments.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>المسمى الوظيفي</Label>
+              <Input value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} placeholder="مهندس أول" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>النوع</Label>
+              <Select value={form.type} onValueChange={(v: "active" | "retired") => setForm({ ...form, type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">موظف عامل</SelectItem>
+                  <SelectItem value="retired">صاحب معاش</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>رقم التليفون</Label>
+              <Input dir="ltr" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="01xxxxxxxxx" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeDialog} disabled={saving}>إلغاء</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {dialogMode === "create" ? "إضافة" : "حفظ التعديلات"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>تأكيد الحذف</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف الموظف <span className="font-bold text-slate-900">{deleteTarget?.user?.name}</span>؟
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={saving}>إلغاء</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Trash2 className="ml-2 h-4 w-4" />}
+              حذف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -451,17 +1149,10 @@ function AuditLogsTab() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: supaError } = await supabase
-        .from("audit_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (supaError) throw supaError;
-      setLogs(data || []);
-    } catch {
-      setLogs(mockAuditLogs as AuditLog[]);
-      setError(null);
+      const res: any = await apiClient.get("/admin/audit-logs?per_page=500");
+      setLogs(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل سجل العمليات");
     } finally {
       setLoading(false);
     }
@@ -524,29 +1215,32 @@ export function SuperAdminPage() {
     setError(null);
 
     try {
-      // Attempt Supabase first
-      const { data: usersData, error: usersError } = await supabase
-        .from("users")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (usersError) throw usersError;
-
-      const fetchedUsers = (usersData || []) as User[];
-
+      const res: any = await apiClient.get("/admin/users?per_page=500");
+      const items = Array.isArray(res) ? res : (res?.data ?? []);
+      const fetchedUsers: User[] = items.map((u: any) => ({
+        id:              String(u.id),
+        username:        u.email ?? "",
+        password:        "",
+        name:            u.name ?? "",
+        financialNumber: u.financial_number ?? "",
+        jobTitle:        u.job_title ?? "",
+        department:      u.department ?? "",
+        workType:        u.work_type ?? "",
+        role:            (Array.isArray(u.roles) ? u.roles[0] : u.role) ?? "employee",
+        permissions:     [],
+        isActive:        u.is_active !== false,
+      }));
       setUsers(fetchedUsers);
 
-      const { count, error: countError } = await supabase
-        .from("audit_logs")
-        .select("*", { count: "exact", head: true });
-
-      if (countError) throw countError;
-      setAuditLogsCount(count || 0);
-    } catch {
-      // Fallback to mock data so the page isn't empty without backend setup
-      setUsers(mockUsers);
-      setAuditLogsCount(mockAuditLogs.length);
-      setError(null);
+      // Fetch audit logs count separately (best-effort)
+      try {
+        const logsRes: any = await apiClient.get("/admin/audit-logs?per_page=1");
+        setAuditLogsCount(logsRes?.meta?.total ?? 0);
+      } catch {
+        setAuditLogsCount(0);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل بيانات المستخدمين");
     } finally {
       setLoading(false);
     }
@@ -643,6 +1337,10 @@ export function SuperAdminPage() {
             <Building className="h-3.5 w-3.5" />
             الإدارات
           </TabsTrigger>
+          <TabsTrigger value="employees" className="gap-1.5 text-xs">
+            <UserCheck className="h-3.5 w-3.5" />
+            الموظفون
+          </TabsTrigger>
           <TabsTrigger value="doctors" className="gap-1.5 text-xs">
             <Stethoscope className="h-3.5 w-3.5" />
             الأطباء
@@ -671,7 +1369,10 @@ export function SuperAdminPage() {
           <PermissionsTab users={users} />
         </TabsContent>
         <TabsContent value="departments">
-          <DepartmentsTab users={users} />
+          <DepartmentsTab />
+        </TabsContent>
+        <TabsContent value="employees">
+          <EmployeesTab />
         </TabsContent>
         <TabsContent value="doctors">
           <RoleUsersTab role="doctor" users={users} />

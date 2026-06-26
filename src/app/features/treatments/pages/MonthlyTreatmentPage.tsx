@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Calendar,
@@ -18,9 +18,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { checkupService } from "@/app/services/checkupService";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 import { toast } from "sonner";
+
+type ApiTreatment = {
+  id: number;
+  beneficiary_type: string;
+  disease_name: string;
+  status: "active" | "paused" | "modified" | "discontinued";
+  review_type: string;
+  notes?: string;
+  employee?: { id: number; name: string };
+  doctor?: { id: number; name: string };
+  medications?: { medicine_name: string; dosage: string }[];
+  created_at: string;
+};
+
+const apiStatusLabel: Record<string, string> = {
+  active: "نشط",
+  paused: "موقوف مؤقتاً",
+  modified: "معدّل",
+  discontinued: "موقوف نهائياً",
+};
 
 const activeMonthlyStatuses = [
   "monthly_approved",
@@ -82,9 +104,63 @@ export function MonthlyTreatmentPage() {
     dispenseMonthlyTreatment,
     completeMonthlyTreatment,
   } = useWorkflow();
+  const { isApiConnected } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [apiTreatments, setApiTreatments] = useState<ApiTreatment[] | null>(null);
 
+  const loadFromApi = () => {
+    checkupService.getMonthlyTreatments({ per_page: 100 })
+      .then((res: any) => {
+        const items: ApiTreatment[] = Array.isArray(res) ? res : (res?.data ?? []);
+        setApiTreatments(items);
+      })
+      .catch(() => setApiTreatments(null));
+  };
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    loadFromApi();
+  }, [isApiConnected]);
+
+  const usingApi = isApiConnected && apiTreatments !== null;
+
+  // ── API mode: treatments from real backend ─────────────────────────
+  const filteredApiTreatments = useMemo(() => {
+    if (!apiTreatments) return [];
+    const term = searchTerm.trim().toLowerCase();
+    return apiTreatments.filter((t) =>
+      !term ||
+      t.disease_name.toLowerCase().includes(term) ||
+      (t.employee?.name ?? "").toLowerCase().includes(term)
+    );
+  }, [apiTreatments, searchTerm]);
+
+  const activeApiTreatments   = filteredApiTreatments.filter((t) => t.status === "active");
+  const pausedApiTreatments   = filteredApiTreatments.filter((t) => t.status === "paused" || t.status === "discontinued");
+
+  const handleApiPause = async (id: number) => {
+    try {
+      await checkupService.pauseMonthlyTreatment(id);
+      toast.success("تم إيقاف العلاج الشهري مؤقتاً");
+      loadFromApi();
+    } catch {
+      toast.error("تعذّر إيقاف العلاج");
+    }
+  };
+
+  const handleApiDiscontinue = async (id: number) => {
+    if (!window.confirm("هل تريد إيقاف العلاج نهائياً؟")) return;
+    try {
+      await checkupService.discontinueMonthlyTreatment(id);
+      toast.success("تم إيقاف العلاج الشهري نهائياً");
+      loadFromApi();
+    } catch {
+      toast.error("تعذّر إيقاف العلاج");
+    }
+  };
+
+  // ── Offline mode: requests from WorkflowContext mock ──────────────
   const monthlyRequests = useMemo(() => {
     return requests
       .filter((request) => {
@@ -165,10 +241,10 @@ export function MonthlyTreatmentPage() {
         </div>
 
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatCard label="علاجات نشطة" value={activeTreatments.length} icon={HeartPulse} color="text-teal-700" bg="bg-teal-50" />
-          <StatCard label="جاهز للصرف" value={readyForPharmacy.length} icon={Calendar} color="text-blue-700" bg="bg-blue-50" />
-          <StatCard label="بانتظار اعتماد" value={pendingRecommendations.length} icon={FileText} color="text-purple-700" bg="bg-purple-50" />
-          <StatCard label="موقوف/مرفوض" value={pausedOrRejected.length} icon={PauseCircle} color="text-orange-700" bg="bg-orange-50" />
+          <StatCard label="علاجات نشطة" value={usingApi ? activeApiTreatments.length : activeTreatments.length} icon={HeartPulse} color="text-teal-700" bg="bg-teal-50" />
+          <StatCard label="جاهز للصرف" value={usingApi ? 0 : readyForPharmacy.length} icon={Calendar} color="text-blue-700" bg="bg-blue-50" />
+          <StatCard label="بانتظار اعتماد" value={usingApi ? 0 : pendingRecommendations.length} icon={FileText} color="text-purple-700" bg="bg-purple-50" />
+          <StatCard label="موقوف/مرفوض" value={usingApi ? pausedApiTreatments.length : pausedOrRejected.length} icon={PauseCircle} color="text-orange-700" bg="bg-orange-50" />
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -180,7 +256,7 @@ export function MonthlyTreatmentPage() {
                     <Pill className="w-5 h-5 text-teal-700" />
                     طلبات العلاج الشهري
                   </span>
-                  <Badge variant="outline">{monthlyRequests.length} طلب</Badge>
+                  <Badge variant="outline">{usingApi ? filteredApiTreatments.length : monthlyRequests.length} طلب</Badge>
                 </CardTitle>
               </CardHeader>
 
@@ -199,85 +275,156 @@ export function MonthlyTreatmentPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {monthlyRequests.length === 0 && (
-                    <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
-                      لا توجد طلبات علاج شهري مطابقة للبحث.
-                    </div>
-                  )}
-
-                  {monthlyRequests.map((request) => {
-                    const canDispense =
-                      request.status === "monthly_ready_pharmacy" ||
-                      request.status === "monthly_dispensed";
-
-                    return (
-                      <div key={request.id} className="rounded-2xl border bg-white p-4 hover:shadow-md transition-all">
-                        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
-                          <div className="flex gap-3">
-                            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-teal-50">
-                              <User className="w-6 h-6 text-teal-700" />
-                            </div>
-
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="font-bold text-slate-900">{request.employeeName}</h3>
-                                <Badge variant="outline">{request.financialNumber}</Badge>
-                                <Badge className="bg-teal-100 text-teal-700">
-                                  {request.monthlyTreatmentType === "renewal" ? "تجديد" : "طلب جديد"}
-                                </Badge>
-                                <Badge className="bg-blue-100 text-blue-700">
-                                  {requestStatusLabels[request.status]}
-                                </Badge>
+                  {usingApi ? (
+                    filteredApiTreatments.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
+                        لا توجد علاجات شهرية مسجلة.
+                      </div>
+                    ) : (
+                      filteredApiTreatments.map((t) => (
+                        <div key={t.id} className="rounded-2xl border bg-white p-4 hover:shadow-md transition-all">
+                          <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                            <div className="flex gap-3">
+                              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-teal-50">
+                                <User className="w-6 h-6 text-teal-700" />
                               </div>
-
-                              <p className="mt-1 text-sm text-slate-500">
-                                {request.department || "غير محدد"} • {request.id}
-                              </p>
-
-                              <div className="mt-3 rounded-xl bg-purple-50 border border-purple-100 p-3">
-                                <p className="text-xs text-purple-700 mb-1">سبب العلاج الشهري</p>
-                                <p className="font-semibold text-purple-950">{request.reason}</p>
-                              </div>
-
-                              {request.notes && (
-                                <div className="mt-3 flex items-start gap-2 rounded-xl bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-800">
-                                  <AlertTriangle className="w-4 h-4 mt-0.5" />
-                                  <span>{request.notes}</span>
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h3 className="font-bold text-slate-900">{t.employee?.name || "غير محدد"}</h3>
+                                  <Badge className={
+                                    t.status === "active" ? "bg-teal-100 text-teal-700" :
+                                    t.status === "paused" ? "bg-orange-100 text-orange-700" :
+                                    "bg-red-100 text-red-700"
+                                  }>
+                                    {apiStatusLabel[t.status]}
+                                  </Badge>
                                 </div>
+                                <p className="mt-1 text-sm text-slate-500">#{t.id} • {t.beneficiary_type === "pensioner" ? "صاحب معاش" : "موظف"}</p>
+                                <div className="mt-3 rounded-xl bg-purple-50 border border-purple-100 p-3">
+                                  <p className="text-xs text-purple-700 mb-1">التشخيص</p>
+                                  <p className="font-semibold text-purple-950">{t.disease_name}</p>
+                                </div>
+                                {t.notes && (
+                                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-800">
+                                    <AlertTriangle className="w-4 h-4 mt-0.5" />
+                                    <span>{t.notes}</span>
+                                  </div>
+                                )}
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                  <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-xs text-slate-500">تاريخ الإنشاء</p>
+                                    <p className="font-semibold">{formatDate(t.created_at)}</p>
+                                  </div>
+                                  <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-xs text-slate-500">الطبيب المسؤول</p>
+                                    <p className="font-semibold">{t.doctor?.name || "غير محدد"}</p>
+                                  </div>
+                                  <div className="rounded-xl bg-slate-50 p-3">
+                                    <p className="text-xs text-slate-500">الأدوية</p>
+                                    <p className="font-semibold">{(t.medications?.length ?? 0)} دواء</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="xl:w-48 space-y-2">
+                              {t.status === "active" && (
+                                <Button
+                                  variant="outline"
+                                  className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
+                                  onClick={() => handleApiPause(t.id)}
+                                >
+                                  <PauseCircle className="w-4 h-4 ml-2" />
+                                  إيقاف مؤقت
+                                </Button>
                               )}
-
-                              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                  <p className="text-xs text-slate-500">تاريخ الطلب</p>
-                                  <p className="font-semibold">{formatDate(request.createdAt)}</p>
-                                </div>
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                  <p className="text-xs text-slate-500">الطبيب المسؤول</p>
-                                  <p className="font-semibold">{request.monthlyDoctorName || "غير محدد"}</p>
-                                </div>
-                                <div className="rounded-xl bg-slate-50 p-3">
-                                  <p className="text-xs text-slate-500">الحالة</p>
-                                  <p className="font-semibold">{requestStatusLabels[request.status]}</p>
-                                </div>
-                              </div>
+                              <Button
+                                variant="outline"
+                                className="w-full border-red-300 text-red-700 hover:bg-red-50"
+                                onClick={() => handleApiDiscontinue(t.id)}
+                                disabled={t.status === "discontinued"}
+                              >
+                                إيقاف نهائي
+                              </Button>
                             </div>
-                          </div>
-
-                          <div className="xl:w-48 space-y-2">
-                            <Button
-                              className="w-full bg-teal-600 hover:bg-teal-700"
-                              disabled={!canDispense}
-                              onClick={() => handleDispense(request)}
-                            >
-                              <CheckCircle2 className="w-4 h-4 ml-2" />
-                              {request.status === "monthly_dispensed" ? "إغلاق الدورة" : "صرف العلاج"}
-                            </Button>
-                            <Button variant="outline" className="w-full">عرض السجل</Button>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      ))
+                    )
+                  ) : (
+                    <>
+                      {monthlyRequests.length === 0 && (
+                        <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
+                          لا توجد طلبات علاج شهري مطابقة للبحث.
+                        </div>
+                      )}
+                      {monthlyRequests.map((request) => {
+                        const canDispense =
+                          request.status === "monthly_ready_pharmacy" ||
+                          request.status === "monthly_dispensed";
+                        return (
+                          <div key={request.id} className="rounded-2xl border bg-white p-4 hover:shadow-md transition-all">
+                            <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                              <div className="flex gap-3">
+                                <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-teal-50">
+                                  <User className="w-6 h-6 text-teal-700" />
+                                </div>
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="font-bold text-slate-900">{request.employeeName}</h3>
+                                    <Badge variant="outline">{request.financialNumber}</Badge>
+                                    <Badge className="bg-teal-100 text-teal-700">
+                                      {request.monthlyTreatmentType === "renewal" ? "تجديد" : "طلب جديد"}
+                                    </Badge>
+                                    <Badge className="bg-blue-100 text-blue-700">
+                                      {requestStatusLabels[request.status]}
+                                    </Badge>
+                                  </div>
+                                  <p className="mt-1 text-sm text-slate-500">
+                                    {request.department || "غير محدد"} • {request.id}
+                                  </p>
+                                  <div className="mt-3 rounded-xl bg-purple-50 border border-purple-100 p-3">
+                                    <p className="text-xs text-purple-700 mb-1">سبب العلاج الشهري</p>
+                                    <p className="font-semibold text-purple-950">{request.reason}</p>
+                                  </div>
+                                  {request.notes && (
+                                    <div className="mt-3 flex items-start gap-2 rounded-xl bg-yellow-50 border border-yellow-200 p-3 text-xs text-yellow-800">
+                                      <AlertTriangle className="w-4 h-4 mt-0.5" />
+                                      <span>{request.notes}</span>
+                                    </div>
+                                  )}
+                                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                    <div className="rounded-xl bg-slate-50 p-3">
+                                      <p className="text-xs text-slate-500">تاريخ الطلب</p>
+                                      <p className="font-semibold">{formatDate(request.createdAt)}</p>
+                                    </div>
+                                    <div className="rounded-xl bg-slate-50 p-3">
+                                      <p className="text-xs text-slate-500">الطبيب المسؤول</p>
+                                      <p className="font-semibold">{request.monthlyDoctorName || "غير محدد"}</p>
+                                    </div>
+                                    <div className="rounded-xl bg-slate-50 p-3">
+                                      <p className="text-xs text-slate-500">الحالة</p>
+                                      <p className="font-semibold">{requestStatusLabels[request.status]}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="xl:w-48 space-y-2">
+                                <Button
+                                  className="w-full bg-teal-600 hover:bg-teal-700"
+                                  disabled={!canDispense}
+                                  onClick={() => handleDispense(request)}
+                                >
+                                  <CheckCircle2 className="w-4 h-4 ml-2" />
+                                  {request.status === "monthly_dispensed" ? "إغلاق الدورة" : "صرف العلاج"}
+                                </Button>
+                                <Button variant="outline" className="w-full">عرض السجل</Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -340,13 +487,18 @@ export function MonthlyTreatmentPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                {[
+                {(usingApi ? [
+                  ["كل العلاجات", filteredApiTreatments.length],
+                  ["نشطة", activeApiTreatments.length],
+                  ["موقوفة", pausedApiTreatments.length],
+                  ["موقوف نهائياً", filteredApiTreatments.filter((t) => t.status === "discontinued").length],
+                ] : [
                   ["كل طلبات العلاج", monthlyRequests.length],
                   ["بانتظار طبيب", pendingRecommendations.length],
                   ["جاهز للصيدلية", readyForPharmacy.length],
                   ["تم الصرف", monthlyRequests.filter((request) => request.status === "monthly_dispensed").length],
                   ["مكتمل", monthlyRequests.filter((request) => request.status === "monthly_completed").length],
-                ].map(([label, value]) => (
+                ]).map(([label, value]) => (
                   <div key={label} className="flex items-center justify-between border-b pb-3">
                     <span className="text-slate-600">{label}</span>
                     <span className="font-bold text-[#0B1F3A]">{value}</span>
