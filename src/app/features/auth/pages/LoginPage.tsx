@@ -35,7 +35,7 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      const user = login(username, password);
+      const user = await login(username, password);
 
       if (!user) {
         setLoginError("اسم المستخدم أو كلمة المرور غير صحيحة");
@@ -64,8 +64,8 @@ export function LoginPage() {
     >
       <div className="absolute inset-0 bg-gradient-to-l from-[#071B33]/10 via-transparent to-[#071B33]/20" />
 
-      <section className="relative z-10 min-h-screen flex items-center justify-end px-6 sm:px-10 lg:px-24 xl:px-32">
-        <div className="w-full max-w-[520px] rounded-[32px] border border-white/70 bg-white/95 px-8 py-9 shadow-2xl backdrop-blur-md sm:px-10">
+      <section className="relative z-10 min-h-screen flex items-center justify-start px-6 sm:px-10 lg:px-24 xl:px-32">
+        <div className="w-[480px] shrink-0 rounded-[32px] border border-white/70 bg-white/95 px-8 py-9 shadow-2xl backdrop-blur-md sm:px-10">
           <div className="text-center">
             <div className="mx-auto mb-5 flex h-36 w-36 items-center justify-center">
               <img

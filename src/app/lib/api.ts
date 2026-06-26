@@ -6,13 +6,18 @@
 
 type SupabaseError = { message: string } | null;
 
+// A minimal thenable builder so code can chain calls like
+// supabase.from('users').select('*').order('created_at') and also
+// `await` the result. When Supabase isn't configured this resolves
+// to a uniform error object.
 type FromBuilder = {
-  select: (...args: any[]) => Promise<{ data: any; error: SupabaseError }>;
+  select: (...args: any[]) => FromBuilder;
   order: (...args: any[]) => FromBuilder;
   limit: (...args: any[]) => FromBuilder;
-  insert: (...args: any[]) => Promise<{ data: any; error: SupabaseError }>;
+  insert: (...args: any[]) => FromBuilder;
   update: (...args: any[]) => FromBuilder;
   delete: (...args: any[]) => FromBuilder;
+  then: (onfulfilled?: (value: any) => any, onrejected?: (err: any) => any) => Promise<any>;
 };
 
 type SupabaseClient = {
@@ -24,12 +29,15 @@ const notConfigured = async () => {
 };
 
 const builder: FromBuilder = {
-  select: notConfigured as any,
+  select: () => builder,
   order: () => builder,
   limit: () => builder,
-  insert: notConfigured as any,
+  insert: () => builder,
   update: () => builder,
   delete: () => builder,
+  then(onfulfilled?: (value: any) => any, onrejected?: (err: any) => any) {
+    return notConfigured().then(onfulfilled, onrejected);
+  },
 };
 
 export const supabase: SupabaseClient = {

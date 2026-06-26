@@ -6,6 +6,27 @@ export type RequestType = "normal" | "emergency";
 
 export type MonthlyTreatmentType = "new" | "renewal";
 
+export interface PrescriptionMedication {
+  id: string;
+  name: string;
+  dosage: string;
+  duration: string;
+  instructions: string;
+}
+
+export interface ReferralData {
+  specialty: string;
+  priority: string;
+  facility: string;
+  externalDoctor?: string;
+  reason: string;
+  adminNotes?: string;
+  status: "pending_admin" | "approved" | "rejected";
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+}
+
 export interface RequestTimelineEvent {
   id: string;
   status: RequestStatus;
@@ -54,6 +75,10 @@ export interface MedicalRequest {
   completedAt?: string;
   managerDecisionReason?: string;
   doctorDiagnosis?: string;
+  medications?: PrescriptionMedication[];
+  sickLeaveDays?: number;
+  sickLeaveReason?: string;
+  referralData?: ReferralData;
   prescriptionId?: string;
   referralId?: string;
   managerId?: string;

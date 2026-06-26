@@ -32,10 +32,12 @@ import {
   Home,
   ClipboardList,
   HeartPulse,
+  Loader2,
 } from "lucide-react";
 
 import logo from "../../assets/logo.png";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
+import { useWorkflow } from "@/app/context/WorkflowContext";
 import type { UserRole } from "@/app/types/user";
 
 interface PageLayoutProps {
@@ -211,6 +213,7 @@ export function PageLayout({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { syncing } = useWorkflow();
 
   const visibleNavItems = user
     ? navItems.filter((item) => item.roles.includes(user.role))
@@ -388,6 +391,13 @@ export function PageLayout({
             </div>
           </div>
         </header>
+
+        {syncing && (
+          <div className="flex items-center gap-2 border-b border-blue-100 bg-blue-50 px-6 py-2 text-xs text-blue-700">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            جاري مزامنة البيانات…
+          </div>
+        )}
 
         <main className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1600px]">{children}</div>

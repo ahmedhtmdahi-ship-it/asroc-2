@@ -1,39 +1,43 @@
-﻿import {
+import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 
-import { mockUsers } from "@/app/data/mockUsers";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { supabase } from "@/app/lib/supabaseClient";
 import type { User, UserRole } from "@/app/types/user";
-
-const AUTH_STORAGE_KEY = "asorc_current_user";
 
 interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => User | null;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<User | null>;
+  logout: () => Promise<void>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function getInitialUser() {
-  if (typeof window === "undefined") return null;
-
-  const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-
-  if (!savedUser) return null;
-
-  try {
-    return JSON.parse(savedUser) as User;
-  } catch {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    return null;
-  }
+export function profileRowToUser(row: Record<string, unknown>): User {
+  return {
+    id: row.id as string,
+    username: row.username as string,
+    password: "",
+    financialNumber: (row.financial_number as string) ?? undefined,
+    name: row.name as string,
+    jobTitle: (row.job_title as string) ?? undefined,
+    workPlace: (row.work_place as string) ?? undefined,
+    department: (row.department as string) ?? undefined,
+    nationalId: (row.national_id as string) ?? undefined,
+    phone: (row.phone as string) ?? undefined,
+    workType: (row.work_type as string) ?? undefined,
+    role: row.role as UserRole,
+    permissions: (row.permissions as string[]) ?? [],
+    isActive: (row.is_active as boolean) ?? true,
+  };
 }
 
 export function getRedirectPathByRole(role: UserRole) {
@@ -60,39 +64,74 @@ export function getRedirectPathByRole(role: UserRole) {
   }
 }
 
-// Returns ythe "home" path for the current role — used for backLinks and logout redirects
 export function getHomePathByRole(role?: UserRole): string {
   if (!role) return "/";
   return getRedirectPathByRole(role);
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => getInitialUser());
+async function fetchProfile(userId: string): Promise<User | null> {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
 
-  const login = (username: string, password: string) => {
-    const foundUser = mockUsers.find(
-      (item) =>
-        item.username.trim().toLowerCase() === username.trim().toLowerCase() &&
-        item.password === password &&
-        item.isActive
+    if (error || !data) return null;
+    return profileRowToUser(data as Record<string, unknown>);
+  } catch {
+    return null;
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
+      if (data.session?.user) {
+        const profile = await fetchProfile(data.session.user.id);
+        setUser(profile);
+      }
+      setReady(true);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event: AuthChangeEvent, session: Session | null) => {
+        if (session?.user) {
+          const profile = await fetchProfile(session.user.id);
+          setUser(profile);
+        } else {
+          setUser(null);
+        }
+      }
     );
 
-    if (!foundUser) return null;
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
-    setUser(foundUser);
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(foundUser));
+  const login = async (username: string, password: string): Promise<User | null> => {
+    const email = `${username.trim().toLowerCase()}@asroc.local`;
 
-    return foundUser;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error || !data.user) return null;
+
+    const profile = await fetchProfile(data.user.id);
+    return profile;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
   const hasRole = (roles: UserRole | UserRole[]) => {
     if (!user) return false;
-
     const roleList = Array.isArray(roles) ? roles : [roles];
     return roleList.includes(user.role);
   };
@@ -108,15 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user]
   );
 
+  if (!ready) return null;
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-
+  if (!context) throw new Error("useAuth must be used inside AuthProvider");
   return context;
 }
