@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Enums\CheckupStatus;
 use App\Enums\CheckupType;
+use App\Enums\MonthlyTreatmentStatus;
 use App\Enums\ReferralStatus;
 use App\Models\CheckupRequest;
 use App\Models\ExternalReferral;
 use App\Models\Medicine;
+use App\Models\MonthlyDispensingRecord;
+use App\Models\MonthlyTreatment;
 use App\Models\Prescription;
 use App\Models\SickLeave;
 use Illuminate\Http\Request;
@@ -288,6 +291,87 @@ class ReportController extends Controller
                     'days_count' => $leave->days_count,
                     'reason'     => $leave->reason,
                     'start_date' => $leave->start_date,
+                ];
+            }),
+        ]);
+    }
+
+    // ── Monthly Treatments Report ─────────────────────────────────────────────
+
+    public function monthlyTreatments(Request $request)
+    {
+        $request->validate([
+            'month'  => ['nullable', 'date_format:Y-m'],
+            'status' => ['nullable', 'string'],
+        ]);
+
+        $monthStr  = $request->filled('month') ? $request->month : Carbon::now()->format('Y-m');
+        $monthDate = Carbon::createFromFormat('Y-m', $monthStr);
+        $monthStart = $monthDate->copy()->startOfMonth()->toDateString();
+        $monthEnd   = $monthDate->copy()->endOfMonth()->toDateString();
+
+        // Active treatments
+        $treatmentsQuery = MonthlyTreatment::with([
+            'employee.user',
+            'employee.department',
+            'medications',
+            'doctor',
+        ]);
+
+        if ($request->filled('status')) {
+            $treatmentsQuery->where('status', $request->status);
+        }
+
+        $treatments = $treatmentsQuery->get();
+
+        // Dispensing records for the requested month
+        $dispensingRecords = MonthlyDispensingRecord::with(['monthlyTreatment.employee.user'])
+            ->whereBetween('month', [$monthStart, $monthEnd])
+            ->get();
+
+        $dispensedCount = $dispensingRecords->where('status', 'dispensed')->count();
+        $pendingCount   = $dispensingRecords->where('status', 'pending')->count();
+
+        // Stats by status
+        $byStatus = $treatments->groupBy(fn($t) => $t->status?->value ?? 'unknown')
+            ->map->count();
+
+        return response()->json([
+            'month'           => $monthStr,
+            'total_treatments' => $treatments->count(),
+            'active'          => $treatments->where('status', MonthlyTreatmentStatus::Active->value)->count(),
+            'by_status'       => $byStatus,
+            'dispensing_this_month' => [
+                'dispensed' => $dispensedCount,
+                'pending'   => $pendingCount,
+                'total'     => $dispensingRecords->count(),
+            ],
+            'treatments' => $treatments->map(function ($t) use ($monthStart, $monthEnd) {
+                $monthRecord = $t->dispensingRecords
+                    ->whereBetween('month', [$monthStart, $monthEnd])
+                    ->first();
+
+                return [
+                    'id'              => $t->id,
+                    'employee'        => [
+                        'id'               => $t->employee?->id,
+                        'name'             => $t->employee?->user?->name,
+                        'financial_number' => $t->employee?->financial_number,
+                        'department'       => $t->employee?->department?->name,
+                    ],
+                    'disease_name'    => $t->disease_name,
+                    'status'          => $t->status?->value,
+                    'review_type'     => $t->review_type?->value,
+                    'beneficiary_type' => $t->beneficiary_type,
+                    'doctor'          => $t->doctor?->name,
+                    'medications'     => $t->medications->map(fn($m) => [
+                        'medicine_name' => $m->medicine_name,
+                        'dosage'        => $m->dosage,
+                    ]),
+                    'this_month_status' => $monthRecord?->status ?? 'no_record',
+                    'dispensed_at'    => $monthRecord?->dispensed_at,
+                    'last_reviewed_at' => $t->last_reviewed_at,
+                    'created_at'      => $t->created_at,
                 ];
             }),
         ]);

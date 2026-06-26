@@ -34,6 +34,7 @@ import { PensionAdminPage } from "./features/admin/pages/PensionAdminPage";
 import { SuperAdminPage } from "./features/admin/pages/SuperAdminPage";
 import { ReportsPage } from "./features/reports/pages/ReportsPage";
 import { PrintPage } from "./features/print/pages/PrintPage";
+import { ExternalProvidersPage } from "./features/providers/pages/ExternalProvidersPage";
 
 export const router = createBrowserRouter([
   {
@@ -319,6 +320,15 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute roles={["super_admin"]}>
         <SuperAdminPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/external-providers",
+    element: (
+      <ProtectedRoute roles={["medical_admin", "super_admin", "doctor"]}>
+        <ExternalProvidersPage />
       </ProtectedRoute>
     ),
   },

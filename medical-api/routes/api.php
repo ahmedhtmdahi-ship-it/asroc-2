@@ -183,6 +183,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/emergency', [ReportController::class, 'emergency']);
         Route::get('/referrals', [ReportController::class, 'referrals']);
         Route::get('/sick-leaves', [ReportController::class, 'sickLeaves']);
+        Route::get('/monthly-treatments', [ReportController::class, 'monthlyTreatments']);
         Route::get('/export', [ReportController::class, 'export']);
     });
 

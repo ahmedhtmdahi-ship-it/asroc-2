@@ -167,6 +167,12 @@ const navItems: NavItem[] = [
     roles: ["super_admin"],
   },
   {
+    label: "مقدمو الخدمات الخارجية",
+    icon: Stethoscope,
+    link: "/external-providers",
+    roles: ["medical_admin", "super_admin", "doctor"],
+  },
+  {
     label: "التقارير",
     icon: BarChart3,
     link: "/reports",
