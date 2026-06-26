@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BedDouble, ClipboardList, FileText, Pill, Printer, Search } from "lucide-react";
 
 import { PageLayout } from "@/app/components/PageLayout";
@@ -8,8 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
+import { apiClient } from "@/app/services/apiClient";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
+
+type PrescriptionItem = { medicine_name: string; dosage: string; duration?: string };
 
 function requestKind(request: MedicalRequest) {
   if (request.serviceType === "monthly_treatment") {
@@ -183,7 +187,13 @@ function RequestSummaryPrint({ request }: { request: MedicalRequest }) {
   );
 }
 
-function PrescriptionPrint({ request }: { request: MedicalRequest }) {
+function PrescriptionPrint({
+  request,
+  prescriptionItems,
+}: {
+  request: MedicalRequest;
+  prescriptionItems: PrescriptionItem[];
+}) {
   return (
     <div>
       <PrintControls title="معاينة الوصفة الطبية" />
@@ -194,14 +204,35 @@ function PrescriptionPrint({ request }: { request: MedicalRequest }) {
         <div className="mb-5 rounded-lg border p-4">
           <h3 className="mb-3 border-b pb-1 font-bold text-slate-800">بيانات الكشف</h3>
           <div className="space-y-3 text-sm">
-            <InfoLine label="الطبيب" value={getDoctorName(request)} />
-            <InfoLine label="التشخيص" value={request.doctorDiagnosis || request.reason || "غير مسجل"} />
-            <InfoLine label="ملاحظات" value={request.notes || "تظهر تفاصيل الأدوية بعد ربط نموذج الروشتة المنظم"} />
+            <InfoLine label="الطبيب"    value={getDoctorName(request)} />
+            <InfoLine label="التشخيص"  value={request.doctorDiagnosis || request.reason || "غير مسجل"} />
           </div>
         </div>
 
-        <div className="mb-6 rounded-lg border border-dashed p-4 text-center text-sm text-slate-500">
-          جدول الأدوية التفصيلي يحتاج حفظ الروشتة كبيانات منظمة. حالياً يتم تسجيل انتقال الحالة وملاحظات الطبيب في سجل العمليات.
+        <div className="mb-6 rounded-lg border p-4">
+          <h3 className="mb-3 border-b pb-1 font-bold text-slate-800">الأدوية الموصوفة</h3>
+          {prescriptionItems.length === 0 ? (
+            <p className="text-center text-sm text-slate-400">لا توجد أدوية مسجلة لهذا الطلب.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-right text-slate-600">
+                  <th className="py-2 font-semibold">الدواء</th>
+                  <th className="py-2 font-semibold">الجرعة</th>
+                  <th className="py-2 font-semibold">المدة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {prescriptionItems.map((item, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="py-2 font-medium text-slate-900">{item.medicine_name}</td>
+                    <td className="py-2 text-slate-700">{item.dosage}</td>
+                    <td className="py-2 text-slate-500">{item.duration ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <SignatureBlock first="توقيع الطبيب" second="ختم الصيدلية" />
@@ -282,11 +313,24 @@ function SignatureBlock({ first, second }: { first: string; second: string }) {
 
 export function PrintPage() {
   const { requests } = useWorkflow();
+  const { isApiConnected } = useAuth();
   const [selectedId, setSelectedId] = useState(requests[0]?.id || "");
+  const [prescriptionItems, setPrescriptionItems] = useState<PrescriptionItem[]>([]);
 
   const selectedRequest = useMemo(() => {
     return requests.find((request) => request.id === selectedId) || requests[0];
   }, [requests, selectedId]);
+
+  useEffect(() => {
+    if (!isApiConnected || !selectedId) { setPrescriptionItems([]); return; }
+    apiClient
+      .get(`/employee/requests/${selectedId}`)
+      .then((res: any) => {
+        const data = res?.data ?? res;
+        setPrescriptionItems(data?.prescription?.items ?? []);
+      })
+      .catch(() => setPrescriptionItems([]));
+  }, [isApiConnected, selectedId]);
 
   if (!selectedRequest) {
     return (
@@ -343,7 +387,7 @@ export function PrintPage() {
               <RequestSummaryPrint request={selectedRequest} />
             </TabsContent>
             <TabsContent value="prescription">
-              <PrescriptionPrint request={selectedRequest} />
+              <PrescriptionPrint request={selectedRequest} prescriptionItems={prescriptionItems} />
             </TabsContent>
             <TabsContent value="sickleave">
               <SickLeavePrint request={selectedRequest} />
