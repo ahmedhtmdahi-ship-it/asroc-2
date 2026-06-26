@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import {
   Bell,
@@ -22,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { notificationStore } from "@/app/store/notificationStore";
+import { notificationService } from "@/app/services/notificationService";
 import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 
@@ -53,9 +55,23 @@ function formatDate(value?: string) {
 }
 
 export function EmployeeDashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, isApiConnected } = useAuth();
   const navigate = useNavigate();
   const { requests } = useWorkflow();
+  const [apiNotifications, setApiNotifications] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    notificationService.getAll()
+      .then((res: any) => {
+        const items = Array.isArray(res) ? res : (res?.data ?? []);
+        setApiNotifications(items.slice(0, 4).map((n: any) => ({
+          ...n,
+          message: n.message ?? n.body,
+        })));
+      })
+      .catch(() => {});
+  }, [isApiConnected]);
 
   const handleLogout = () => {
     logout();
@@ -81,7 +97,7 @@ export function EmployeeDashboardPage() {
   const emergencyRequests = myRequests.filter((request) => request.requestType === "emergency");
   const monthlyRequests = myRequests.filter((request) => request.serviceType === "monthly_treatment");
 
-  const notifications = notificationStore
+  const notifications = apiNotifications ?? notificationStore
     .getAll()
     .filter((notification) => notification.userId === user?.id || notification.userId === user?.financialNumber)
     .slice(0, 4);
