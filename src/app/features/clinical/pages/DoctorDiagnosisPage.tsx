@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
   AlertTriangle,
@@ -32,6 +32,8 @@ import { toast } from "sonner";
 
 import { medicinesSeed } from "@/app/data/medicinesSeed";
 
+type ApiMedicine = { id: string | number; name: string; isActive?: boolean; is_active?: boolean };
+
 type Medication = {
   medicationId: string;
   name: string;
@@ -47,6 +49,20 @@ export function DoctorDiagnosisPage() {
   const { requests, startDiagnosis, prescribeRequest, refreshRequests } = useWorkflow();
   const { isApiConnected } = useAuth();
   const request = requests.find((item) => item.id === params.id);
+
+  const [availableMedicines, setAvailableMedicines] = useState<ApiMedicine[]>(
+    medicinesSeed.filter((m) => m.isActive)
+  );
+
+  useEffect(() => {
+    if (!isApiConnected) return;
+    checkupService.getMedicines({ per_page: 500 })
+      .then((res: any) => {
+        const items: any[] = Array.isArray(res) ? res : (res?.data ?? []);
+        if (items.length > 0) setAvailableMedicines(items);
+      })
+      .catch(() => {});
+  }, [isApiConnected]);
 
   const [complaint, setComplaint] = useState(request?.reason || "");
   const [diagnosis, setDiagnosis] = useState("");
@@ -419,8 +435,8 @@ export function DoctorDiagnosisPage() {
                         <Select
                           value={med.medicationId}
                           onValueChange={(value) => {
-                            const selected = medicinesSeed.find(
-                              (m) => m.id === value
+                            const selected = availableMedicines.find(
+                              (m) => String(m.id) === value
                             );
 
                             updateMedication(index, "medicationId", value);
@@ -433,10 +449,10 @@ export function DoctorDiagnosisPage() {
                             <SelectValue placeholder="اختر الدواء" />
                           </SelectTrigger>
                           <SelectContent>
-                            {medicinesSeed
-                              .filter((m) => m.isActive)
+                            {availableMedicines
+                              .filter((m) => m.isActive !== false && m.is_active !== false)
                               .map((m) => (
-                                <SelectItem key={m.id} value={m.id}>
+                                <SelectItem key={String(m.id)} value={String(m.id)}>
                                   {m.name}
                                 </SelectItem>
                               ))}

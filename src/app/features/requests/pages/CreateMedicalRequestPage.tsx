@@ -245,14 +245,14 @@ export function EmployeeRequestsPage() {
       return;
     }
 
-    if (serviceType === "checkup" && requestType === "normal" && !resolvedManager) {
+    if (!isApiConnected && serviceType === "checkup" && requestType === "normal" && !resolvedManager) {
       toast.error("لم يتم العثور على المدير المسؤول لهذه الإدارة", {
         description: "راجع بيانات الإدارة أو ملف المديرين.",
       });
       return;
     }
 
-    if (serviceType === "monthly_treatment" && !monthlyDoctorId) {
+    if (!isApiConnected && serviceType === "monthly_treatment" && !monthlyDoctorId) {
       toast.error("لم يتم العثور على طبيب العلاج الشهري", {
         description: "راجع صلاحيات دكتور روبير في ملف المستخدمين.",
       });
