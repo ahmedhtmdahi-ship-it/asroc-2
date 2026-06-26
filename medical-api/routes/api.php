@@ -93,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/requests/{id}/prescription', [PrescriptionController::class, 'store']);
         Route::post('/requests/{id}/referral', [ExternalReferralController::class, 'store']);
         Route::post('/requests/{id}/sick-leave', [SickLeaveController::class, 'store']);
+        Route::post('/monthly-treatments', [MonthlyTreatmentController::class, 'store']);
     });
 
     // ── Medical Admin (Referrals) ─────────────────────────────────

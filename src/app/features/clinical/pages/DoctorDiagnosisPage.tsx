@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   FileText,
   HeartPulse,
+  Loader2,
   Pill,
   Plus,
   Save,
@@ -27,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { checkupService } from "@/app/services/checkupService";
+import { apiClient } from "@/app/services/apiClient";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { toast } from "sonner";
 
@@ -89,6 +91,54 @@ export function DoctorDiagnosisPage() {
   const [referralSpecialty, setReferralSpecialty] = useState("");
   const [referralPlace, setReferralPlace] = useState("");
   const [referralReason, setReferralReason] = useState("");
+
+  // Monthly treatment state
+  const [showMonthlyTreatment, setShowMonthlyTreatment] = useState(false);
+  const [mtDiseaseName, setMtDiseaseName] = useState("");
+  const [mtBeneficiaryType, setMtBeneficiaryType] = useState<"employee" | "pensioner">("employee");
+  const [mtReviewType, setMtReviewType] = useState<"internal" | "external">("internal");
+  const [mtMedications, setMtMedications] = useState([{ name: "", dosage: "", medicationId: "" }]);
+  const [mtSubmitting, setMtSubmitting] = useState(false);
+
+  const addMtMedication = () => setMtMedications([...mtMedications, { name: "", dosage: "", medicationId: "" }]);
+  const removeMtMedication = (i: number) => setMtMedications(mtMedications.filter((_, idx) => idx !== i));
+  const updateMtMedication = (i: number, field: "name" | "dosage" | "medicationId", val: string) => {
+    const updated = [...mtMedications];
+    updated[i] = { ...updated[i], [field]: val };
+    setMtMedications(updated);
+  };
+
+  const handleSubmitMonthlyTreatment = async () => {
+    if (!request) return;
+    if (!mtDiseaseName.trim()) { toast.error("أدخل اسم المرض / الحالة"); return; }
+    const filled = mtMedications.filter((m) => m.name.trim());
+    if (filled.length === 0) { toast.error("أضف دواءً واحداً على الأقل"); return; }
+    if (!isApiConnected) { toast.error("غير متصل بالخادم"); return; }
+    setMtSubmitting(true);
+    try {
+      await apiClient.post("/doctor/monthly-treatments", {
+        employee_id: (request as any).employeeId ?? Number(request.id),
+        beneficiary_type: mtBeneficiaryType,
+        disease_name: mtDiseaseName.trim(),
+        review_type: mtReviewType,
+        medications: filled.map((m) => ({
+          medicine_name: m.name.trim(),
+          dosage: m.dosage.trim() || "يومياً",
+          medicine_id: m.medicationId ? Number(m.medicationId) : undefined,
+        })),
+      });
+      toast.success("تم اعتماد العلاج الشهري المزمن");
+      setShowMonthlyTreatment(false);
+      setMtDiseaseName("");
+      setMtMedications([{ name: "", dosage: "", medicationId: "" }]);
+    } catch (err) {
+      toast.error("تعذر اعتماد العلاج الشهري", {
+        description: err instanceof Error ? err.message : "حدث خطأ",
+      });
+    } finally {
+      setMtSubmitting(false);
+    }
+  };
 
   const addMedication = () => {
     setMedications([
@@ -568,6 +618,116 @@ export function DoctorDiagnosisPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* ── Monthly Chronic Treatment ── */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <HeartPulse className="w-5 h-5 text-teal-700" />
+                    اعتماد علاج شهري مزمن
+                  </CardTitle>
+                  <Button
+                    variant={showMonthlyTreatment ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowMonthlyTreatment(!showMonthlyTreatment)}
+                  >
+                    {showMonthlyTreatment ? "إلغاء" : "اعتماد علاج شهري"}
+                  </Button>
+                </div>
+              </CardHeader>
+
+              {showMonthlyTreatment && (
+                <CardContent className="space-y-4 border-t pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-1 space-y-1.5">
+                      <Label>اسم المرض / الحالة <span className="text-red-600">*</span></Label>
+                      <Input
+                        value={mtDiseaseName}
+                        onChange={(e) => setMtDiseaseName(e.target.value)}
+                        placeholder="مثال: سكري، ضغط، قلب..."
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>نوع المستفيد</Label>
+                      <Select value={mtBeneficiaryType} onValueChange={(v: any) => setMtBeneficiaryType(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="employee">موظف عامل</SelectItem>
+                          <SelectItem value="pensioner">صاحب معاش</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>نوع المراجعة</Label>
+                      <Select value={mtReviewType} onValueChange={(v: any) => setMtReviewType(v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="internal">داخلي</SelectItem>
+                          <SelectItem value="external">خارجي (معاش)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>أدوية العلاج الشهري</Label>
+                      <Button variant="outline" size="sm" onClick={addMtMedication}>
+                        <Plus className="w-4 h-4 ml-1" />إضافة دواء
+                      </Button>
+                    </div>
+                    {mtMedications.map((med, i) => (
+                      <div key={i} className="grid grid-cols-1 md:grid-cols-3 gap-3 rounded-xl border bg-slate-50 p-3">
+                        <div className="space-y-1">
+                          <Label>اسم الدواء</Label>
+                          <Select
+                            value={med.medicationId}
+                            onValueChange={(val) => {
+                              const selected = availableMedicines.find((m) => String(m.id) === val);
+                              updateMtMedication(i, "medicationId", val);
+                              if (selected) updateMtMedication(i, "name", selected.name);
+                            }}
+                          >
+                            <SelectTrigger><SelectValue placeholder="اختر الدواء" /></SelectTrigger>
+                            <SelectContent>
+                              {availableMedicines
+                                .filter((m) => m.isActive !== false && m.is_active !== false)
+                                .map((m) => (
+                                  <SelectItem key={String(m.id)} value={String(m.id)}>{m.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label>الجرعة</Label>
+                          <Input
+                            value={med.dosage}
+                            onChange={(e) => updateMtMedication(i, "dosage", e.target.value)}
+                            placeholder="قرص مرتين يومياً"
+                          />
+                        </div>
+                        <div className="flex items-end gap-2">
+                          {mtMedications.length > 1 && (
+                            <Button variant="ghost" size="sm" className="text-red-600" onClick={() => removeMtMedication(i)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleSubmitMonthlyTreatment} disabled={mtSubmitting} className="bg-teal-600 hover:bg-teal-700">
+                      {mtSubmitting && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                      <HeartPulse className="w-4 h-4 ml-2" />
+                      اعتماد العلاج الشهري
+                    </Button>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
 
             <Card>
               <CardContent className="p-5">
