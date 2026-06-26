@@ -105,4 +105,30 @@ export const checkupService = {
   async dispensePrescription(id: number) {
     return apiClient.post(`/internal-pharmacy/prescriptions/${id}/dispense`);
   },
+
+  // Monthly Treatments
+  async getMonthlyTreatments(params?: { status?: string; per_page?: number }) {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.per_page) qs.set('per_page', String(params.per_page));
+    const query = qs.toString() ? `?${qs}` : '';
+    return apiClient.get(`/monthly-treatments${query}`);
+  },
+  async createMonthlyTreatment(data: unknown) {
+    return apiClient.post('/monthly-treatments', data);
+  },
+  async pauseMonthlyTreatment(id: number) {
+    return apiClient.post(`/monthly-treatments/${id}/pause`);
+  },
+  async discontinueMonthlyTreatment(id: number) {
+    return apiClient.post(`/monthly-treatments/${id}/discontinue`);
+  },
+
+  // External Pharmacy
+  async getExternalMonthlyTreatments() {
+    return apiClient.get('/external-pharmacy/monthly-treatments');
+  },
+  async dispenseExternalTreatment(id: number) {
+    return apiClient.post(`/external-pharmacy/treatments/${id}/dispense`);
+  },
 };
