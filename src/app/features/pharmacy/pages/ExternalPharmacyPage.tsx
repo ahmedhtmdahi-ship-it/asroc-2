@@ -104,6 +104,118 @@ function MonthlyTreatmentTab({
   );
 }
 
+type BeneficiaryResult = {
+  id: number;
+  name: string;
+  financial_number: string;
+  national_id: string;
+  job_title: string;
+  type: string;
+  monthly_treatments: Array<{
+    id: number;
+    disease_name: string;
+    medications: Array<{ medicine_name: string; dosage: string }>;
+  }>;
+};
+
+function BeneficiarySearchTab({ isApiConnected }: { isApiConnected: boolean }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<BeneficiaryResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  const handleSearch = async () => {
+    if (!query.trim() || query.trim().length < 2) {
+      toast.error("أدخل كلمتين على الأقل للبحث");
+      return;
+    }
+    if (!isApiConnected) {
+      toast.error("غير متصل بالخادم");
+      return;
+    }
+    setSearching(true);
+    setSearched(false);
+    try {
+      const res: any = await apiClient.get(`/external-pharmacy/search-beneficiary?q=${encodeURIComponent(query.trim())}`);
+      setResults(res?.data ?? []);
+    } catch (err) {
+      toast.error("فشل البحث", { description: err instanceof Error ? err.message : "حدث خطأ" });
+      setResults([]);
+    } finally {
+      setSearching(false);
+      setSearched(true);
+    }
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">البحث عن مستفيد</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                className="h-11 pr-10"
+                placeholder="رقم المعاش أو الرقم القومي أو اسم المستفيد..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+              />
+            </div>
+            <Button className="px-6" onClick={handleSearch} disabled={searching}>
+              {searching ? "جاري البحث..." : "بحث"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {searched && results.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center text-slate-500">
+            لا توجد نتائج مطابقة للبحث.
+          </CardContent>
+        </Card>
+      )}
+
+      {results.map((b) => (
+        <Card key={b.id}>
+          <CardContent className="p-5">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">{b.name}</h3>
+                <p className="text-sm text-slate-500">رقم مالي: {b.financial_number} — رقم قومي: {b.national_id}</p>
+                <p className="text-sm text-slate-500">{b.job_title}</p>
+              </div>
+              <Badge className="bg-purple-100 text-purple-800">{b.type === "retired" ? "معاش" : "موظف"}</Badge>
+            </div>
+            {b.monthly_treatments.length === 0 ? (
+              <p className="text-sm text-slate-400">لا يوجد علاج شهري نشط.</p>
+            ) : (
+              <div className="space-y-2">
+                {b.monthly_treatments.map((t) => (
+                  <div key={t.id} className="rounded-xl border bg-slate-50 p-3">
+                    <p className="font-semibold text-slate-800">{t.disease_name}</p>
+                    <ul className="mt-1 space-y-0.5">
+                      {t.medications.map((m, i) => (
+                        <li key={i} className="text-sm text-slate-600">
+                          {m.medicine_name} — {m.dosage}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function ExternalPharmacyPage() {
   const { isApiConnected } = useAuth();
   const [treatments, setTreatments] = useState<MonthlyTreatment[]>([]);
@@ -183,22 +295,7 @@ export function ExternalPharmacyPage() {
         </TabsContent>
 
         <TabsContent value="search">
-          <div className="mx-auto max-w-2xl space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">البحث عن مستفيد</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input className="h-11 pr-10" placeholder="رقم المعاش أو الرقم القومي أو اسم المستفيد..." />
-                  </div>
-                  <Button className="px-6">بحث</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <BeneficiarySearchTab isApiConnected={isApiConnected} />
         </TabsContent>
 
         <TabsContent value="history">

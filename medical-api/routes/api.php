@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Employee Profile & Checkup Requests ──────────────────
     Route::prefix('employee')->group(function () {
         Route::get('/profile', [EmployeeController::class, 'profile']);
+        Route::put('/profile', [EmployeeController::class, 'updateProfile']);
         Route::get('/checkup-balance', [EmployeeController::class, 'checkupBalance']);
 
         Route::get('/requests', [CheckupRequestController::class, 'index']);
@@ -114,6 +115,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('external-pharmacy')->group(function () {
         Route::get('/monthly-treatments', [ExternalPharmacyController::class, 'monthlyTreatments']);
         Route::post('/treatments/{id}/dispense', [ExternalPharmacyController::class, 'dispense']);
+        Route::get('/search-beneficiary', [ExternalPharmacyController::class, 'searchBeneficiary']);
     });
 
     // ── Medicines ─────────────────────────────────────────────────

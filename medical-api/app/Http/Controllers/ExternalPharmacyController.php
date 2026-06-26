@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Enums\DispensingMonth;
 use App\Enums\MonthlyTreatmentStatus;
+use App\Models\Employee;
 use App\Models\MonthlyDispensingRecord;
+use App\Models\MonthlyTreatment;
 use App\Services\MonthlyTreatmentService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +32,46 @@ class ExternalPharmacyController extends Controller
             ->paginate(15);
 
         return response()->json($records);
+    }
+
+    /**
+     * Search beneficiaries (pensioners / retired employees) by name, national ID, or financial number.
+     * Returns their active monthly treatments.
+     */
+    public function searchBeneficiary(Request $request): JsonResponse
+    {
+        $request->validate(['q' => ['required', 'string', 'min:2']]);
+        $q = $request->q;
+
+        $employees = Employee::with(['user', 'monthlyTreatments.medications'])
+            ->whereHas('user', fn ($query) =>
+                $query->where('name', 'like', "%{$q}%")
+            )
+            ->orWhere('financial_number', 'like', "%{$q}%")
+            ->orWhere('national_id', 'like', "%{$q}%")
+            ->limit(10)
+            ->get();
+
+        $results = $employees->map(fn (Employee $emp) => [
+            'id'               => $emp->id,
+            'name'             => $emp->user?->name,
+            'financial_number' => $emp->financial_number,
+            'national_id'      => $emp->national_id,
+            'job_title'        => $emp->job_title,
+            'type'             => $emp->type?->value,
+            'monthly_treatments' => $emp->monthlyTreatments
+                ->where('status', MonthlyTreatmentStatus::Active->value)
+                ->map(fn ($t) => [
+                    'id'           => $t->id,
+                    'disease_name' => $t->disease_name,
+                    'medications'  => $t->medications->map(fn ($m) => [
+                        'medicine_name' => $m->medicine_name,
+                        'dosage'        => $m->dosage,
+                    ]),
+                ]),
+        ]);
+
+        return response()->json(['data' => $results]);
     }
 
     /**

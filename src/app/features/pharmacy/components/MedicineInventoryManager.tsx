@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Edit3,
+  FileSpreadsheet,
   Package,
   PackageCheck,
   PackageX,
@@ -26,6 +27,7 @@ import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { medicineStore } from "@/app/store/medicineStore";
 import { checkupService } from "@/app/services/checkupService";
+import { apiClient } from "@/app/services/apiClient";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import type { Medicine } from "@/app/types/medicine";
 
@@ -136,6 +138,7 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
   const [editing, setEditing] = useState<Medicine | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<MedicineForm>(emptyForm);
+  const [importing, setImporting] = useState(false);
 
   const loadFromApi = () => {
     checkupService.getMedicines({ per_page: 500 })
@@ -286,6 +289,28 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
     }
   };
 
+  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!isApiConnected) {
+      toast.error("يجب الاتصال بالخادم لاستيراد Excel");
+      return;
+    }
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res: any = await apiClient.upload("/medicines/import", fd);
+      toast.success(`تم الاستيراد بنجاح — ${res?.imported ?? ""} صنف`);
+      loadFromApi();
+    } catch (err) {
+      toast.error("فشل الاستيراد", { description: err instanceof Error ? err.message : "حدث خطأ" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -328,6 +353,23 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
                 <RotateCcw className="ml-2 h-4 w-4" />
                 استرجاع الشيت
               </Button>
+              {isApiConnected && (
+                <label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="sr-only"
+                    onChange={handleImportExcel}
+                    disabled={importing}
+                  />
+                  <Button variant="outline" size="sm" asChild disabled={importing}>
+                    <span>
+                      <FileSpreadsheet className="ml-2 h-4 w-4" />
+                      {importing ? "جاري الاستيراد..." : "استيراد Excel"}
+                    </span>
+                  </Button>
+                </label>
+              )}
               <Button size="sm" onClick={openAddDialog}>
                 <Plus className="ml-2 h-4 w-4" />
                 إضافة دواء

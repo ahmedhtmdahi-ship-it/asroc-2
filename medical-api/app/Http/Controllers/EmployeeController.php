@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\EmployeeResource;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class EmployeeController extends Controller
 {
@@ -16,6 +17,39 @@ class EmployeeController extends Controller
         $employee = $request->user()->employee()->with('department')->firstOrFail();
 
         return new EmployeeResource($employee);
+    }
+
+    /**
+     * PUT /api/employee/profile
+     * Update phone number and/or FCM token for the authenticated employee.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user     = $request->user();
+        $employee = $user->employee()->firstOrFail();
+
+        $validated = $request->validate([
+            'phone'     => ['nullable', 'string', 'max:20'],
+            'fcm_token' => ['nullable', 'string', 'max:500'],
+            'name'      => ['nullable', 'string', 'max:100'],
+        ]);
+
+        if (isset($validated['phone'])) {
+            $employee->phone = $validated['phone'];
+            $employee->save();
+        }
+
+        if (isset($validated['fcm_token'])) {
+            $user->fcm_token = $validated['fcm_token'];
+            $user->save();
+        }
+
+        if (isset($validated['name'])) {
+            $user->name = $validated['name'];
+            $user->save();
+        }
+
+        return new EmployeeResource($employee->fresh(['department']));
     }
 
     /**

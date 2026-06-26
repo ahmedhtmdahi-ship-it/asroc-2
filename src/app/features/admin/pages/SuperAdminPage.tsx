@@ -582,41 +582,236 @@ function PermissionsTab({ users }: { users: User[] }) {
 }
 
 // ─── Departments Tab ───────────────────────────────────────────────────
-function DepartmentsTab({ users }: { users: User[] }) {
-  const departments = useMemo(() => {
-    const map = new Map<string, { name: string; count: number; managers: User[] }>();
+interface ApiDepartment {
+  id: string;
+  name: string;
+  manager_id?: string | null;
+  manager_name?: string | null;
+  employee_count?: number;
+}
 
-    users.forEach((user) => {
-      const name = user.department || "غير محدد";
-      const current = map.get(name) || { name, count: 0, managers: [] };
-      current.count += 1;
-      if (user.role === "manager") current.managers.push(user);
-      map.set(name, current);
-    });
+type DeptForm = { name: string; manager_id: string };
+const emptyDeptForm: DeptForm = { name: "", manager_id: "" };
 
-    return [...map.values()].sort((a, b) => b.count - a.count);
-  }, [users]);
+function DepartmentsTab() {
+  const [departments, setDepartments] = useState<ApiDepartment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
-  if (users.length === 0) return <EmptyState message="لا توجد بيانات مستخدمين" />;
+  const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
+  const [editingDept, setEditingDept] = useState<ApiDepartment | null>(null);
+  const [form, setForm] = useState<DeptForm>(emptyDeptForm);
+  const [deleteTarget, setDeleteTarget] = useState<ApiDepartment | null>(null);
+
+  // We also need a list of users to pick a manager. Fetch them separately.
+  const [managers, setManagers] = useState<{ id: string; name: string }[]>([]);
+
+  const fetchDepartments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res: any = await apiClient.get("/admin/departments");
+      const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setDepartments(items.map((d: any) => ({
+        id:             String(d.id),
+        name:           d.name,
+        manager_id:     d.manager_id ? String(d.manager_id) : null,
+        manager_name:   d.manager?.name ?? null,
+        employee_count: d.employee_count ?? 0,
+      })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل الإدارات");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchManagers = async () => {
+    try {
+      const res: any = await apiClient.get("/admin/users?per_page=500");
+      const items = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      setManagers(items.map((u: any) => ({ id: String(u.id), name: u.name ?? "" })));
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => { fetchDepartments(); fetchManagers(); }, []);
+
+  const openCreate = () => {
+    setEditingDept(null);
+    setForm(emptyDeptForm);
+    setDialogMode("create");
+  };
+
+  const openEdit = (dept: ApiDepartment) => {
+    setEditingDept(dept);
+    setForm({ name: dept.name, manager_id: dept.manager_id ?? "" });
+    setDialogMode("edit");
+  };
+
+  const closeDialog = () => { setDialogMode(null); setEditingDept(null); };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error("اسم الإدارة مطلوب"); return; }
+    setSaving(true);
+    try {
+      const payload: Record<string, string | null> = {
+        name: form.name.trim(),
+        manager_id: form.manager_id || null,
+      };
+      if (dialogMode === "create") {
+        await apiClient.post("/admin/departments", payload);
+        toast.success("تم إنشاء الإدارة");
+      } else if (editingDept) {
+        await apiClient.put(`/admin/departments/${editingDept.id}`, payload);
+        toast.success("تم تعديل الإدارة");
+      }
+      closeDialog();
+      fetchDepartments();
+    } catch (err: any) {
+      toast.error("فشل الحفظ", { description: err?.message ?? "حدث خطأ" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setSaving(true);
+    try {
+      await apiClient.delete(`/admin/departments/${deleteTarget.id}`);
+      toast.success("تم حذف الإدارة");
+      setDeleteTarget(null);
+      fetchDepartments();
+    } catch (err: any) {
+      toast.error(err?.message ?? "فشل الحذف");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return term
+      ? departments.filter((d) => d.name.toLowerCase().includes(term) || (d.manager_name ?? "").toLowerCase().includes(term))
+      : departments;
+  }, [departments, search]);
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} onRetry={fetchDepartments} />;
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {departments.map((department) => (
-        <Card key={department.name}>
-          <CardContent className="p-5">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <h3 className="font-bold text-slate-900">{department.name}</h3>
-              <Badge className="bg-teal-100 text-teal-700">{department.count} فرد</Badge>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative max-w-xl flex-1">
+          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-11 pr-10"
+            placeholder="بحث باسم الإدارة أو المدير..."
+          />
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="ml-2 h-4 w-4" />
+          إضافة إدارة
+        </Button>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState message={search ? "لا توجد نتائج مطابقة" : "لا توجد إدارات مسجلة"} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((dept) => (
+            <Card key={dept.id}>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <h3 className="font-bold text-slate-900">{dept.name}</h3>
+                  {dept.employee_count !== undefined && dept.employee_count > 0 && (
+                    <Badge className="bg-teal-100 text-teal-700">{dept.employee_count} فرد</Badge>
+                  )}
+                </div>
+                <p className="text-sm text-slate-600">
+                  المسؤول: <span className="font-semibold">{dept.manager_name || "غير محدد"}</span>
+                </p>
+                <div className="mt-3 flex gap-1">
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => openEdit(dept)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-600" onClick={() => setDeleteTarget(dept)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create / Edit Dialog */}
+      <Dialog open={dialogMode !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{dialogMode === "create" ? "إضافة إدارة جديدة" : "تعديل الإدارة"}</DialogTitle>
+            <DialogDescription>
+              {dialogMode === "create" ? "أدخل بيانات الإدارة الجديدة." : "عدّل البيانات المطلوبة."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>اسم الإدارة</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="مثال: إدارة الموارد البشرية"
+              />
             </div>
-            <p className="text-sm text-slate-600">
-              المسؤول:{" "}
-              <span className="font-semibold">
-                {department.managers[0]?.name || "غير محدد"}
-              </span>
-            </p>
-          </CardContent>
-        </Card>
-      ))}
+            <div className="space-y-1.5">
+              <Label>المدير المسؤول (اختياري)</Label>
+              <Select value={form.manager_id || "none"} onValueChange={(v) => setForm({ ...form, manager_id: v === "none" ? "" : v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="اختر مديراً" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون مدير</SelectItem>
+                  {managers.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeDialog} disabled={saving}>إلغاء</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {dialogMode === "create" ? "إضافة" : "حفظ التعديلات"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>تأكيد الحذف</DialogTitle>
+            <DialogDescription>
+              هل أنت متأكد من حذف إدارة <span className="font-bold text-slate-900">{deleteTarget?.name}</span>؟
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={saving}>إلغاء</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
+              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Trash2 className="ml-2 h-4 w-4" />}
+              حذف
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -880,7 +1075,7 @@ export function SuperAdminPage() {
           <PermissionsTab users={users} />
         </TabsContent>
         <TabsContent value="departments">
-          <DepartmentsTab users={users} />
+          <DepartmentsTab />
         </TabsContent>
         <TabsContent value="doctors">
           <RoleUsersTab role="doctor" users={users} />

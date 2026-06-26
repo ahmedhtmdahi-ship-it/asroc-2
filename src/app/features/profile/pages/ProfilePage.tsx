@@ -1,10 +1,23 @@
-﻿import { Badge } from "@/app/components/ui/badge";
+import { useState } from "react";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
 import { PageLayout } from "@/app/components/PageLayout";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels } from "@/app/types/workflow";
-import { Activity, BadgeCheck, Building, ClipboardList, IdCard, Phone, User, UserCog } from "lucide-react";
+import { apiClient } from "@/app/services/apiClient";
+import { toast } from "sonner";
+import { Activity, BadgeCheck, Building, ClipboardList, IdCard, Pencil, Phone, User, UserCog } from "lucide-react";
 
 const roleLabels = {
   employee: "موظف",
@@ -23,8 +36,12 @@ function valueOrDash(value?: string) {
 }
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user, isApiConnected } = useAuth();
   const { requests } = useWorkflow();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: user?.name ?? "", phone: user?.phone ?? "" });
 
   const userRequests = requests.filter(
     (request) => request.employeeId === user?.id || request.financialNumber === user?.financialNumber
@@ -46,6 +63,33 @@ export function ProfilePage() {
     { label: "الصلاحية", value: user ? roleLabels[user.role] : undefined, icon: ClipboardList },
   ];
 
+  const openEdit = () => {
+    setForm({ name: user?.name ?? "", phone: user?.phone ?? "" });
+    setEditOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!isApiConnected) {
+      toast.error("غير متصل بالخادم");
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiClient.put("/employee/profile", {
+        name: form.name.trim() || undefined,
+        phone: form.phone.trim() || undefined,
+      });
+      toast.success("تم تحديث بيانات الملف الشخصي");
+      setEditOpen(false);
+      // Reload the page to reflect changes (user in AuthContext persists from localStorage)
+      window.location.reload();
+    } catch (err) {
+      toast.error("تعذر الحفظ", { description: err instanceof Error ? err.message : "حدث خطأ" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <PageLayout title="الملف الشخصي" subtitle="بيانات العامل المسجلة في النظام" icon={<User className="h-5 w-5" />}>
       <div className="space-y-6">
@@ -62,11 +106,17 @@ export function ProfilePage() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge className="bg-teal-600 text-white hover:bg-teal-600">
                   {user ? roleLabels[user.role] : "غير مسجل"}
                 </Badge>
                 <Badge variant="outline">رقم مالي: {valueOrDash(user?.financialNumber || user?.username)}</Badge>
+                {isApiConnected && (
+                  <Button size="sm" variant="outline" onClick={openEdit}>
+                    <Pencil className="ml-1.5 h-3.5 w-3.5" />
+                    تعديل البيانات
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -142,6 +192,40 @@ export function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editOpen} onOpenChange={(open) => { if (!open) setEditOpen(false); }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>تعديل البيانات الشخصية</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>الاسم الكامل</Label>
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="الاسم الكامل"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>رقم التليفون</Label>
+              <Input
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="01xxxxxxxxx"
+                dir="ltr"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>إلغاء</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "جاري الحفظ..." : "حفظ التعديلات"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }

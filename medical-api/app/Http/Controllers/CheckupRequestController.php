@@ -83,10 +83,12 @@ class CheckupRequestController extends Controller
             'department',
             'createdBy',
             'approvedBy',
-            'diagnosis',
-            'prescription',
-            'externalReferral',
+            'diagnosis.doctor',
+            'prescription.items',
+            'prescription.dispensedBy',
+            'externalReferral.externalProvider',
             'sickLeave',
+            'securityOfficer',
         ])->where('employee_id', $employee->id)->findOrFail($id);
 
         return new CheckupRequestResource($checkupRequest);

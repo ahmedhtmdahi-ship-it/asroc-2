@@ -73,6 +73,22 @@ class ApiClient {
     return response.json();
   }
 
+  async upload<T>(endpoint: string, formData: FormData): Promise<T> {
+    const headers: HeadersInit = { 'Accept': 'application/json' };
+    const token = this.getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: 'خطأ في الرفع' }));
+      throw new Error(error.message || `HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
   async download(endpoint: string, filename: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: 'GET',
