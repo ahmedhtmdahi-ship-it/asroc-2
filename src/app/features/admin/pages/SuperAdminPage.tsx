@@ -26,6 +26,7 @@ import { MedicineInventoryManager } from "@/app/features/pharmacy/components/Med
 import { supabase } from "@/app/lib/api";
 import { mockUsers } from "@/app/data/mockUsers";
 import { mockAuditLogs } from "@/app/data/mockAuditLogs";
+import { apiClient } from "@/app/services/apiClient";
 import type { Permission, User, UserRole } from "@/app/types/user";
 
 // ─── Types ─────────────────────────────────────────────────────────────
@@ -185,13 +186,22 @@ function UsersTab() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: supaError } = await supabase
-        .from("users")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (supaError) throw supaError;
-      setUsers(data || []);
+      const res: any = await apiClient.get("/admin/users?per_page=500");
+      const items = Array.isArray(res) ? res : (res?.data ?? []);
+      const mapped: User[] = items.map((u: any) => ({
+        id:              String(u.id),
+        username:        u.email ?? "",
+        password:        "",
+        name:            u.name ?? "",
+        financialNumber: u.financial_number ?? "",
+        jobTitle:        u.job_title ?? "",
+        department:      u.department ?? "",
+        workType:        u.work_type ?? "",
+        role:            (Array.isArray(u.roles) ? u.roles[0] : u.role) ?? "employee",
+        permissions:     [],
+        isActive:        u.is_active !== false,
+      }));
+      setUsers(mapped);
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل تحميل المستخدمين");
     } finally {
@@ -524,26 +534,24 @@ export function SuperAdminPage() {
     setError(null);
 
     try {
-      // Attempt Supabase first
-      const { data: usersData, error: usersError } = await supabase
-        .from("users")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (usersError) throw usersError;
-
-      const fetchedUsers = (usersData || []) as User[];
-
+      const res: any = await apiClient.get("/admin/users?per_page=500");
+      const items = Array.isArray(res) ? res : (res?.data ?? []);
+      const fetchedUsers: User[] = items.map((u: any) => ({
+        id:              String(u.id),
+        username:        u.email ?? "",
+        password:        "",
+        name:            u.name ?? "",
+        financialNumber: u.financial_number ?? "",
+        jobTitle:        u.job_title ?? "",
+        department:      u.department ?? "",
+        workType:        u.work_type ?? "",
+        role:            (Array.isArray(u.roles) ? u.roles[0] : u.role) ?? "employee",
+        permissions:     [],
+        isActive:        u.is_active !== false,
+      }));
       setUsers(fetchedUsers);
-
-      const { count, error: countError } = await supabase
-        .from("audit_logs")
-        .select("*", { count: "exact", head: true });
-
-      if (countError) throw countError;
-      setAuditLogsCount(count || 0);
+      setAuditLogsCount(fetchedUsers.length);
     } catch {
-      // Fallback to mock data so the page isn't empty without backend setup
       setUsers(mockUsers);
       setAuditLogsCount(mockAuditLogs.length);
       setError(null);
