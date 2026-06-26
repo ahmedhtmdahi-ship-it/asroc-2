@@ -38,6 +38,7 @@ function apiToMedicalRequest(r: any): MedicalRequest {
     managerDecisionReason: r.rejection_reason,
     doctorName:            r.diagnosis?.doctor?.name ?? r.doctor_name,
     doctorDiagnosis:       r.diagnosis?.diagnosis_text,
+    targetClinic:          r.target_clinic,
   };
 }
 

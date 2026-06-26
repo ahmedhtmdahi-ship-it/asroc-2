@@ -18,6 +18,8 @@ export interface ApiUser {
   last_login_at: string | null;
   roles: string[];
   permissions: string[];
+  work_shift?: "day" | "shift";
+  clinic?: "medical_center" | "shift_clinic" | null;
 }
 
 // Map backend role names to frontend role names

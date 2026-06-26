@@ -213,10 +213,15 @@ export function DoctorPage() {
     toast.success("تم رفض طلب العلاج الشهري");
   };
 
+  const clinicLabel = user?.clinic === "shift_clinic" ? "عيادة الوردية" : "المركز الطبي";
+  const clinicColor = user?.clinic === "shift_clinic"
+    ? "bg-orange-100 text-orange-800"
+    : "bg-blue-100 text-blue-800";
+
   return (
     <PageLayout
       title="محطة عمل الطبيب"
-      subtitle="قائمة انتظار الكشف وطلبات العلاج الشهري"
+      subtitle={clinicLabel}
       icon={<Stethoscope className="w-5 h-5" />}
       backLink="/dashboard"
     >
@@ -352,6 +357,20 @@ export function DoctorPage() {
                               >
                                 {isEmergency ? "كشف طوارئ" : "كشف عادي"}
                               </Badge>
+
+                              {request.targetClinic && (
+                                <Badge
+                                  className={
+                                    request.targetClinic === "shift_clinic"
+                                      ? "bg-orange-100 text-orange-700"
+                                      : "bg-indigo-100 text-indigo-700"
+                                  }
+                                >
+                                  {request.targetClinic === "shift_clinic"
+                                    ? "عيادة الوردية"
+                                    : "المركز الطبي"}
+                                </Badge>
+                              )}
 
                               <Badge className="bg-yellow-100 text-yellow-700">
                                 {requestStatusLabels[request.status]}

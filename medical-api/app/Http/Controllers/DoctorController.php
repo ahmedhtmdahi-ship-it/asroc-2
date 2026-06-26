@@ -11,10 +11,18 @@ class DoctorController extends Controller
 {
     public function queue(Request $request)
     {
-        $requests = CheckupRequest::with(['employee.user', 'employee.department'])
-            ->where('status', CheckupStatus::CheckedOut)
-            ->latest()
-            ->paginate(10);
+        $doctorEmployee = $request->user()->employee;
+        $doctorClinic   = $doctorEmployee?->clinic;
+
+        $query = CheckupRequest::with(['employee.user', 'employee.department'])
+            ->where('status', CheckupStatus::CheckedOut);
+
+        // If the doctor has a clinic assignment, only show their clinic's queue
+        if ($doctorClinic) {
+            $query->where('target_clinic', $doctorClinic);
+        }
+
+        $requests = $query->latest()->paginate(50);
 
         return CheckupRequestResource::collection($requests);
     }

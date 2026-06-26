@@ -58,6 +58,7 @@ export interface MedicalRequest {
   referralId?: string;
   managerId?: string;
   managerName?: string;
+  targetClinic?: "medical_center" | "shift_clinic";
   doctorId?: string;
   doctorName?: string;
   securityOutUserId?: string;

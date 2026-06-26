@@ -18,6 +18,7 @@ class CheckupRequestResource extends JsonResource
             'type'             => $this->type?->value,
             'status'           => $this->status?->value,
             'notes'            => $this->notes,
+            'target_clinic'    => $this->target_clinic,
             'approved_at'      => $this->approved_at,
             'rejection_reason' => $this->rejection_reason,
             'postponed_until'  => $this->postponed_until,

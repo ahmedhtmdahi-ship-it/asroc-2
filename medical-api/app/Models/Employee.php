@@ -18,12 +18,14 @@ class Employee extends Model
         'job_title',
         'type',
         'phone',
+        'work_shift',
+        'clinic',
         'checkups_used_this_month',
         'checkup_month_reset',
     ];
 
     protected $casts = [
-        'type' => EmployeeType::class,
+        'type'               => EmployeeType::class,
         'checkup_month_reset' => 'date',
     ];
 

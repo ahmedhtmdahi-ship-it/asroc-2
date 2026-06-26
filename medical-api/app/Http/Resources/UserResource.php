@@ -25,6 +25,8 @@ class UserResource extends JsonResource
             'job_title'        => $emp?->job_title,
             'department'       => $dept?->name ?? null,
             'work_type'        => $emp?->type?->value,
+            'work_shift'       => $emp?->work_shift ?? 'day',
+            'clinic'           => $emp?->clinic,
         ];
     }
 }

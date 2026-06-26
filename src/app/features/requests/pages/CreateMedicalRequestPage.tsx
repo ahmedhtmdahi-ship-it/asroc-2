@@ -519,6 +519,19 @@ export function EmployeeRequestsPage() {
                   </div>
                 </div>
 
+                {serviceType === "checkup" && user?.workShift && (
+                  <div className="rounded-xl bg-blue-50 border border-blue-100 p-4 flex items-center gap-3 text-sm text-blue-900">
+                    <Stethoscope className="w-5 h-5 text-blue-600 shrink-0" />
+                    <span>
+                      سيُوجَّه طلبك إلى{" "}
+                      <strong>
+                        {user.workShift === "shift" ? "عيادة الوردية" : "المركز الطبي"}
+                      </strong>{" "}
+                      بناءً على طبيعة عملك.
+                    </span>
+                  </div>
+                )}
+
                 {serviceType === "checkup" && (
                   <div>
                     <Label className="text-base font-bold">

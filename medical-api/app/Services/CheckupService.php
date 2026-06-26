@@ -27,9 +27,17 @@ class CheckupService
         return config('medical.monthly_checkup_limit') - $employee->checkups_used_this_month;
     }
 
+    public function resolveTargetClinic(Employee $employee): string
+    {
+        return ($employee->work_shift ?? 'day') === 'shift'
+            ? 'shift_clinic'
+            : 'medical_center';
+    }
+
     public function createCheckupRequest(Employee $employee, array $data): CheckupRequest
     {
-        $type = CheckupType::from($data['type']);
+        $type         = CheckupType::from($data['type']);
+        $targetClinic = $this->resolveTargetClinic($employee);
 
         if ($type === CheckupType::Normal) {
             if (! $this->canRequestCheckup($employee)) {
@@ -45,6 +53,7 @@ class CheckupService
                 'status'        => CheckupStatus::Pending,
                 'notes'         => $data['notes'] ?? null,
                 'created_by'    => $employee->user_id,
+                'target_clinic' => $targetClinic,
             ]);
 
             $employee->increment('checkups_used_this_month');
@@ -60,6 +69,7 @@ class CheckupService
                 'notes'         => $data['notes'] ?? null,
                 'created_by'    => $employee->user_id,
                 'approved_at'   => Carbon::now(),
+                'target_clinic' => $targetClinic,
             ]);
 
             EmergencyCheckupCreated::dispatch($request);

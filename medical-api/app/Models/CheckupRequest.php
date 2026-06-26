@@ -22,6 +22,7 @@ class CheckupRequest extends Model
         'checked_out_at',
         'returned_at',
         'security_officer_id',
+        'target_clinic',
     ];
 
     protected $casts = [

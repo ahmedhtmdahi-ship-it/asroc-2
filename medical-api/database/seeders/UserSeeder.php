@@ -46,8 +46,14 @@ class UserSeeder extends Seeder
                 'role'     => 'security',
             ],
             [
-                'name'     => 'طبيب تجريبي',
+                'name'     => 'طبيب المركز الطبي',
                 'email'    => 'doctor@test.com',
+                'password' => Hash::make('password'),
+                'role'     => 'doctor',
+            ],
+            [
+                'name'     => 'طبيب عيادة الوردية',
+                'email'    => 'doctor.shift@test.com',
                 'password' => Hash::make('password'),
                 'role'     => 'doctor',
             ],
@@ -95,30 +101,62 @@ class UserSeeder extends Seeder
             $createdUsers[$role] = $user;
         }
 
-        // Create Employee record for the active employee
+        // Create Employee records
         DB::table('employees')->insert([
-            'user_id'          => $createdUsers['employee']->id,
-            'financial_number' => 'EMP001',
-            'national_id'      => '12345678901234',
-            'department_id'    => 1,
-            'job_title'        => 'موظف عام',
-            'type'             => 'active',
-            'phone'            => '01000000001',
-            'created_at'       => now(),
-            'updated_at'       => now(),
-        ]);
-
-        // Create Employee record for the retired employee
-        DB::table('employees')->insert([
-            'user_id'          => $createdUsers['retired_employee']->id,
-            'financial_number' => 'RET001',
-            'national_id'      => '43210987654321',
-            'department_id'    => 2,
-            'job_title'        => 'موظف متقاعد',
-            'type'             => 'retired',
-            'phone'            => '01000000002',
-            'created_at'       => now(),
-            'updated_at'       => now(),
+            [
+                'user_id'          => $createdUsers['employee']->id,
+                'financial_number' => 'EMP001',
+                'national_id'      => '12345678901234',
+                'department_id'    => 1,
+                'job_title'        => 'موظف عام',
+                'type'             => 'active',
+                'work_shift'       => 'day',
+                'clinic'           => null,
+                'phone'            => '01000000001',
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ],
+            [
+                'user_id'          => $createdUsers['retired_employee']->id,
+                'financial_number' => 'RET001',
+                'national_id'      => '43210987654321',
+                'department_id'    => 2,
+                'job_title'        => 'موظف متقاعد',
+                'type'             => 'retired',
+                'work_shift'       => 'day',
+                'clinic'           => null,
+                'phone'            => '01000000002',
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ],
+            // Doctor: Medical Center (day workers)
+            [
+                'user_id'          => $createdUsers['doctor']->id,
+                'financial_number' => 'DOC001',
+                'national_id'      => '11111111111111',
+                'department_id'    => 1,
+                'job_title'        => 'طبيب - المركز الطبي',
+                'type'             => 'active',
+                'work_shift'       => 'day',
+                'clinic'           => 'medical_center',
+                'phone'            => '01000000006',
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ],
+            // Second doctor: Shift Clinic (shift workers)
+            [
+                'user_id'          => User::where('email', 'doctor.shift@test.com')->first()?->id ?? 0,
+                'financial_number' => 'DOC002',
+                'national_id'      => '22222222222222',
+                'department_id'    => 1,
+                'job_title'        => 'طبيب - عيادة الوردية',
+                'type'             => 'active',
+                'work_shift'       => 'shift',
+                'clinic'           => 'shift_clinic',
+                'phone'            => '01000000012',
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ],
         ]);
     }
 }

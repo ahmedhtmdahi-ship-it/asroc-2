@@ -104,6 +104,8 @@ function mapApiUserToUser(apiUser: ApiUser): User {
     role: mappedRole,
     permissions,
     isActive: apiUser.is_active,
+    workShift: apiUser.work_shift,
+    clinic: apiUser.clinic ?? undefined,
   };
 }
 

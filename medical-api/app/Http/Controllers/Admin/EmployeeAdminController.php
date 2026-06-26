@@ -79,6 +79,8 @@ class EmployeeAdminController extends Controller
             'job_title'        => 'required|string|max:255',
             'type'             => 'required|string|in:active,retired',
             'phone'            => 'nullable|string|max:20',
+            'work_shift'       => 'nullable|string|in:day,shift',
+            'clinic'           => 'nullable|string|in:medical_center,shift_clinic',
         ]);
 
         $employee = DB::transaction(function () use ($validated) {
@@ -98,6 +100,8 @@ class EmployeeAdminController extends Controller
                 'job_title'        => $validated['job_title'],
                 'type'             => $validated['type'],
                 'phone'            => $validated['phone'] ?? null,
+                'work_shift'       => $validated['work_shift'] ?? 'day',
+                'clinic'           => $validated['clinic'] ?? null,
             ]);
 
             return $employee;
@@ -134,6 +138,8 @@ class EmployeeAdminController extends Controller
             'job_title'        => 'sometimes|required|string|max:255',
             'type'             => 'sometimes|required|string|in:active,retired',
             'phone'            => 'sometimes|nullable|string|max:20',
+            'work_shift'       => 'sometimes|nullable|string|in:day,shift',
+            'clinic'           => 'sometimes|nullable|string|in:medical_center,shift_clinic',
         ]);
 
         $employee->update($validated);

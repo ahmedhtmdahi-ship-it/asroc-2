@@ -51,6 +51,8 @@ export interface User {
   nationalId?: string;
   phone?: string;
   workType?: string;
+  workShift?: "day" | "shift";
+  clinic?: "medical_center" | "shift_clinic";
   role: UserRole;
   permissions: Permission[];
   isActive: boolean;
