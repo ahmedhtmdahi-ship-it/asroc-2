@@ -1,4 +1,4 @@
-﻿import { ReactNode } from "react";
+﻿import React, { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import {
@@ -29,6 +29,7 @@ import {
   Bell,
   Search,
   Menu,
+  X,
   Home,
   ClipboardList,
   HeartPulse,
@@ -50,7 +51,7 @@ interface PageLayoutProps {
 
 type NavItem = {
   label: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   link: string;
   roles: UserRole[];
 };
@@ -90,13 +91,13 @@ const navItems: NavItem[] = [
     label: "طلب كشف طبي",
     icon: FileText,
     link: "/request/new",
-    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
+    roles: ["manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
   },
   {
     label: "طلباتي الطبية",
     icon: ClipboardList,
     link: "/my-requests",
-    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
+    roles: ["manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
   },
   {
     label: "موافقات المدير",
@@ -214,6 +215,12 @@ export function PageLayout({
   const location = useLocation();
   const { user, logout } = useAuth();
   const { syncing } = useWorkflow();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close drawer on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const visibleNavItems = user
     ? navItems.filter((item) => item.roles.includes(user.role))
@@ -230,72 +237,98 @@ export function PageLayout({
   const resolvedBackLink =
     backLink === "/dashboard" ? homePath : backLink;
 
+  const sidebarContent = (
+    <>
+      <div className="flex h-20 items-center gap-3 border-b border-white/10 px-5">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1.5">
+          <img src={logo} alt="ASORC Logo" className="h-full w-full object-contain" />
+        </div>
+        <div>
+          <p className="text-lg font-extrabold tracking-wide">ASORC</p>
+          <p className="text-xs text-white/60">الخدمات الطبية</p>
+        </div>
+      </div>
+
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {visibleNavItems.map((item) => {
+          const active =
+            location.pathname === item.link ||
+            (item.link !== "/dashboard" &&
+              item.link !== "/employee" &&
+              item.link !== "/security" &&
+              item.link !== "/doctor" &&
+              item.link !== "/pharmacy" &&
+              item.link !== "/medical-admin" &&
+              item.link !== "/pension-admin" &&
+              item.link !== "/manager/approvals" &&
+              location.pathname.startsWith(item.link + "/"));
+
+          return (
+            <Link
+              key={item.link}
+              to={item.link}
+              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all ${
+                active
+                  ? "bg-[#14B8A6] text-white shadow-lg shadow-teal-900/20"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <item.icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-white/10 p-4">
+        <div className="rounded-2xl bg-white/10 p-3">
+          <p className="text-xs text-white/50">المستخدم الحالي</p>
+          <p className="mt-1 text-sm font-bold">{user?.name || "غير مسجل"}</p>
+          <p className="text-xs text-teal-300">{getRoleLabel(user?.role)}</p>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-[#F5F7FB]" dir="rtl">
-      <aside className="fixed right-0 top-0 z-50 hidden h-screen w-72 border-l border-white/10 bg-[#0B1F3A] text-white xl:flex xl:flex-col">
-        <div className="flex h-20 items-center gap-3 border-b border-white/10 px-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1.5">
-            <img
-              src={logo}
-              alt="ASORC Logo"
-              className="h-full w-full object-contain"
-            />
-          </div>
-          <div>
-            <p className="text-lg font-extrabold tracking-wide">ASORC</p>
-            <p className="text-xs text-white/60">الخدمات الطبية</p>
-          </div>
+      {/* Mobile drawer overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 xl:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/50" />
+          <aside
+            className="absolute right-0 top-0 flex h-screen w-72 flex-col bg-[#0B1F3A] text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute left-3 top-3 rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </button>
+            {sidebarContent}
+          </aside>
         </div>
+      )}
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {visibleNavItems.map((item) => {
-            const active =
-              location.pathname === item.link ||
-              (item.link !== "/dashboard" &&
-                item.link !== "/employee" &&
-                item.link !== "/security" &&
-                item.link !== "/doctor" &&
-                item.link !== "/pharmacy" &&
-                item.link !== "/medical-admin" &&
-                item.link !== "/pension-admin" &&
-                item.link !== "/manager/approvals" &&
-                location.pathname.startsWith(item.link + "/"));
-
-            return (
-              <Link
-                key={item.link}
-                to={item.link}
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all ${
-                  active
-                    ? "bg-[#14B8A6] text-white shadow-lg shadow-teal-900/20"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="border-t border-white/10 p-4">
-          <div className="rounded-2xl bg-white/10 p-3">
-            <p className="text-xs text-white/50">المستخدم الحالي</p>
-            <p className="mt-1 text-sm font-bold">
-              {user?.name || "غير مسجل"}
-            </p>
-            <p className="text-xs text-teal-300">
-              {getRoleLabel(user?.role)}
-            </p>
-          </div>
-        </div>
+      {/* Desktop sidebar */}
+      <aside className="fixed right-0 top-0 z-40 hidden h-screen w-72 flex-col border-l border-white/10 bg-[#0B1F3A] text-white xl:flex">
+        {sidebarContent}
       </aside>
 
       <div className="xl:mr-72">
         <header className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur">
           <div className="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="xl:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="xl:hidden"
+                onClick={() => setMobileMenuOpen(true)}
+              >
                 <Menu className="h-5 w-5" />
               </Button>
 
@@ -355,7 +388,7 @@ export function PageLayout({
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" className="w-56" dir="rtl">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div>
                       <p>{user?.name || "مستخدم"}</p>

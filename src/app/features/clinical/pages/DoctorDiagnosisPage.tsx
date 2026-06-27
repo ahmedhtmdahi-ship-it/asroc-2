@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   ArrowRight,
   BedDouble,
-  CalendarDays,
   CheckCircle2,
   FileText,
   HeartPulse,
@@ -96,7 +95,7 @@ export function DoctorDiagnosisPage() {
     setMedications(updated);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!request) return;
 
     if (!diagnosis.trim()) {
@@ -111,16 +110,22 @@ export function DoctorDiagnosisPage() {
       return;
     }
 
-    if (request.status !== "checked_out" && request.status !== "in_diagnosis") {
+    // Read live status from store — React state may be stale if startDiagnosis
+    // was already called by DoctorPage before navigating here.
+    const liveStatus = requestStore.getById(request.id)?.status ?? request.status;
+
+    if (liveStatus !== "checked_out" && liveStatus !== "in_diagnosis") {
       toast.error("لا يمكن إرسال هذا الطلب للصيدلية من حالته الحالية", {
-        description: requestStatusLabels[request.status],
+        description: requestStatusLabels[liveStatus],
       });
       return;
     }
 
     try {
-      if (request.status === "checked_out") {
-        startDiagnosis(request.id, "بدأ الطبيب جلسة الكشف الطبي");
+      // Sequential awaits ensure each step completes before the next starts —
+      // concurrent fire-and-forget caused race conditions in workflowStore.
+      if (liveStatus === "checked_out") {
+        await startDiagnosis(request.id, "بدأ الطبيب جلسة الكشف الطبي");
       }
 
       const structuredMeds: PrescriptionMedication[] = filledMedications.map((med) => ({
@@ -131,14 +136,14 @@ export function DoctorDiagnosisPage() {
         instructions: med.instructions,
       }));
 
-      requestStore.updateFields(request.id, {
+      await requestStore.updateFields(request.id, {
         doctorDiagnosis: diagnosis.trim(),
         medications: structuredMeds,
         sickLeaveDays: sickLeaveDays ? Number(sickLeaveDays) : undefined,
         sickLeaveReason: sickLeaveReason.trim() || undefined,
       });
 
-      prescribeRequest(
+      await prescribeRequest(
         request.id,
         `التشخيص: ${diagnosis.trim()} | الأدوية: ${filledMedications.map((med) => `${med.name} ${med.dosage}`.trim()).join("، ")}`
       );
@@ -146,7 +151,7 @@ export function DoctorDiagnosisPage() {
       toast.success("تم حفظ الكشف وإرسال الروشتة للصيدلية", {
         description: "تم تحديث حالة الطلب وإضافة التشخيص الطبي.",
       });
-      navigate("/pharmacy");
+      navigate("/doctor");
     } catch (error) {
       toast.error("تعذر حفظ الكشف", {
         description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
@@ -407,10 +412,16 @@ export function DoctorDiagnosisPage() {
                             const selected = medicineStore.getAll().find(
                               (m) => m.id === value
                             );
-                            updateMedication(index, "medicationId", value);
-                            if (selected) {
-                              updateMedication(index, "name", selected.name);
-                            }
+                            // Single atomic update — calling updateMedication twice from the
+                            // same event reads the same stale closure; the second call would
+                            // overwrite the first's medicationId back to "".
+                            const next = [...medications];
+                            next[index] = {
+                              ...next[index],
+                              medicationId: value,
+                              name: selected?.name ?? "",
+                            };
+                            setMedications(next);
                           }}
                         >
                           <SelectTrigger>

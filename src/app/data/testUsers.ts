@@ -1,42 +1,12 @@
-import type { User, Permission } from "@/app/types/user";
+import type { User } from "@/app/types/user";
+import { rolePermissions } from "@/app/data/rolePermissions";
 
-const rolePermissions: Record<string, Permission[]> = {
-  super_admin: ["all"],
-  medical_admin: [
-    "approve_request", "reject_request", "postpone_request",
-    "approve_referral", "manage_monthly_treatment", "manage_referrals",
-    "view_reports", "print_documents", "view_audit_log",
-  ],
-  doctor: [
-    "diagnose_patient", "create_prescription", "create_referral",
-    "create_sick_leave", "recommend_monthly_treatment",
-    "view_medical_history", "print_documents",
-  ],
-  pharmacy: [
-    "dispense_prescription", "manage_inventory", "manage_pharmacy",
-    "dispense_regular_treatment", "dispense_monthly_treatment", "print_documents",
-  ],
-  manager: [
-    "approve_request", "reject_request", "postpone_request",
-    "view_reports", "print_documents",
-  ],
-  office_manager: [
-    "approve_request", "reject_request", "postpone_request",
-    "view_reports", "print_documents",
-  ],
-  security: ["security_check_in", "security_check_out"],
-  employee: ["create_request", "view_own_requests"],
-  pension_admin: [
-    "manage_pensioners", "manage_monthly_treatment",
-    "dispense_monthly_treatment", "approve_referral", "view_reports",
-  ],
-};
-
+// DEV-only test accounts. No passwords stored — AuthContext accepts the universal
+// dev password (VITE_DEV_PASSWORD env var, defaults to "test123") for these users.
 export const DEV_TEST_USERS: User[] = [
   {
     id: "test-super-admin",
     username: "superadmin",
-    password: "test123",
     financialNumber: "0001",
     name: "مدير النظام",
     jobTitle: "مدير النظام",
@@ -47,7 +17,6 @@ export const DEV_TEST_USERS: User[] = [
   {
     id: "test-medical-admin",
     username: "medicaladmin",
-    password: "test123",
     financialNumber: "0002",
     name: "مدير الشئون الطبية",
     jobTitle: "مدير الشئون الطبية",
@@ -58,7 +27,6 @@ export const DEV_TEST_USERS: User[] = [
   {
     id: "test-doctor",
     username: "doctor",
-    password: "test123",
     financialNumber: "0003",
     name: "د. محمد أحمد",
     jobTitle: "طبيب",
@@ -69,7 +37,6 @@ export const DEV_TEST_USERS: User[] = [
   {
     id: "test-pharmacy",
     username: "pharmacy",
-    password: "test123",
     financialNumber: "0004",
     name: "صيدلانى أحمد على",
     jobTitle: "صيدلانى",
@@ -80,10 +47,11 @@ export const DEV_TEST_USERS: User[] = [
   {
     id: "test-manager",
     username: "manager",
-    password: "test123",
     financialNumber: "0005",
-    name: "مدير الإدارة",
-    jobTitle: "مدير إدارة",
+    name: "مدير الإدارة التجريبية",
+    jobTitle: "مدير عام مكلف",
+    department: "الإدارة التجريبية",
+    workPlace: "الإدارة التجريبية",
     role: "manager",
     permissions: rolePermissions.manager,
     isActive: true,
@@ -91,10 +59,11 @@ export const DEV_TEST_USERS: User[] = [
   {
     id: "test-office-manager",
     username: "officemanager",
-    password: "test123",
     financialNumber: "0006",
-    name: "مدير المكتب",
+    name: "مدير المكتب التجريبي",
     jobTitle: "مدير مكتب",
+    department: "الإدارة التجريبية",
+    workPlace: "الإدارة التجريبية",
     role: "office_manager",
     permissions: rolePermissions.office_manager,
     isActive: true,
@@ -102,7 +71,6 @@ export const DEV_TEST_USERS: User[] = [
   {
     id: "test-security",
     username: "security",
-    password: "test123",
     financialNumber: "0007",
     name: "ضابط الأمن",
     jobTitle: "أمن",
@@ -113,10 +81,11 @@ export const DEV_TEST_USERS: User[] = [
   {
     id: "test-employee",
     username: "employee",
-    password: "test123",
     financialNumber: "0008",
     name: "موظف تجريبى",
     jobTitle: "موظف",
+    department: "الإدارة التجريبية",
+    workPlace: "الإدارة التجريبية",
     role: "employee",
     permissions: rolePermissions.employee,
     isActive: true,
@@ -124,7 +93,6 @@ export const DEV_TEST_USERS: User[] = [
   {
     id: "test-pension-admin",
     username: "pensionadmin",
-    password: "test123",
     financialNumber: "0009",
     name: "مدير المعاشات",
     jobTitle: "مدير المعاشات",

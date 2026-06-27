@@ -1,5 +1,6 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Clock,
   Eye,
@@ -87,6 +88,9 @@ export function DoctorPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
 
+  const checkupListRef = useRef<HTMLDivElement>(null);
+  const monthlyListRef = useRef<HTMLDivElement>(null);
+
   const checkupQueue = useMemo(() => {
     return requests
       .filter((request) => {
@@ -134,6 +138,20 @@ export function DoctorPage() {
         );
       });
   }, [requests, searchTerm, user]);
+
+  const checkupVirtualizer = useVirtualizer({
+    count: checkupQueue.length,
+    getScrollElement: () => checkupListRef.current,
+    estimateSize: () => 230,
+    overscan: 3,
+  });
+
+  const monthlyVirtualizer = useVirtualizer({
+    count: monthlyTreatmentQueue.length,
+    getScrollElement: () => monthlyListRef.current,
+    estimateSize: () => 230,
+    overscan: 3,
+  });
 
   const completedToday = requests.filter((request) => {
     const date = new Date(request.createdAt);
@@ -191,7 +209,10 @@ export function DoctorPage() {
   ];
 
   const handleStartDiagnosis = (requestId: string) => {
-    startDiagnosis(requestId);
+    const request = requests.find((r) => r.id === requestId);
+    if (request?.status === "checked_out") {
+      startDiagnosis(requestId);
+    }
     navigate(`/doctor/diagnosis/${requestId}`);
   };
 
@@ -305,114 +326,125 @@ export function DoctorPage() {
           </CardHeader>
 
           <CardContent>
-            <div className="space-y-4">
-              {checkupQueue.length === 0 && (
-                <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
-                  لا توجد طلبات جاهزة للكشف حالياً.
-                </div>
-              )}
+            {checkupQueue.length === 0 ? (
+              <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
+                لا توجد طلبات جاهزة للكشف حالياً.
+              </div>
+            ) : (
+              <div ref={checkupListRef} className="max-h-[640px] overflow-y-auto">
+                <div
+                  style={{
+                    height: `${checkupVirtualizer.getTotalSize()}px`,
+                    position: "relative",
+                  }}
+                >
+                  {checkupVirtualizer.getVirtualItems().map((virtualItem) => {
+                    const request = checkupQueue[virtualItem.index];
+                    const index = virtualItem.index;
+                    const isEmergency = request.requestType === "emergency";
 
-              {checkupQueue.map((request, index) => {
-                const isEmergency = request.requestType === "emergency";
+                    return (
+                      <div
+                        key={virtualItem.key}
+                        data-index={virtualItem.index}
+                        ref={checkupVirtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualItem.start}px)`,
+                          paddingBottom: "16px",
+                        }}
+                      >
+                        <Card
+                          className={`border-r-4 hover:shadow-md transition ${
+                            isEmergency ? "border-r-red-500" : "border-r-blue-500"
+                          }`}
+                        >
+                          <CardContent className="p-5">
+                            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                              <div className="flex items-start gap-4">
+                                <div
+                                  className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
+                                    isEmergency ? "bg-red-600" : "bg-blue-700"
+                                  }`}
+                                >
+                                  {index + 1}
+                                </div>
 
-                return (
-                  <Card
-                    key={request.id}
-                    className={`border-r-4 hover:shadow-md transition ${
-                      isEmergency ? "border-r-red-500" : "border-r-blue-500"
-                    }`}
-                  >
-                    <CardContent className="p-5">
-                      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <div
-                            className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
-                              isEmergency ? "bg-red-600" : "bg-blue-700"
-                            }`}
-                          >
-                            {index + 1}
-                          </div>
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    <h3 className="text-lg font-bold text-slate-900">
+                                      {request.employeeName}
+                                    </h3>
 
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2 mb-1">
-                              <h3 className="text-lg font-bold text-slate-900">
-                                {request.employeeName}
-                              </h3>
+                                    <Badge variant="outline">
+                                      {request.financialNumber}
+                                    </Badge>
 
-                              <Badge variant="outline">
-                                {request.financialNumber}
-                              </Badge>
+                                    <Badge
+                                      className={
+                                        isEmergency
+                                          ? "bg-red-100 text-red-700"
+                                          : "bg-blue-100 text-blue-700"
+                                      }
+                                    >
+                                      {isEmergency ? "كشف طوارئ" : "كشف عادي"}
+                                    </Badge>
 
-                              <Badge
-                                className={
-                                  isEmergency
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-blue-100 text-blue-700"
-                                }
-                              >
-                                {isEmergency ? "كشف طوارئ" : "كشف عادي"}
-                              </Badge>
+                                    <Badge className="bg-yellow-100 text-yellow-700">
+                                      {requestStatusLabels[request.status]}
+                                    </Badge>
+                                  </div>
 
-                              <Badge className="bg-yellow-100 text-yellow-700">
-                                {requestStatusLabels[request.status]}
-                              </Badge>
+                                  <p className="text-sm text-slate-500">
+                                    {request.department || "غير محدد"} • {request.id}
+                                  </p>
+
+                                  <div className="mt-3 rounded-xl bg-slate-50 border p-3 text-sm">
+                                    <span className="font-semibold text-slate-700">الشكوى: </span>
+                                    <span className="text-slate-600">{request.reason}</span>
+                                  </div>
+
+                                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="w-4 h-4" />
+                                      وصل: {formatTime(request.createdAt)}
+                                    </span>
+                                    <span className={isEmergency ? "text-red-600 font-semibold" : ""}>
+                                      {requestStatusLabels[request.status]}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => navigate(`/requests/${request.id}`)}
+                                >
+                                  <Eye className="w-4 h-4 ml-2" />
+                                  ملف المريض
+                                </Button>
+
+                                <Button
+                                  className="bg-teal-600 hover:bg-teal-700"
+                                  onClick={() => handleStartDiagnosis(request.id)}
+                                >
+                                  <Stethoscope className="w-4 h-4 ml-2" />
+                                  بدء الكشف
+                                </Button>
+                              </div>
                             </div>
-
-                            <p className="text-sm text-slate-500">
-                              {request.department || "غير محدد"} • {request.id}
-                            </p>
-
-                            <div className="mt-3 rounded-xl bg-slate-50 border p-3 text-sm">
-                              <span className="font-semibold text-slate-700">
-                                الشكوى:{" "}
-                              </span>
-                              <span className="text-slate-600">
-                                {request.reason}
-                              </span>
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                وصل: {formatTime(request.createdAt)}
-                              </span>
-
-                              <span
-                                className={
-                                  isEmergency
-                                    ? "text-red-600 font-semibold"
-                                    : ""
-                                }
-                              >
-                                {requestStatusLabels[request.status]}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => navigate(`/requests/${request.id}`)}
-                          >
-                            <Eye className="w-4 h-4 ml-2" />
-                            ملف المريض
-                          </Button>
-
-                          <Button
-                            className="bg-teal-600 hover:bg-teal-700"
-                            onClick={() => handleStartDiagnosis(request.id)}
-                          >
-                            <Stethoscope className="w-4 h-4 ml-2" />
-                            بدء الكشف
-                          </Button>
-                        </div>
+                          </CardContent>
+                        </Card>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -431,117 +463,126 @@ export function DoctorPage() {
           </CardHeader>
 
           <CardContent>
-            <div className="space-y-4">
-              {monthlyTreatmentQueue.length === 0 && (
-                <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
-                  لا توجد طلبات علاج شهري بانتظار مراجعة الطبيب.
-                </div>
-              )}
-
-              {monthlyTreatmentQueue.map((request, index) => (
-                <Card
-                  key={request.id}
-                  className="border-r-4 border-r-teal-500 hover:shadow-md transition"
+            {monthlyTreatmentQueue.length === 0 ? (
+              <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
+                لا توجد طلبات علاج شهري بانتظار مراجعة الطبيب.
+              </div>
+            ) : (
+              <div ref={monthlyListRef} className="max-h-[640px] overflow-y-auto">
+                <div
+                  style={{
+                    height: `${monthlyVirtualizer.getTotalSize()}px`,
+                    position: "relative",
+                  }}
                 >
-                  <CardContent className="p-5">
-                    <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-full bg-teal-600 flex items-center justify-center text-white font-bold">
-                          {index + 1}
-                        </div>
+                  {monthlyVirtualizer.getVirtualItems().map((virtualItem) => {
+                    const request = monthlyTreatmentQueue[virtualItem.index];
+                    const index = virtualItem.index;
 
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <h3 className="text-lg font-bold text-slate-900">
-                              {request.employeeName}
-                            </h3>
+                    return (
+                      <div
+                        key={virtualItem.key}
+                        data-index={virtualItem.index}
+                        ref={monthlyVirtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualItem.start}px)`,
+                          paddingBottom: "16px",
+                        }}
+                      >
+                        <Card className="border-r-4 border-r-teal-500 hover:shadow-md transition">
+                          <CardContent className="p-5">
+                            <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                              <div className="flex items-start gap-4">
+                                <div className="w-12 h-12 rounded-full bg-teal-600 flex items-center justify-center text-white font-bold">
+                                  {index + 1}
+                                </div>
 
-                            <Badge variant="outline">
-                              {request.financialNumber}
-                            </Badge>
+                                <div>
+                                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                                    <h3 className="text-lg font-bold text-slate-900">
+                                      {request.employeeName}
+                                    </h3>
 
-                            <Badge className="bg-teal-100 text-teal-700">
-                              {request.monthlyTreatmentType === "new"
-                                ? "علاج شهري جديد"
-                                : "تجديد علاج شهري"}
-                            </Badge>
+                                    <Badge variant="outline">
+                                      {request.financialNumber}
+                                    </Badge>
 
-                            <Badge className="bg-yellow-100 text-yellow-700">
-                              {requestStatusLabels[request.status]}
-                            </Badge>
-                          </div>
+                                    <Badge className="bg-teal-100 text-teal-700">
+                                      {request.monthlyTreatmentType === "new"
+                                        ? "علاج شهري جديد"
+                                        : "تجديد علاج شهري"}
+                                    </Badge>
 
-                          <p className="text-sm text-slate-500">
-                            {request.department || "غير محدد"} • {request.id}
-                          </p>
+                                    <Badge className="bg-yellow-100 text-yellow-700">
+                                      {requestStatusLabels[request.status]}
+                                    </Badge>
+                                  </div>
 
-                          <div className="mt-3 rounded-xl bg-slate-50 border p-3 text-sm">
-                            <span className="font-semibold text-slate-700">
-                              سبب الطلب:{" "}
-                            </span>
-                            <span className="text-slate-600">
-                              {request.reason}
-                            </span>
-                          </div>
+                                  <p className="text-sm text-slate-500">
+                                    {request.department || "غير محدد"} • {request.id}
+                                  </p>
 
-                          {request.notes && (
-                            <div className="mt-2 rounded-xl bg-teal-50 border border-teal-100 p-3 text-sm">
-                              <span className="font-semibold text-teal-800">
-                                ملاحظات:{" "}
-                              </span>
-                              <span className="text-teal-700">
-                                {request.notes}
-                              </span>
+                                  <div className="mt-3 rounded-xl bg-slate-50 border p-3 text-sm">
+                                    <span className="font-semibold text-slate-700">سبب الطلب: </span>
+                                    <span className="text-slate-600">{request.reason}</span>
+                                  </div>
+
+                                  {request.notes && (
+                                    <div className="mt-2 rounded-xl bg-teal-50 border border-teal-100 p-3 text-sm">
+                                      <span className="font-semibold text-teal-800">ملاحظات: </span>
+                                      <span className="text-teal-700">{request.notes}</span>
+                                    </div>
+                                  )}
+
+                                  <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="w-4 h-4" />
+                                      تاريخ الطلب: {formatDate(request.createdAt)}
+                                    </span>
+                                    <span>الطبيب المسؤول: {request.monthlyDoctorName || user?.name}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => navigate(`/requests/${request.id}`)}
+                                >
+                                  <Eye className="w-4 h-4 ml-2" />
+                                  عرض
+                                </Button>
+
+                                <Button
+                                  className="bg-teal-600 hover:bg-teal-700"
+                                  onClick={() => handleApproveMonthlyTreatment(request.id)}
+                                >
+                                  <Check className="w-4 h-4 ml-2" />
+                                  موافقة وإرسال للصيدلية
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  className="border-red-200 text-red-700 hover:bg-red-50"
+                                  onClick={() => handleRejectMonthlyTreatment(request.id)}
+                                >
+                                  <XCircle className="w-4 h-4 ml-2" />
+                                  رفض
+                                </Button>
+                              </div>
                             </div>
-                          )}
-
-                          <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              تاريخ الطلب: {formatDate(request.createdAt)}
-                            </span>
-
-                            <span>
-                              الطبيب المسؤول:{" "}
-                              {request.monthlyDoctorName || user?.name}
-                            </span>
-                          </div>
-                        </div>
+                          </CardContent>
+                        </Card>
                       </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => navigate(`/requests/${request.id}`)}
-                        >
-                          <Eye className="w-4 h-4 ml-2" />
-                          عرض
-                        </Button>
-
-                        <Button
-                          className="bg-teal-600 hover:bg-teal-700"
-                          onClick={() =>
-                            handleApproveMonthlyTreatment(request.id)
-                          }
-                        >
-                          <Check className="w-4 h-4 ml-2" />
-                          موافقة وإرسال للصيدلية
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          className="border-red-200 text-red-700 hover:bg-red-50"
-                          onClick={() => handleRejectMonthlyTreatment(request.id)}
-                        >
-                          <XCircle className="w-4 h-4 ml-2" />
-                          رفض
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

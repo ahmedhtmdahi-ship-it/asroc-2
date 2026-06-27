@@ -5637,7 +5637,6 @@ export const mockUsers: User[] = [
       "create_referral",
       "create_sick_leave",
       "recommend_monthly_treatment",
-      "manage_monthly_treatment",
       "view_reports",
       "print_documents"
     ],
@@ -6296,7 +6295,6 @@ export const mockUsers: User[] = [
       "create_referral",
       "create_sick_leave",
       "recommend_monthly_treatment",
-      "manage_monthly_treatment",
       "view_reports",
       "print_documents"
     ],
@@ -14979,7 +14977,6 @@ export const mockUsers: User[] = [
       "create_referral",
       "create_sick_leave",
       "recommend_monthly_treatment",
-      "manage_monthly_treatment",
       "view_reports",
       "print_documents"
     ],
@@ -22074,9 +22071,8 @@ export const mockUsers: User[] = [
     "role": "doctor",
     "permissions": [
       "diagnose_patient",
-      "create_prescription",
-      "create_referral",
-      "create_sick_leave",
+      "recommend_monthly_treatment",
+      "manage_monthly_treatment",
       "view_reports",
       "print_documents"
     ],
@@ -35454,7 +35450,6 @@ export const mockUsers: User[] = [
       "view_reports",
       "print_documents"
     ],
-    "isActive": true,
-    "notes": "أضيف يدويًا لعدم وجود الرقم المالي في الشيت المرسل"
+    "isActive": true
   }
 ];

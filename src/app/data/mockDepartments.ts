@@ -1,6 +1,12 @@
 ﻿// Generated from employee department values and manager mapping.
 export const mockDepartments = [
   {
+    "id": "DEP-TEST",
+    "name": "الإدارة التجريبية",
+    "managerId": "test-manager",
+    "managerFinancialNumber": "0005"
+  },
+  {
     "id": "DEP-001",
     "name": "اعداد وتنمية الموارد البشريه",
     "managerId": "EMP-1040",

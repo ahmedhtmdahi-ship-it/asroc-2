@@ -4,8 +4,6 @@
 // Pages that use `supabase.from(...).select(...)` will fail at runtime until
 // you install @supabase/supabase-js and add VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY.
 
-type SupabaseError = { message: string } | null;
-
 // A minimal thenable builder so code can chain calls like
 // supabase.from('users').select('*').order('created_at') and also
 // `await` the result. When Supabase isn't configured this resolves

@@ -3,7 +3,6 @@ import {
   AlertTriangle,
   CheckCircle,
   ClipboardList,
-  Clock,
   LogIn,
   LogOut,
   Search,
@@ -346,8 +345,6 @@ export function SecurityPage() {
   const approvedRequests = requests.filter((request) => request.status === "approved");
   const outsideRequests = requests.filter((request) => outsideStatuses.includes(request.status));
   const returnReady = requests.filter((request) => request.status === "dispensed");
-  const securityLogs = securityStore.getAll();
-
   const now = Date.now();
   const lateCount = outsideRequests.filter((r) => {
     const outAt = r.checkedOutAt ? new Date(r.checkedOutAt).getTime() : new Date(r.createdAt).getTime();

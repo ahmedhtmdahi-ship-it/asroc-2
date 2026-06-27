@@ -1,39 +1,36 @@
-﻿import { createBrowserRouter } from "react-router";
+import { lazy } from "react";
+import { createBrowserRouter } from "react-router";
 
 import { ProtectedRoute } from "./features/auth/components/ProtectedRoute";
 
+// Eager — critical path (first paint)
 import { LoginPage } from "./features/auth/pages/LoginPage";
-import { DashboardPage } from "./features/dashboard/pages/DashboardPage";
 import { NotFound } from "./features/routing/pages/NotFound";
 
-import { EmployeeDashboardPage } from "./features/dashboard/pages/EmployeeDashboardPage";
-import { EmployeeRequestsPage } from "./features/requests/pages/CreateMedicalRequestPage";
-import { MyMedicalRequestsPage } from "./features/requests/pages/MyMedicalRequestsPage";
-import { MedicalHistoryPage } from "./features/clinical/pages/MedicalHistoryPage";
-import { NotificationsPage } from "./features/notifications/pages/NotificationsPage";
-import { ProfilePage } from "./features/profile/pages/ProfilePage";
-
-import { RequestDetailsPage } from "./features/requests/pages/RequestDetailsPage";
-
-import { ManagerApprovalsPage } from "./features/approvals/pages/ManagerApprovalsPage";
-
-import { SecurityPage } from "./features/security/pages/SecurityPage";
-import { SecurityCheckInOutPage } from "./features/security/pages/SecurityCheckInOutPage";
-
-import { DoctorPage } from "./features/clinical/pages/DoctorPage";
-import { DoctorDiagnosisPage } from "./features/clinical/pages/DoctorDiagnosisPage";
-import { DoctorReferralPage } from "./features/clinical/pages/DoctorReferralPage";
-
-import { PharmacyPage } from "./features/pharmacy/pages/PharmacyPage";
-import PharmacyDispensePage from "./features/pharmacy/pages/PharmacyDispensePage";
-import { ExternalPharmacyPage } from "./features/pharmacy/pages/ExternalPharmacyPage";
-
-import { MonthlyTreatmentPage } from "./features/treatments/pages/MonthlyTreatmentPage";
-import { MedicalAdminPage } from "./features/admin/pages/MedicalAdminPage";
-import { PensionAdminPage } from "./features/admin/pages/PensionAdminPage";
-import { SuperAdminPage } from "./features/admin/pages/SuperAdminPage";
-import { ReportsPage } from "./features/reports/pages/ReportsPage";
-import { PrintPage } from "./features/print/pages/PrintPage";
+// Lazy — each role only loads its own pages
+const DashboardPage           = lazy(() => import("./features/dashboard/pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
+const EmployeeDashboardPage   = lazy(() => import("./features/dashboard/pages/EmployeeDashboardPage").then(m => ({ default: m.EmployeeDashboardPage })));
+const EmployeeRequestsPage    = lazy(() => import("./features/requests/pages/CreateMedicalRequestPage").then(m => ({ default: m.EmployeeRequestsPage })));
+const MyMedicalRequestsPage   = lazy(() => import("./features/requests/pages/MyMedicalRequestsPage").then(m => ({ default: m.MyMedicalRequestsPage })));
+const MedicalHistoryPage      = lazy(() => import("./features/clinical/pages/MedicalHistoryPage").then(m => ({ default: m.MedicalHistoryPage })));
+const NotificationsPage       = lazy(() => import("./features/notifications/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })));
+const ProfilePage             = lazy(() => import("./features/profile/pages/ProfilePage").then(m => ({ default: m.ProfilePage })));
+const RequestDetailsPage      = lazy(() => import("./features/requests/pages/RequestDetailsPage").then(m => ({ default: m.RequestDetailsPage })));
+const ManagerApprovalsPage    = lazy(() => import("./features/approvals/pages/ManagerApprovalsPage").then(m => ({ default: m.ManagerApprovalsPage })));
+const SecurityPage            = lazy(() => import("./features/security/pages/SecurityPage").then(m => ({ default: m.SecurityPage })));
+const SecurityCheckInOutPage  = lazy(() => import("./features/security/pages/SecurityCheckInOutPage").then(m => ({ default: m.SecurityCheckInOutPage })));
+const DoctorPage              = lazy(() => import("./features/clinical/pages/DoctorPage").then(m => ({ default: m.DoctorPage })));
+const DoctorDiagnosisPage     = lazy(() => import("./features/clinical/pages/DoctorDiagnosisPage").then(m => ({ default: m.DoctorDiagnosisPage })));
+const DoctorReferralPage      = lazy(() => import("./features/clinical/pages/DoctorReferralPage").then(m => ({ default: m.DoctorReferralPage })));
+const PharmacyPage            = lazy(() => import("./features/pharmacy/pages/PharmacyPage").then(m => ({ default: m.PharmacyPage })));
+const PharmacyDispensePage    = lazy(() => import("./features/pharmacy/pages/PharmacyDispensePage"));
+const ExternalPharmacyPage    = lazy(() => import("./features/pharmacy/pages/ExternalPharmacyPage").then(m => ({ default: m.ExternalPharmacyPage })));
+const MonthlyTreatmentPage    = lazy(() => import("./features/treatments/pages/MonthlyTreatmentPage").then(m => ({ default: m.MonthlyTreatmentPage })));
+const MedicalAdminPage        = lazy(() => import("./features/admin/pages/MedicalAdminPage").then(m => ({ default: m.MedicalAdminPage })));
+const PensionAdminPage        = lazy(() => import("./features/admin/pages/PensionAdminPage").then(m => ({ default: m.PensionAdminPage })));
+const SuperAdminPage          = lazy(() => import("./features/admin/pages/SuperAdminPage").then(m => ({ default: m.SuperAdminPage })));
+const ReportsPage             = lazy(() => import("./features/reports/pages/ReportsPage").then(m => ({ default: m.ReportsPage })));
+const PrintPage               = lazy(() => import("./features/print/pages/PrintPage").then(m => ({ default: m.PrintPage })));
 
 export const router = createBrowserRouter([
   {

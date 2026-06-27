@@ -1,28 +1,28 @@
-﻿import { mockAuditLogs } from "@/app/data/mockAuditLogs";
+import { mockAuditLogs, type AuditLogEntry } from "@/app/data/mockAuditLogs";
 
 const STORAGE_KEY = "asorc_audit_logs";
 
-function loadAuditLogs(): any[] {
+function loadAuditLogs(): AuditLogEntry[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [...mockAuditLogs];
+    return saved ? (JSON.parse(saved) as AuditLogEntry[]) : [...mockAuditLogs];
   } catch {
     return [...mockAuditLogs];
   }
 }
 
 class AuditStore {
-  private logs: any[] = loadAuditLogs();
+  private logs: AuditLogEntry[] = loadAuditLogs();
 
   private persist() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.logs));
   }
 
-  getAll() {
+  getAll(): AuditLogEntry[] {
     return this.logs;
   }
 
-  add(log: any) {
+  add(log: AuditLogEntry) {
     this.logs.push(log);
     this.persist();
     return log;

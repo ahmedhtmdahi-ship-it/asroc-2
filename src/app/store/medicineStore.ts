@@ -34,7 +34,9 @@ function loadMedicines(): Medicine[] {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return [];
     const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed.map(normalizeMedicine) : [];
+    return Array.isArray(parsed) && parsed.length > 0
+      ? parsed.map(normalizeMedicine)
+      : [];
   } catch {
     return [];
   }
@@ -91,6 +93,20 @@ class MedicineStore {
     this.medicines = this.medicines.filter((medicine) => medicine.id !== id);
     this.persist();
     return this.medicines.length < before;
+  }
+
+  async loadDevSeed(): Promise<void> {
+    if (!import.meta.env.DEV) return;
+    if (this.medicines.length > 0) return;
+    const { medicinesSeed } = await import("@/app/data/medicinesSeed");
+    this.medicines = medicinesSeed.map(normalizeMedicine);
+    this.persist();
+  }
+
+  async resetToSeed(): Promise<void> {
+    const { medicinesSeed } = await import("@/app/data/medicinesSeed");
+    this.medicines = medicinesSeed.map(normalizeMedicine);
+    this.persist();
   }
 
   async syncFromSupabase(): Promise<void> {

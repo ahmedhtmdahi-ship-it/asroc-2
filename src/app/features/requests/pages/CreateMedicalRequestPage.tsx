@@ -143,8 +143,6 @@ export function EmployeeRequestsPage() {
   // If accessed from /request/new (non-employee role), backLink goes to user's home
   const isUniversalRoute = location.pathname === "/request/new";
   const backLink = isUniversalRoute ? getHomePathByRole(user?.role) : "/employee";
-  // Link to view submitted requests — non-employees go to /employee/my-requests too (shared page)
-  const myRequestsLink = "/employee/my-requests";
 
   const employeeDepartment = user?.department || user?.workPlace || "غير محدد";
   const resolvedManager = findManagerByDepartment(employeeDepartment);

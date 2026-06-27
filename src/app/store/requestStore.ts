@@ -1,4 +1,5 @@
 import { supabase } from "@/app/lib/supabaseClient";
+import { logger } from "@/app/lib/logger";
 import { mockRequests } from "@/app/data/mockRequests";
 import type { MedicalRequest } from "@/app/types/request";
 import type { RequestStatus } from "@/app/types/workflow";
@@ -113,39 +114,43 @@ class RequestStore {
     return this.requests.find((r) => r.id === id);
   }
 
-  create(request: MedicalRequest) {
+  async create(request: MedicalRequest) {
     this.requests.push(request);
     this.persist();
 
-    supabase
+    const { error } = await supabase
       .from("medical_requests")
-      .insert(toDb(request))
-      .then(({ error }) => {
-        if (error) console.warn("[supabase] insert error:", error.message);
-      });
+      .insert(toDb(request));
+
+    if (error) {
+      logger.warn("[supabase] insert error:", error.message);
+      return null;
+    }
 
     return request;
   }
 
-  updateStatus(id: string, status: RequestStatus) {
+  async updateStatus(id: string, status: RequestStatus): Promise<MedicalRequest | null> {
     const request = this.getById(id);
     if (!request) return null;
 
     request.status = status;
     this.persist();
 
+    // Fire-and-forget — keep the local optimistic update regardless of network result.
+    // In DEV mode the record may not exist in Supabase yet; in production a sync will reconcile.
     supabase
       .from("medical_requests")
       .update({ status })
       .eq("id", id)
       .then(({ error }) => {
-        if (error) console.warn("[supabase] update error:", error.message);
+        if (error) logger.warn("[supabase] updateStatus error:", error.message);
       });
 
     return request;
   }
 
-  updateFields(id: string, fields: Partial<MedicalRequest>) {
+  async updateFields(id: string, fields: Partial<MedicalRequest>): Promise<MedicalRequest | null> {
     const request = this.getById(id);
     if (!request) return null;
 
@@ -163,12 +168,13 @@ class RequestStore {
     if (fields.status !== undefined) dbPatch.status = fields.status;
 
     if (Object.keys(dbPatch).length > 0) {
+      // Fire-and-forget — keep optimistic local state regardless of network result
       supabase
         .from("medical_requests")
         .update(dbPatch)
         .eq("id", id)
         .then(({ error }) => {
-          if (error) console.warn("[supabase] updateFields error:", error.message);
+          if (error) logger.warn("[supabase] updateFields error:", error.message);
         });
     }
 
@@ -179,8 +185,11 @@ class RequestStore {
     try {
       const { data, error } = await supabase
         .from("medical_requests")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select(
+          "id, employee_id, employee_name, financial_number, department, reason, status, created_at, created_by, service_type, request_type, monthly_treatment_type, monthly_doctor_id, monthly_doctor_name, notes, symptoms, job_title, work_type, national_id, phone, approved_at, checked_out_at, diagnosed_at, dispensed_at, returned_at, completed_at, manager_decision_reason, doctor_diagnosis, prescription_id, referral_id, manager_id, manager_name, doctor_id, security_out_user_id, security_in_user_id, pharmacy_user_id"
+        )
+        .order("created_at", { ascending: false })
+        .limit(300);
 
       if (error) return; // network error — keep local data
 

@@ -9,7 +9,6 @@ import {
   LogIn,
   User,
   Clock,
-  AlertTriangle,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";

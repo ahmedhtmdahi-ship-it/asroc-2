@@ -1,28 +1,28 @@
-﻿import { mockSecurityLogs } from "@/app/data/mockSecurityLogs";
+import { mockSecurityLogs, type SecurityLogEntry } from "@/app/data/mockSecurityLogs";
 
 const STORAGE_KEY = "asorc_security_logs";
 
-function loadSecurityLogs(): any[] {
+function loadSecurityLogs(): SecurityLogEntry[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [...mockSecurityLogs];
+    return saved ? (JSON.parse(saved) as SecurityLogEntry[]) : [...mockSecurityLogs];
   } catch {
     return [...mockSecurityLogs];
   }
 }
 
 class SecurityStore {
-  private records: any[] = loadSecurityLogs();
+  private records: SecurityLogEntry[] = loadSecurityLogs();
 
   private persist() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.records));
   }
 
-  getAll() {
+  getAll(): SecurityLogEntry[] {
     return this.records;
   }
 
-  add(record: any) {
+  add(record: SecurityLogEntry) {
     this.records.push(record);
     this.persist();
     return record;

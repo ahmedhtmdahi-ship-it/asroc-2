@@ -1,38 +1,56 @@
-﻿import type { Permission, UserRole } from "@/app/types/user";
+import type { Permission, UserRole } from "@/app/types/user";
 
 export const rolePermissions = {
   "employee": [
     "create_request",
     "view_own_requests",
-    "view_medical_history"
+    "view_medical_history",
   ],
   "manager": [
+    "create_request",
+    "view_own_requests",
+    "view_medical_history",
     "approve_request",
     "reject_request",
-    "postpone_request"
+    "postpone_request",
+    "view_reports",
+    "print_documents",
   ],
   "office_manager": [
+    "create_request",
+    "view_own_requests",
+    "view_medical_history",
     "approve_request",
     "reject_request",
-    "postpone_request"
+    "postpone_request",
+    "view_reports",
+    "print_documents",
   ],
   "security": [
+    "security_check_in",
     "security_check_out",
-    "security_check_in"
   ],
   "doctor": [
     "diagnose_patient",
     "create_prescription",
     "create_referral",
     "create_sick_leave",
-    "recommend_monthly_treatment"
+    "recommend_monthly_treatment",
+    "view_medical_history",
+    "print_documents",
   ],
   "pharmacy": [
     "dispense_prescription",
     "manage_inventory",
-    "manage_pharmacy"
+    "manage_pharmacy",
+    "dispense_regular_treatment",
+    "dispense_monthly_treatment",
+    "print_documents",
   ],
   "medical_admin": [
+    "approve_request",
+    "reject_request",
+    "postpone_request",
     "approve_referral",
     "manage_referrals",
     "manage_monthly_treatment",
@@ -44,13 +62,16 @@ export const rolePermissions = {
     "print_documents",
     "view_audit_log",
     "dispense_regular_treatment",
-    "dispense_monthly_treatment"
+    "dispense_monthly_treatment",
   ],
   "pension_admin": [
     "manage_pensioners",
-    "manage_monthly_treatment"
+    "manage_monthly_treatment",
+    "dispense_monthly_treatment",
+    "approve_referral",
+    "view_reports",
   ],
   "super_admin": [
-    "all"
-  ]
+    "all",
+  ],
 } satisfies Record<UserRole, Permission[]>;

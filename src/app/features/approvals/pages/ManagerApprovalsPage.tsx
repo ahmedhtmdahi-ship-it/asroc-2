@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from "@/app/components/ui/select";
 import { toast } from "sonner";
+import type { MedicalRequest } from "@/app/types/request";
 
 type ActionType = "approve" | "reject" | "postpone";
 
@@ -99,7 +100,7 @@ export function ManagerApprovalsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
-  const [selectedRequest, setSelectedRequest] = useState<any>(
+  const [selectedRequest, setSelectedRequest] = useState<MedicalRequest | null>(
     pendingRequests[0] || null
   );
   const [actionType, setActionType] = useState<ActionType | null>(null);

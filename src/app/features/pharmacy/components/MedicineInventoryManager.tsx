@@ -203,9 +203,10 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
   };
 
   const handleReset = () => {
-    medicineStore.resetToSeed();
-    refresh();
-    toast.success("تم استرجاع كتالوج الأدوية الأصلي من الشيت");
+    medicineStore.resetToSeed().then(() => {
+      refresh();
+      toast.success("تم استرجاع كتالوج الأدوية الأصلي من الشيت");
+    });
   };
 
   return (
