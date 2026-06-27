@@ -5,13 +5,13 @@ import {
   ArrowRight,
   BedDouble,
   CalendarDays,
+  Check,
   CheckCircle2,
   FileText,
   HeartPulse,
   Loader2,
   Pill,
   Plus,
-  Save,
   Send,
   Stethoscope,
   Trash2,
@@ -163,6 +163,56 @@ export function DoctorDiagnosisPage() {
     setMedications(updated);
   };
 
+  const [submitting, setSubmitting] = useState(false);
+
+  const buildFullDiagnosis = () => {
+    const vitalParts = [
+      temperature.trim() ? `حرارة: ${temperature}` : null,
+      pressure.trim()    ? `ضغط: ${pressure}`      : null,
+      pulse.trim()       ? `نبض: ${pulse}`          : null,
+    ].filter(Boolean) as string[];
+    return vitalParts.length
+      ? `العلامات الحيوية — ${vitalParts.join(" | ")}\n${diagnosis.trim()}`
+      : diagnosis.trim();
+  };
+
+  // Finish examination without prescribing — patient goes back to security directly
+  const handleFinishWithoutPrescription = async () => {
+    if (!request) return;
+    if (!diagnosis.trim()) {
+      toast.error("برجاء تسجيل التشخيص الطبي أولاً");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const numId = Number(request.id);
+      if (isApiConnected) {
+        await checkupService.writeDiagnosis(numId, buildFullDiagnosis());
+        if (sickLeaveDays && Number(sickLeaveDays) > 0) {
+          await checkupService.writeSickLeave(numId, {
+            days_count: Number(sickLeaveDays),
+            reason:     sickLeaveReason.trim() || "راحة مرضية",
+            start_date: new Date().toISOString().slice(0, 10),
+          });
+        }
+        refreshRequests();
+      } else {
+        startDiagnosis(request.id, `التشخيص: ${diagnosis.trim()}`);
+      }
+      toast.success("تم إنهاء الكشف", {
+        description: "المريض في طريقه لبوابة الأمن.",
+      });
+      navigate("/doctor");
+    } catch (error) {
+      toast.error("تعذر إنهاء الكشف", {
+        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Finish with prescription — patient goes to internal pharmacy
   const handleSave = async () => {
     if (!request) return;
 
@@ -185,20 +235,12 @@ export function DoctorDiagnosisPage() {
       return;
     }
 
+    setSubmitting(true);
     try {
       const numId = Number(request.id);
 
       if (isApiConnected) {
-        const vitalParts = [
-          temperature.trim() ? `حرارة: ${temperature}` : null,
-          pressure.trim()    ? `ضغط: ${pressure}`      : null,
-          pulse.trim()       ? `نبض: ${pulse}`          : null,
-        ].filter(Boolean);
-        const fullDiagnosis = vitalParts.length
-          ? `العلامات الحيوية — ${vitalParts.join(" | ")}\n${diagnosis.trim()}`
-          : diagnosis.trim();
-
-        await checkupService.writeDiagnosis(numId, fullDiagnosis);
+        await checkupService.writeDiagnosis(numId, buildFullDiagnosis());
         await checkupService.writePrescription(numId, {
           notes: notes.trim() || undefined,
           items: filledMedications.map((med) => ({
@@ -249,6 +291,8 @@ export function DoctorDiagnosisPage() {
       toast.error("تعذر حفظ الكشف", {
         description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -752,12 +796,12 @@ export function DoctorDiagnosisPage() {
                   <div className="flex items-start gap-3 text-sm text-yellow-800">
                     <AlertTriangle className="w-5 h-5 mt-0.5" />
                     <p>
-                      عند حفظ الكشف سيتم تحديث حالة الطلب، وإرسال الروشتة إلى الصيدلية،
-                      والتحويل الخارجي إلى الإدارة الطبية إن وجد.
+                      اختر أحد الخيارين: <strong>بدون روشتة</strong> — المريض يتوجه مباشرة للأمن.
+                      أو <strong>إرسال للصيدلية</strong> — عند إضافة أدوية في الروشتة.
                     </p>
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <Button variant="outline" asChild>
                       <Link to="/doctor">
                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -767,13 +811,15 @@ export function DoctorDiagnosisPage() {
 
                     <Button
                       variant="outline"
-                      onClick={() => toast.info("المسودات غير متاحة حالياً — استخدم حفظ وإرسال للصيدلية")}
+                      disabled={submitting}
+                      onClick={handleFinishWithoutPrescription}
+                      className="border-slate-400 text-slate-700 hover:bg-slate-100"
                     >
-                      <Save className="w-4 h-4 ml-2" />
-                      حفظ كمسودة
+                      <Check className="w-4 h-4 ml-2" />
+                      إنهاء الكشف بدون روشتة
                     </Button>
 
-                    <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700">
+                    <Button onClick={handleSave} disabled={submitting} className="bg-teal-600 hover:bg-teal-700">
                       <CheckCircle2 className="w-4 h-4 ml-2" />
                       حفظ وإرسال للصيدلية
                     </Button>
