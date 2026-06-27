@@ -1,11 +1,14 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
+  FileSpreadsheet,
+  Loader2,
   PackageX,
   Pill,
+  Upload,
 } from "lucide-react";
 import { PageLayout } from "@/app/components/PageLayout";
 import { Button } from "@/app/components/ui/button";
@@ -17,6 +20,8 @@ import { checkupService } from "@/app/services/checkupService";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
 import { medicineStore } from "@/app/store/medicineStore";
+import { apiClient } from "@/app/services/apiClient";
+import { toast } from "sonner";
 
 function StatCard({
   value,
@@ -57,6 +62,27 @@ export function PharmacyPage() {
   const { isApiConnected } = useAuth();
   const [unavailableCount, setUnavailableCount] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!isApiConnected) { toast.error("يجب الاتصال بالخادم للاستيراد"); return; }
+
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      await apiClient.upload("/medicines/import", formData);
+      toast.success("تم استيراد الأدوية بنجاح", { description: "تم تحديث بيانات المخزون." });
+    } catch {
+      toast.error("فشل الاستيراد", { description: "تأكد أن الملف بصيغة Excel صحيحة." });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   useEffect(() => {
     if (isApiConnected) {
@@ -133,6 +159,39 @@ export function PharmacyPage() {
             bg="bg-teal-50"
           />
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileSpreadsheet className="w-5 h-5 text-green-700" />
+              استيراد أدوية من Excel
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <p className="text-sm text-slate-500 flex-1">
+                قم بتحميل ملف Excel يحتوي على أعمدة: <strong>name, active_ingredient, category, current_stock, minimum_stock, unit</strong>
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={handleExcelImport}
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing || !isApiConnected}
+                className="bg-green-600 hover:bg-green-700 shrink-0"
+              >
+                {importing
+                  ? <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  : <Upload className="w-4 h-4 ml-2" />}
+                {importing ? "جاري الاستيراد..." : "اختر ملف واستورد"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <Card>

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\DiagnosisResource;
+use App\Http\Resources\CheckupRequestResource;
 use App\Models\CheckupRequest;
 use App\Services\DoctorService;
 use Illuminate\Http\Request;
@@ -19,13 +19,15 @@ class DiagnosisController extends Controller
 
         $checkupRequest = CheckupRequest::findOrFail($id);
 
-        $diagnosis = $this->doctorService->writeDiagnosis(
+        $this->doctorService->writeDiagnosis(
             $checkupRequest,
             $request->user()->id,
             $validated['diagnosis_text']
         );
 
-        return (new DiagnosisResource($diagnosis))
+        $checkupRequest->refresh()->load(['employee.user', 'department', 'createdBy', 'approvedBy', 'diagnosis']);
+
+        return (new CheckupRequestResource($checkupRequest))
             ->response()
             ->setStatusCode(201);
     }

@@ -112,6 +112,6 @@ class CheckupRequestController extends Controller
 
         AuditLog::record('cancel_request', (string) $checkupRequest->id, $statusBefore, 'cancelled');
 
-        return response()->json(['message' => 'Checkup request cancelled successfully.']);
+        return new CheckupRequestResource($checkupRequest->load(['employee.user', 'department', 'createdBy', 'approvedBy']));
     }
 }

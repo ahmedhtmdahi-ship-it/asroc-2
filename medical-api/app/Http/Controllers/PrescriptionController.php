@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\PrescriptionResource;
+use App\Http\Resources\CheckupRequestResource;
 use App\Models\CheckupRequest;
 use App\Services\DoctorService;
 use Illuminate\Http\Request;
@@ -24,14 +24,16 @@ class PrescriptionController extends Controller
 
         $checkupRequest = CheckupRequest::findOrFail($id);
 
-        $prescription = $this->doctorService->writePrescription(
+        $this->doctorService->writePrescription(
             $checkupRequest,
             $request->user()->id,
             $validated['items'],
             $validated['notes'] ?? null
         );
 
-        return (new PrescriptionResource($prescription))
+        $checkupRequest->refresh()->load(['employee.user', 'department', 'createdBy', 'approvedBy', 'prescription.items']);
+
+        return (new CheckupRequestResource($checkupRequest))
             ->response()
             ->setStatusCode(201);
     }

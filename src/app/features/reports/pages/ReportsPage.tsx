@@ -12,6 +12,19 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 import { PageLayout } from "@/app/components/PageLayout";
 import { Badge } from "@/app/components/ui/badge";
@@ -243,6 +256,67 @@ export function ReportsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* ── Charts ── */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3 className="h-5 w-5 text-blue-700" />
+                توزيع الطلبات حسب النوع
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "كشف عادي",    value: (dashboardStats?.this_month.normal   ?? (totalRequests - emergencyRequests - monthlyTreatmentRequests)) || 0 },
+                      { name: "كشف طوارئ",   value: (dashboardStats?.this_month.emergency ?? emergencyRequests) || 0 },
+                      { name: "علاج شهري",   value: monthlyTreatmentRequests || 0 },
+                    ].filter((d) => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${Math.round((percent ?? 0) * 100)}%`}
+                    labelLine={false}
+                  >
+                    <Cell fill="#3b82f6" />
+                    <Cell fill="#ef4444" />
+                    <Cell fill="#14b8a6" />
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [`${v} طلب`, ""]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <BarChart3 className="h-5 w-5 text-teal-700" />
+                توزيع الحالات
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart
+                  data={statusRows.slice(0, 7).map((r) => ({ name: r.label, عدد: r.count }))}
+                  layout="vertical"
+                  margin={{ right: 20, left: 10 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="عدد" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <Card>

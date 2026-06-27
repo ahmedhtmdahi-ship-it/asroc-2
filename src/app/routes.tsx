@@ -37,6 +37,7 @@ import { SuperAdminPage } from "./features/admin/pages/SuperAdminPage";
 import { ReportsPage } from "./features/reports/pages/ReportsPage";
 import { PrintPage } from "./features/print/pages/PrintPage";
 import { ExternalProvidersPage } from "./features/providers/pages/ExternalProvidersPage";
+import { AuditLogPage } from "./features/admin/pages/AuditLogPage";
 
 export const router = createBrowserRouter([
   {
@@ -365,6 +366,15 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute roles={["medical_admin", "super_admin"]}>
         <PrintPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  {
+    path: "/admin/audit-log",
+    element: (
+      <ProtectedRoute roles={["super_admin"]}>
+        <AuditLogPage />
       </ProtectedRoute>
     ),
   },

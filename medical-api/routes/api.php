@@ -29,7 +29,7 @@ use App\Http\Controllers\ExternalProviderController;
 
 // ── Auth Routes ──────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -76,7 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ── Security ──────────────────────────────────────────────────
-    Route::prefix('security')->group(function () {
+    Route::prefix('security')->middleware('role:security|medical_admin|system_admin')->group(function () {
         Route::get('/approved-requests', [SecurityController::class, 'approvedRequests']);
         Route::get('/outside-now', [SecurityController::class, 'outsideNow']);
         Route::get('/late-employees', [SecurityController::class, 'lateEmployees']);
@@ -86,7 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ── Doctor ────────────────────────────────────────────────────
-    Route::prefix('doctor')->group(function () {
+    Route::prefix('doctor')->middleware('role:doctor|medical_admin|system_admin')->group(function () {
         Route::get('/queue', [DoctorController::class, 'queue']);
         Route::get('/requests/{id}', [DoctorController::class, 'show']);
         Route::post('/requests/{id}/diagnose', [DiagnosisController::class, 'store']);
@@ -106,7 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ── Internal Pharmacy ─────────────────────────────────────────
-    Route::prefix('internal-pharmacy')->group(function () {
+    Route::prefix('internal-pharmacy')->middleware('role:internal_pharmacy|medical_admin|system_admin')->group(function () {
         Route::get('/prescriptions', [InternalPharmacyController::class, 'index']);
         Route::get('/prescriptions/{id}', [InternalPharmacyController::class, 'show']);
         Route::post('/prescriptions/{id}/dispense', [InternalPharmacyController::class, 'dispense']);

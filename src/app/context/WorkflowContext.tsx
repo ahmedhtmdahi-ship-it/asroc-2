@@ -112,12 +112,12 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       let items: any[] = [];
 
       if (role === "employee" || role === "retired_employee") {
-        const res = await apiClient.get("/employee/requests?per_page=50");
+        const res = await apiClient.get("/employee/requests?per_page=200");
         items = extractItems(res);
       } else if (role === "manager" || role === "office_manager") {
         const [pending, all] = await Promise.all([
-          apiClient.get("/manager/requests?per_page=50"),
-          apiClient.get("/manager/requests/all?per_page=50"),
+          apiClient.get("/manager/requests?per_page=200"),
+          apiClient.get("/manager/requests/all?per_page=200"),
         ]);
         const seen = new Set<string>();
         [...extractItems(pending), ...extractItems(all)].forEach((r) => {
@@ -125,18 +125,18 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
         });
       } else if (role === "security") {
         const [approved, outside] = await Promise.all([
-          apiClient.get("/security/approved-requests?per_page=50"),
-          apiClient.get("/security/outside-now?per_page=50"),
+          apiClient.get("/security/approved-requests?per_page=200"),
+          apiClient.get("/security/outside-now?per_page=200"),
         ]);
         const seen = new Set<string>();
         [...extractItems(approved), ...extractItems(outside)].forEach((r) => {
           if (!seen.has(String(r.id))) { seen.add(String(r.id)); items.push(r); }
         });
       } else if (role === "doctor") {
-        const res = await apiClient.get("/doctor/queue?per_page=50");
+        const res = await apiClient.get("/doctor/queue?per_page=200");
         items = extractItems(res);
       } else if (role === "pharmacy" || role === "internal_pharmacy") {
-        const res = await apiClient.get("/internal-pharmacy/prescriptions?per_page=50");
+        const res = await apiClient.get("/internal-pharmacy/prescriptions?per_page=200");
         const prescriptions = extractItems(res);
         setRequests(prescriptions.map(prescriptionToMedicalRequest));
         setApiReady(true);
@@ -145,7 +145,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
         role === "medical_admin" || role === "pension_admin" ||
         role === "super_admin"   || role === "system_admin"  || role === "top_management"
       ) {
-        const res = await apiClient.get("/medical-admin/requests?per_page=100");
+        const res = await apiClient.get("/medical-admin/requests?per_page=200");
         items = extractItems(res);
       }
 

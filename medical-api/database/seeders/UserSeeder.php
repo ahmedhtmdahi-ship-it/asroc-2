@@ -101,6 +101,11 @@ class UserSeeder extends Seeder
             $createdUsers[$role] = $user;
         }
 
+        // Assign test manager as the manager of department 1 (so approval tests work)
+        DB::table('departments')
+            ->where('id', 1)
+            ->update(['manager_id' => $createdUsers['manager']->id]);
+
         // Create Employee records
         DB::table('employees')->insert([
             [
