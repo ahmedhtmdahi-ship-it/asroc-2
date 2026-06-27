@@ -22,7 +22,7 @@ class MedicineController extends Controller
             $query->where('name', 'LIKE', '%' . $request->search . '%');
         }
 
-        $medicines = $query->paginate(15);
+        $medicines = $query->paginate((int) $request->get('per_page', 15));
 
         return MedicineResource::collection($medicines);
     }

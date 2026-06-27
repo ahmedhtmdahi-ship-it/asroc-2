@@ -42,7 +42,7 @@ class ManagerApprovalController extends Controller
             ->whereIn('department_id', $departmentIds)
             ->where('status', $status)
             ->latest()
-            ->paginate(15);
+            ->paginate((int) $request->get('per_page', 15));
 
         return CheckupRequestResource::collection($requests);
     }
@@ -61,7 +61,7 @@ class ManagerApprovalController extends Controller
             $query->where('status', CheckupStatus::from($request->status));
         }
 
-        $requests = $query->latest()->paginate(15);
+        $requests = $query->latest()->paginate((int) $request->get('per_page', 15));
 
         return CheckupRequestResource::collection($requests);
     }
@@ -185,7 +185,7 @@ class ManagerApprovalController extends Controller
             $query->where('department_id', $request->department_id);
         }
 
-        $requests = $query->latest()->paginate(50);
+        $requests = $query->latest()->paginate((int) $request->get('per_page', 50));
 
         return CheckupRequestResource::collection($requests);
     }

@@ -27,7 +27,7 @@ class SecurityController extends Controller
             $query->where('department_id', $request->department_id);
         }
 
-        $requests = $query->latest()->paginate(15);
+        $requests = $query->latest()->paginate((int) $request->get('per_page', 15));
 
         return CheckupRequestResource::collection($requests);
     }
@@ -45,7 +45,7 @@ class SecurityController extends Controller
                 CheckupStatus::Dispensed,
             ])
             ->latest('checked_out_at')
-            ->paginate(15);
+            ->paginate((int) $request->get('per_page', 15));
 
         return CheckupRequestResource::collection($requests);
     }

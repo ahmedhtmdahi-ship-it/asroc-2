@@ -35,7 +35,7 @@ class MonthlyTreatmentController extends Controller
             $query->where('beneficiary_type', $request->beneficiary_type);
         }
 
-        return MonthlyTreatmentResource::collection($query->paginate(15));
+        return MonthlyTreatmentResource::collection($query->paginate((int) $request->get('per_page', 15)));
     }
 
     /**

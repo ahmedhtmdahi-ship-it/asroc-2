@@ -22,7 +22,7 @@ class DoctorController extends Controller
             $query->where('target_clinic', $doctorClinic);
         }
 
-        $requests = $query->latest()->paginate(50);
+        $requests = $query->latest()->paginate((int) $request->get('per_page', 50));
 
         return CheckupRequestResource::collection($requests);
     }

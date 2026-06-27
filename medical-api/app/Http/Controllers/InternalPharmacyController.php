@@ -20,7 +20,7 @@ class InternalPharmacyController extends Controller
                 'checkupRequest.department',
                 'items.medicine',
             ])
-            ->paginate(10);
+            ->paginate((int) $request->get('per_page', 10));
 
         return PrescriptionResource::collection($prescriptions);
     }

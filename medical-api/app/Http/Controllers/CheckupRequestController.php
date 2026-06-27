@@ -37,7 +37,7 @@ class CheckupRequestController extends Controller
             $query->where('type', CheckupType::from($request->type));
         }
 
-        $requests = $query->latest()->paginate(10);
+        $requests = $query->latest()->paginate((int) $request->get('per_page', 10));
 
         return CheckupRequestResource::collection($requests);
     }

@@ -29,7 +29,7 @@ class ExternalPharmacyController extends Controller
             ->whereHas('monthlyTreatment', fn ($q) => $q->where('status', MonthlyTreatmentStatus::Active))
             ->whereYear('month', now()->year)
             ->whereMonth('month', now()->month)
-            ->paginate(15);
+            ->paginate((int) $request->get('per_page', 15));
 
         return response()->json($records);
     }
