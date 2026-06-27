@@ -163,6 +163,8 @@ export function DoctorDiagnosisPage() {
     setMedications(updated);
   };
 
+  const MAX_MEDICINES = 8;
+
   const [submitting, setSubmitting] = useState(false);
 
   const buildFullDiagnosis = () => {
@@ -228,6 +230,14 @@ export function DoctorDiagnosisPage() {
       return;
     }
 
+    const missingId = filledMedications.some((med) => !med.medicationId);
+    if (missingId) {
+      toast.error("برجاء اختيار كل الأدوية من المخزن", {
+        description: "يجب اختيار الدواء من القائمة — لا يمكن كتابة اسم دواء غير موجود في المخزن",
+      });
+      return;
+    }
+
     if (request.status !== "checked_out" && request.status !== "in_diagnosis") {
       toast.error("لا يمكن إرسال هذا الطلب للصيدلية من حالته الحالية", {
         description: requestStatusLabels[request.status],
@@ -244,6 +254,7 @@ export function DoctorDiagnosisPage() {
         await checkupService.writePrescription(numId, {
           notes: notes.trim() || undefined,
           items: filledMedications.map((med) => ({
+            medicine_id:   Number(med.medicationId),
             medicine_name: med.name.trim(),
             dosage:        med.dosage.trim(),
             duration:      med.duration.trim() || "غير محدد",
@@ -514,13 +525,34 @@ export function DoctorDiagnosisPage() {
                   <CardTitle className="flex items-center gap-2">
                     <Pill className="w-5 h-5 text-purple-700" />
                     الروشتة الطبية
+                    <Badge
+                      variant="outline"
+                      className={
+                        medications.length >= MAX_MEDICINES
+                          ? "border-red-300 bg-red-50 text-red-700"
+                          : "text-slate-500"
+                      }
+                    >
+                      {medications.length}/{MAX_MEDICINES} أصناف
+                    </Badge>
                   </CardTitle>
 
-                  <Button variant="outline" size="sm" onClick={addMedication}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={addMedication}
+                    disabled={medications.length >= MAX_MEDICINES}
+                    title={medications.length >= MAX_MEDICINES ? "الحد الأقصى ٨ أصناف لكل روشتة" : undefined}
+                  >
                     <Plus className="w-4 h-4 ml-2" />
                     إضافة دواء
                   </Button>
                 </div>
+                {medications.length >= MAX_MEDICINES && (
+                  <p className="mt-1 text-xs text-red-600">
+                    وصلت للحد الأقصى (٨ أصناف). احذف صنفًا لإضافة آخر.
+                  </p>
+                )}
               </CardHeader>
 
               <CardContent className="space-y-4">

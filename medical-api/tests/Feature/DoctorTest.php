@@ -63,10 +63,12 @@ class DoctorTest extends TestCase
                 'diagnosis_text' => 'التهاب في الظهر',
             ]);
 
+        $medicineId = \App\Models\Medicine::first()->id;
+
         $response = $this->actingAs($this->doctor)
             ->postJson("/api/doctor/requests/{$this->checkedOutRequest->id}/prescription", [
                 'items' => [
-                    ['medicine_name' => 'باراسيتامول', 'dosage' => 'قرص مرتين يومياً', 'duration' => '7 أيام'],
+                    ['medicine_id' => $medicineId, 'medicine_name' => 'باراسيتامول', 'dosage' => 'قرص مرتين يومياً', 'duration' => '7 أيام'],
                 ],
             ]);
 

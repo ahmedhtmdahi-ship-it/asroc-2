@@ -15,8 +15,8 @@ class PrescriptionController extends Controller
     {
         $validated = $request->validate([
             'notes'                   => ['nullable', 'string'],
-            'items'                   => ['required', 'array', 'min:1'],
-            'items.*.medicine_id'     => ['nullable', 'exists:medicines,id'],
+            'items'                   => ['required', 'array', 'min:1', 'max:8'],
+            'items.*.medicine_id'     => ['required', 'integer', 'exists:medicines,id'],
             'items.*.medicine_name'   => ['required', 'string'],
             'items.*.dosage'          => ['required', 'string'],
             'items.*.duration'        => ['required', 'string'],

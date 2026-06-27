@@ -40,9 +40,11 @@ class PharmacyTest extends TestCase
             'diagnosis_text' => 'التهاب',
         ]);
 
+        $medicineId = \App\Models\Medicine::first()->id;
+
         $this->actingAs($doctor)->postJson("/api/doctor/requests/{$requestId}/prescription", [
             'items' => [
-                ['medicine_name' => 'باراسيتامول', 'dosage' => 'قرص مرتين', 'duration' => '5 أيام'],
+                ['medicine_id' => $medicineId, 'medicine_name' => 'باراسيتامول', 'dosage' => 'قرص مرتين', 'duration' => '5 أيام'],
             ],
         ]);
 
