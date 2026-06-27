@@ -1,6 +1,7 @@
-﻿import type { Employee } from "@/app/types/employee";
+﻿import type { Employee, EmployeeStatus } from "@/app/types/employee";
 
-export interface ManagerRecord extends Employee {
+export interface ManagerRecord extends Omit<Employee, "status"> {
+  status?: EmployeeStatus;
   managerType: "manager" | "office_manager";
   managedDepartments: string[];
   isActive: boolean;
@@ -263,5 +264,15 @@ export const mockManagers = [
     "nationalId": "27702092201755",
     "phone": "01001213561",
     "workType": "نهارى"
+  },
+  {
+    "id": "test-manager",
+    "financialNumber": "0005",
+    "name": "مدير الإدارة التجريبية",
+    "jobTitle": "مدير عام مكلف",
+    "department": "الإدارة التجريبية",
+    "managerType": "manager",
+    "managedDepartments": ["الإدارة التجريبية"],
+    "isActive": true,
   }
 ] satisfies ManagerRecord[];

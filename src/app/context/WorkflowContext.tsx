@@ -1,5 +1,6 @@
-﻿import {
+import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -21,82 +22,110 @@ interface WorkflowContextValue {
   requests: MedicalRequest[];
   syncing: boolean;
   refreshRequests: () => void;
-  createRequest: (request: MedicalRequest) => MedicalRequest;
-  moveRequest: (requestId: string, nextStatus: RequestStatus, note?: string) => MedicalRequest | null;
-  approveRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  rejectRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  postponeRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  cancelRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  checkOutRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  startDiagnosis: (requestId: string, note?: string) => MedicalRequest | null;
-  prescribeRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  dispenseRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  checkInRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  completeRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  approveMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
-  rejectMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
-  modifyMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
-  sendMonthlyTreatmentToPharmacy: (requestId: string, note?: string) => MedicalRequest | null;
-  dispenseMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
-  completeMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
+  createRequest: (request: MedicalRequest) => Promise<MedicalRequest | null>;
+  moveRequest: (requestId: string, nextStatus: RequestStatus, note?: string) => Promise<MedicalRequest | null>;
+  approveRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  rejectRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  postponeRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  cancelRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  checkOutRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  startDiagnosis: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  prescribeRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  dispenseRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  checkInRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  completeRequest: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  approveMonthlyTreatment: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  rejectMonthlyTreatment: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  modifyMonthlyTreatment: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  sendMonthlyTreatmentToPharmacy: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  dispenseMonthlyTreatment: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
+  completeMonthlyTreatment: (requestId: string, note?: string) => Promise<MedicalRequest | null>;
 }
 
-const WorkflowContext = createContext<WorkflowContextValue | undefined>(
-  undefined
-);
+const WorkflowContext = createContext<WorkflowContextValue | undefined>(undefined);
 
 export function WorkflowProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
-  const [requests, setRequests] = useState<MedicalRequest[]>(
-    requestStore.getAll()
-  );
+  const [requests, setRequests] = useState<MedicalRequest[]>(requestStore.getAll());
   const [syncing, setSyncing] = useState(false);
 
-  const refreshRequests = () => {
+  const refreshRequests = useCallback(() => {
     setRequests([...requestStore.getAll()]);
-  };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
+
+    // Dev: lazy-load the medicines seed as a separate chunk (avoids 3.2MB static bundle)
+    if (import.meta.env.DEV) {
+      medicineStore.loadDevSeed();
+      return;
+    }
+
+    // cancelled prevents setState on unmount and suppresses React StrictMode double-invoke
+    let cancelled = false;
     setSyncing(true);
-    managersStore.syncFromSupabase();
-    departmentsStore.syncFromSupabase();
-    medicineStore.syncFromSupabase();
-    profilesStore.syncFromSupabase();
-    requestStore.syncFromSupabase().then(() => {
-      refreshRequests();
-      setSyncing(false);
-    });
-  }, [user?.id]);
 
-  const createRequest = (request: MedicalRequest) => {
-    const created = requestStore.create(request);
-    refreshRequests();
-    return created;
-  };
-
-  const moveRequest = (
-    requestId: string,
-    nextStatus: RequestStatus,
-    note?: string
-  ) => {
-    if (!user) return null;
-
-    const updated = workflowStore.moveStatus(
-      {
-        requestId,
-        userId: user.id,
-        userName: user.name,
-        role: user.role,
-        note,
-      },
-      nextStatus
+    const timeoutId = setTimeout(() => {}, 5_000); // kept so cleanup can cancel it
+    const timeout = new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error("sync timeout")), 5_000)
     );
 
+    const syncs = Promise.all([
+      managersStore.syncFromSupabase(),
+      departmentsStore.syncFromSupabase(),
+      medicineStore.syncFromSupabase(),
+      profilesStore.syncFromSupabase(),
+      requestStore.syncFromSupabase(),
+    ]);
+
+    Promise.race([syncs, timeout])
+      .catch(() => {}) // timeout or network error — keep local data as fallback
+      .finally(() => {
+        if (!cancelled) {
+          refreshRequests();
+          setSyncing(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [user?.id, refreshRequests]);
+
+  const createRequest = useCallback(async (request: MedicalRequest) => {
+    const created = await requestStore.create(request);
     refreshRequests();
-    return updated;
-  };
+    return created;
+  }, [refreshRequests]);
+
+  const moveRequest = useCallback(async (
+    requestId: string,
+    nextStatus: RequestStatus,
+    note?: string,
+  ): Promise<MedicalRequest | null> => {
+    if (!user) return null;
+
+    try {
+      const updated = await workflowStore.moveStatus(
+        {
+          requestId,
+          userId: user.id,
+          userName: user.name,
+          role: user.role,
+          note,
+        },
+        nextStatus,
+      );
+      refreshRequests();
+      return updated;
+    } catch (err) {
+      refreshRequests();
+      throw err;
+    }
+  }, [user, refreshRequests]);
 
   const value = useMemo<WorkflowContextValue>(
     () => ({
@@ -104,58 +133,25 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       syncing,
       refreshRequests,
       createRequest,
-
       moveRequest,
-
-      approveRequest: (requestId, note) =>
-        moveRequest(requestId, "approved", note),
-
-      rejectRequest: (requestId, note) =>
-        moveRequest(requestId, "rejected", note),
-
-      postponeRequest: (requestId, note) =>
-        moveRequest(requestId, "postponed", note),
-
-      cancelRequest: (requestId, note) =>
-        moveRequest(requestId, "cancelled", note),
-
-      checkOutRequest: (requestId, note) =>
-        moveRequest(requestId, "checked_out", note),
-
-      startDiagnosis: (requestId, note) =>
-        moveRequest(requestId, "in_diagnosis", note),
-
-      prescribeRequest: (requestId, note) =>
-        moveRequest(requestId, "prescribed", note),
-
-      dispenseRequest: (requestId, note) =>
-        moveRequest(requestId, "dispensed", note),
-
-      checkInRequest: (requestId, note) =>
-        moveRequest(requestId, "returned", note),
-
-      completeRequest: (requestId, note) =>
-        moveRequest(requestId, "completed", note),
-
-      approveMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_approved", note),
-
-      rejectMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_rejected", note),
-
-      modifyMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_modified", note),
-
-      sendMonthlyTreatmentToPharmacy: (requestId, note) =>
-        moveRequest(requestId, "monthly_ready_pharmacy", note),
-
-      dispenseMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_dispensed", note),
-
-      completeMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_completed", note),
+      approveRequest:               (id, note) => moveRequest(id, "approved", note),
+      rejectRequest:                (id, note) => moveRequest(id, "rejected", note),
+      postponeRequest:              (id, note) => moveRequest(id, "postponed", note),
+      cancelRequest:                (id, note) => moveRequest(id, "cancelled", note),
+      checkOutRequest:              (id, note) => moveRequest(id, "checked_out", note),
+      startDiagnosis:               (id, note) => moveRequest(id, "in_diagnosis", note),
+      prescribeRequest:             (id, note) => moveRequest(id, "prescribed", note),
+      dispenseRequest:              (id, note) => moveRequest(id, "dispensed", note),
+      checkInRequest:               (id, note) => moveRequest(id, "returned", note),
+      completeRequest:              (id, note) => moveRequest(id, "completed", note),
+      approveMonthlyTreatment:      (id, note) => moveRequest(id, "monthly_approved", note),
+      rejectMonthlyTreatment:       (id, note) => moveRequest(id, "monthly_rejected", note),
+      modifyMonthlyTreatment:       (id, note) => moveRequest(id, "monthly_modified", note),
+      sendMonthlyTreatmentToPharmacy:(id, note) => moveRequest(id, "monthly_ready_pharmacy", note),
+      dispenseMonthlyTreatment:     (id, note) => moveRequest(id, "monthly_dispensed", note),
+      completeMonthlyTreatment:     (id, note) => moveRequest(id, "monthly_completed", note),
     }),
-    [requests, syncing, user]
+    [requests, syncing, refreshRequests, createRequest, moveRequest],
   );
 
   return (
@@ -167,10 +163,6 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
 
 export function useWorkflow() {
   const context = useContext(WorkflowContext);
-
-  if (!context) {
-    throw new Error("useWorkflow must be used inside WorkflowProvider");
-  }
-
+  if (!context) throw new Error("useWorkflow must be used inside WorkflowProvider");
   return context;
 }

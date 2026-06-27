@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router";
 import {
   Bell,
@@ -98,18 +99,20 @@ export function EmployeeDashboardPage() {
         </div>
 
         <nav className="mt-6 space-y-2 px-4">
-          {[
-            ["الرئيسية", Home, "/employee"],
-            ["طلب فحص طبي", FilePlus2, "/employee/requests"],
-            ["طلباتي", ClipboardList, "/employee/my-requests"],
-            ["التاريخ الطبي", HeartPulse, "/employee/history"],
-            ["الإشعارات", Bell, "/employee/notifications"],
-            ["الملف الشخصي", UserCircle, "/profile"],
-            ["المساعدة والدعم", HelpCircle, "#"],
-          ].map(([label, Icon, path], index) => (
+          {(
+            [
+              ["الرئيسية", Home, "/employee"],
+              ["طلب فحص طبي", FilePlus2, "/employee/requests"],
+              ["طلباتي", ClipboardList, "/employee/my-requests"],
+              ["التاريخ الطبي", HeartPulse, "/employee/history"],
+              ["الإشعارات", Bell, "/employee/notifications"],
+              ["الملف الشخصي", UserCircle, "/profile"],
+              ["المساعدة والدعم", HelpCircle, "#"],
+            ] as Array<[string, React.ComponentType<{ className?: string }>, string]>
+          ).map(([label, Icon, path], index) => (
             <Link
-              key={label as string}
-              to={path as string}
+              key={label}
+              to={path}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-lg transition ${
                 index === 0 ? "bg-teal-600" : "hover:bg-white/10"
               }`}

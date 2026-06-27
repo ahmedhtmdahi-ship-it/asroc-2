@@ -19,7 +19,7 @@ import {
 import { PageLayout } from "@/app/components/PageLayout";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Card, CardContent } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import {
@@ -32,11 +32,20 @@ import {
 } from "@/app/components/ui/dialog";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
+import { ErrorBoundary } from "@/app/components/ErrorBoundary";
 import { supabase } from "@/app/lib/api";
 import { profileRowToUser } from "@/app/features/auth/AuthContext";
-import { mockUsers } from "@/app/data/mockUsers";
-import { mockAuditLogs } from "@/app/data/mockAuditLogs";
 import type { Permission, User, UserRole } from "@/app/types/user";
+
+// Loaded lazily so their weight (1MB+) never lands in the main bundle
+async function getMockUsers() {
+  const { mockUsers } = await import("@/app/data/mockUsers");
+  return mockUsers;
+}
+async function getMockAuditLogs() {
+  const { mockAuditLogs } = await import("@/app/data/mockAuditLogs");
+  return mockAuditLogs;
+}
 
 const isDev = (typeof import.meta !== "undefined" ? (import.meta as any).env?.DEV : false) || false;
 
@@ -52,13 +61,6 @@ interface AuditLog {
   created_at: string;
 }
 
-interface Department {
-  id: string;
-  name: string;
-  manager_id?: string;
-  manager_name?: string;
-  employee_count: number;
-}
 
 // ─── Role & Permission Labels ────────────────────────────────────────
 const roleLabels: Record<UserRole, string> = {
@@ -193,17 +195,17 @@ function PermissionsEditor({
   onCancel,
 }: {
   user: User;
-  onSave: (userId: string, newPermissions: string[]) => void;
+    onSave: (userId: string, newPermissions: Permission[]) => void;
   onCancel: () => void;
 }) {
   const allPermissions = Object.keys(permissionLabels) as Permission[];
-  const [selected, setSelected] = useState<string[]>(user.permissions || []);
+    const [selected, setSelected] = useState<Permission[]>((user.permissions || []) as Permission[]);
 
   useEffect(() => {
     setSelected(user.permissions || []);
   }, [user]);
 
-  function toggle(p: string) {
+    function toggle(p: Permission) {
     setSelected((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   }
 
@@ -244,9 +246,6 @@ function UsersTab() {
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
-    // debug
-    // eslint-disable-next-line no-console
-    console.log("fetchUsers: start");
     try {
       const { data, error: supaError } = await supabase
         .from("profiles")
@@ -255,9 +254,8 @@ function UsersTab() {
 
       if (supaError) throw supaError;
       setUsers((data ?? []).map(profileRowToUser));
-    } catch (err) {
-      console.error("fetchUsers error:", err);
-      setUsers(mockUsers);
+    } catch {
+      getMockUsers().then(setUsers);
       setError(null);
     } finally {
       setLoading(false);
@@ -271,7 +269,7 @@ function UsersTab() {
   async function handleChangeRole(userId: string, newRole: UserRole) {
     setSavingRoleId(userId);
     try {
-      const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
+            const { error } = await (supabase.from("profiles").update({ role: newRole }) as any).eq("id", userId);
       if (error) throw error;
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
     } catch {
@@ -281,10 +279,10 @@ function UsersTab() {
     }
   }
 
-  async function handleSavePermissions(userId: string, newPermissions: string[]) {
+    async function handleSavePermissions(userId: string, newPermissions: Permission[]) {
     try {
       // update remote
-      const { error: upErr } = await supabase.from("profiles").update({ permissions: newPermissions }).eq("id", userId);
+            const { error: upErr } = await (supabase.from("profiles").update({ permissions: newPermissions }) as any).eq("id", userId);
       if (upErr) throw upErr;
 
       // update local state
@@ -607,7 +605,7 @@ function AuditLogsTab() {
       if (supaError) throw supaError;
       setLogs(data || []);
     } catch {
-      setLogs(mockAuditLogs as AuditLog[]);
+      getMockAuditLogs().then(m => setLogs(m as unknown as AuditLog[]));
       setError(null);
     } finally {
       setLoading(false);
@@ -689,8 +687,8 @@ export function SuperAdminPage() {
       setAuditLogsCount(count || 0);
     } catch {
       // Fallback to mock data so the page isn't empty without backend setup
-      setUsers(mockUsers);
-      setAuditLogsCount(mockAuditLogs.length);
+      getMockUsers().then(setUsers);
+      getMockAuditLogs().then(m => setAuditLogsCount(m.length));
       setError(null);
     } finally {
       setLoading(false);
@@ -807,28 +805,28 @@ export function SuperAdminPage() {
         </TabsList>
 
         <TabsContent value="users">
-          <UsersTab />
+          <ErrorBoundary><UsersTab /></ErrorBoundary>
         </TabsContent>
         <TabsContent value="roles">
-          <RolesTab users={users} />
+          <ErrorBoundary><RolesTab users={users} /></ErrorBoundary>
         </TabsContent>
         <TabsContent value="permissions">
-          <PermissionsTab users={users} />
+          <ErrorBoundary><PermissionsTab users={users} /></ErrorBoundary>
         </TabsContent>
         <TabsContent value="departments">
-          <DepartmentsTab users={users} />
+          <ErrorBoundary><DepartmentsTab users={users} /></ErrorBoundary>
         </TabsContent>
         <TabsContent value="doctors">
-          <RoleUsersTab role="doctor" users={users} />
+          <ErrorBoundary><RoleUsersTab role="doctor" users={users} /></ErrorBoundary>
         </TabsContent>
         <TabsContent value="pharmacies">
-          <RoleUsersTab role="pharmacy" users={users} />
+          <ErrorBoundary><RoleUsersTab role="pharmacy" users={users} /></ErrorBoundary>
         </TabsContent>
         <TabsContent value="medicines">
-          <MedicinesTab />
+          <ErrorBoundary><MedicinesTab /></ErrorBoundary>
         </TabsContent>
         <TabsContent value="audit">
-          <AuditLogsTab />
+          <ErrorBoundary><AuditLogsTab /></ErrorBoundary>
         </TabsContent>
       </Tabs>
     </PageLayout>

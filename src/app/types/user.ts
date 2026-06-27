@@ -42,7 +42,7 @@ export type Permission =
 export interface User {
   id: string;
   username: string;
-  password: string;
+  password?: string;
   financialNumber?: string;
   name: string;
   jobTitle?: string;

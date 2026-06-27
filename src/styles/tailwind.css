@@ -2,3 +2,9 @@
 @source '../**/*.{js,ts,jsx,tsx}';
 
 @import 'tw-animate-css';
+
+/* Explicit spin keyframe — ensures animate-spin always works even if tw-animate-css
+   or a browser's prefers-reduced-motion preference would otherwise override it.   */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

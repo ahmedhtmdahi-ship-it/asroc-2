@@ -1,5 +1,4 @@
-﻿import type { RequestStatus } from "@/app/types/workflow";
-import { requestStatusLabels } from "@/app/types/workflow";
+﻿import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
 import { requestStore } from "./requestStore";
 import { notificationStore } from "./notificationStore";
 import { auditStore } from "./auditStore";
@@ -59,7 +58,7 @@ class WorkflowStore {
     return statusFlow[currentStatus]?.includes(nextStatus) ?? false;
   }
 
-  moveStatus(payload: WorkflowActionPayload, nextStatus: RequestStatus) {
+  async moveStatus(payload: WorkflowActionPayload, nextStatus: RequestStatus) {
     const request = requestStore.getById(payload.requestId);
 
     if (!request) {
@@ -74,10 +73,14 @@ class WorkflowStore {
       );
     }
 
-    const updatedRequest = requestStore.updateStatus(
+    const updatedRequest = await requestStore.updateStatus(
       payload.requestId,
       nextStatus
     );
+
+    if (!updatedRequest) {
+      throw new Error("Failed to persist request status");
+    }
 
     auditStore.add({
       id: generateId("AUD"),
@@ -86,7 +89,7 @@ class WorkflowStore {
       role: payload.role,
       action: "MOVE_REQUEST_STATUS",
       requestId: payload.requestId,
-      serviceType: request.serviceType,
+      serviceType: request.serviceType ?? "",
       statusBefore: previousStatus,
       statusAfter: nextStatus,
       note: payload.note,
@@ -101,7 +104,7 @@ class WorkflowStore {
         previousStatus
       )} إلى ${getStatusLabel(nextStatus)}`,
       requestId: payload.requestId,
-      isRead: false,
+      unread: true,
       createdAt: new Date().toISOString(),
     });
 
