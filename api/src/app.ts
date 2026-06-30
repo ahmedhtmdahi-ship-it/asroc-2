@@ -5,6 +5,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { setupAuth } from "./plugins/jwt.js";
 import { authRoutes } from "./modules/auth/auth.route.js";
 import { healthRoutes } from "./modules/health/health.route.js";
+import { requestRoutes } from "./modules/requests/requests.route.js";
 
 /**
  * بنبني التطبيق هنا (من غير ما نشغّل الاستماع) عشان نقدر نختبره بسهولة.
@@ -20,6 +21,7 @@ export function buildApp() {
   // الـ modules
   app.register(healthRoutes, { prefix: "/health" });
   app.register(authRoutes, { prefix: "/auth" });
+  app.register(requestRoutes, { prefix: "/requests" });
 
   return app;
 }
