@@ -64,7 +64,7 @@ api/
 ## خريطة المراحل
 
 - [x] **1. Scaffold** — Fastify + Prisma + Docker + فحص صحة
-- [ ] 2. Schema — تحويل الأنواع الحالية لجداول Prisma
+- [x] **2. Schema** — كل الجداول في `prisma/schema.prisma` (users, medical_requests + كياناتها التابعة، departments, medicines, audit/security logs, notifications)
 - [ ] 3. Seed — زرع الـ 1750 مستخدم من ملفات الداتا الحالية
 - [ ] 4. Auth API — `/login` بـ JWT + bcrypt على السيرفر
 - [ ] 5. CRUD APIs — requests / approvals / clinical / pharmacy ...
