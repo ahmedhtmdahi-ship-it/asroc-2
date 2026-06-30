@@ -1,6 +1,6 @@
-// مخطط قاعدة البيانات — كل الجداول بتتعرّف هنا في مكان واحد.
-// المرحلة 1: مفيش جداول لسه (بنتأكد إن الاتصال شغّال بس).
-// المرحلة 2: هنضيف users / requests / prescriptions / audit_logs ... هنا.
+// مخطط قاعدة البيانات — كل الجداول في مكان واحد.
+// أسماء الجداول والأعمدة snake_case في Postgres (عبر @map/@@map)،
+// بينما تفضل الأسماء camelCase في كود TypeScript.
 
 generator client {
   provider = "prisma-client-js"
@@ -9,4 +9,322 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────  Enums  ─────────────────────────────
+
+enum UserRole {
+  employee
+  manager
+  office_manager
+  security
+  doctor
+  pharmacy
+  medical_admin
+  pension_admin
+  super_admin
+}
+
+enum Permission {
+  create_request
+  view_own_requests
+  view_medical_history
+  approve_request
+  reject_request
+  postpone_request
+  security_check_out
+  security_check_in
+  diagnose_patient
+  create_prescription
+  create_referral
+  create_sick_leave
+  recommend_monthly_treatment
+  dispense_prescription
+  manage_inventory
+  approve_referral
+  manage_monthly_treatment
+  manage_pensioners
+  manage_contracts
+  manage_pharmacy
+  manage_system
+  manage_referrals
+  dispense_regular_treatment
+  dispense_monthly_treatment
+  view_reports
+  print_documents
+  view_audit_log
+  all
+}
+
+enum RequestStatus {
+  // موافقة المدير (كشف)
+  pending
+  approved
+  rejected
+  postponed
+  cancelled
+  // مسار الأمن / الطبيب / الصيدلية (كشف)
+  checked_out
+  in_diagnosis
+  prescribed
+  dispensed
+  returned
+  completed
+  // مسار العلاج الشهري
+  pending_monthly_doctor
+  monthly_approved
+  monthly_rejected
+  monthly_modified
+  monthly_ready_pharmacy
+  monthly_dispensed
+  monthly_completed
+}
+
+enum ServiceType {
+  checkup
+  monthly_treatment
+}
+
+enum RequestType {
+  normal
+  emergency
+}
+
+enum MonthlyTreatmentType {
+  new
+  renewal
+}
+
+enum ReferralStatus {
+  pending_admin
+  approved
+  rejected
+}
+
+enum SecurityLogType {
+  check_out
+  check_in
+}
+
+// ─────────────────────────────  المستخدمون  ─────────────────────────────
+
+model User {
+  id              String       @id @default(uuid())
+  username        String       @unique
+  // الـ hash بيتولّد على السيرفر (bcrypt) — لا يتخزّن نص صريح أبدًا.
+  passwordHash    String       @map("password_hash")
+  financialNumber String?      @map("financial_number")
+  name            String
+  jobTitle        String?      @map("job_title")
+  workPlace       String?      @map("work_place")
+  department      String?
+  nationalId      String?      @map("national_id")
+  phone           String?
+  workType        String?      @map("work_type")
+  role            UserRole
+  permissions     Permission[]
+  isActive        Boolean      @default(true) @map("is_active")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@index([financialNumber])
+  @@map("users")
+}
+
+// ─────────────────────────────  الطلبات الطبية  ─────────────────────────────
+// ملاحظة: مراجع الأشخاص (employeeId, managerId, doctorId ...) أعمدة نصية
+// مباشِرة (denormalized) زي سلوك التطبيق الحالي — ممكن نرقّيها لـ FK لاحقًا.
+
+model MedicalRequest {
+  id                    String                @id @default(uuid())
+  employeeId            String                @map("employee_id")
+  employeeName          String                @map("employee_name")
+  financialNumber       String                @map("financial_number")
+  department            String
+  reason                String
+  status                RequestStatus         @default(pending)
+  createdBy             String?               @map("created_by")
+  serviceType           ServiceType?          @map("service_type")
+  requestType           RequestType?          @map("request_type")
+  monthlyTreatmentType  MonthlyTreatmentType? @map("monthly_treatment_type")
+  monthlyDoctorId       String?               @map("monthly_doctor_id")
+  monthlyDoctorName     String?               @map("monthly_doctor_name")
+  notes                 String?
+  symptoms              String?
+  jobTitle              String?               @map("job_title")
+  workType              String?               @map("work_type")
+  nationalId            String?               @map("national_id")
+  phone                 String?
+  managerDecisionReason String?               @map("manager_decision_reason")
+  doctorDiagnosis       String?               @map("doctor_diagnosis")
+  sickLeaveDays         Int?                  @map("sick_leave_days")
+  sickLeaveReason       String?               @map("sick_leave_reason")
+  managerId             String?               @map("manager_id")
+  managerName           String?               @map("manager_name")
+  doctorId              String?               @map("doctor_id")
+  securityOutUserId     String?               @map("security_out_user_id")
+  securityInUserId      String?               @map("security_in_user_id")
+  pharmacyUserId        String?               @map("pharmacy_user_id")
+
+  // طوابع زمنية لكل مرحلة
+  createdAt    DateTime  @default(now()) @map("created_at")
+  approvedAt   DateTime? @map("approved_at")
+  checkedOutAt DateTime? @map("checked_out_at")
+  diagnosedAt  DateTime? @map("diagnosed_at")
+  dispensedAt  DateTime? @map("dispensed_at")
+  returnedAt   DateTime? @map("returned_at")
+  completedAt  DateTime? @map("completed_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // كيانات تابعة
+  medications RequestMedication[]
+  timeline    RequestTimelineEvent[]
+  attachments RequestAttachment[]
+  referral    Referral?
+
+  @@index([employeeId])
+  @@index([status])
+  @@index([financialNumber])
+  @@map("medical_requests")
+}
+
+model RequestMedication {
+  id           String @id @default(uuid())
+  requestId    String @map("request_id")
+  name         String
+  dosage       String
+  duration     String
+  instructions String
+
+  request MedicalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("request_medications")
+}
+
+model RequestTimelineEvent {
+  id        String        @id @default(uuid())
+  requestId String        @map("request_id")
+  status    RequestStatus
+  timestamp DateTime      @default(now())
+  userId    String        @map("user_id")
+  userName  String        @map("user_name")
+  userRole  String        @map("user_role")
+  notes     String?
+
+  request MedicalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("request_timeline_events")
+}
+
+model RequestAttachment {
+  id         String   @id @default(uuid())
+  requestId  String   @map("request_id")
+  fileName   String   @map("file_name")
+  fileType   String   @map("file_type")
+  fileSize   Int      @map("file_size")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+  uploadedBy String   @map("uploaded_by")
+
+  request MedicalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("request_attachments")
+}
+
+model Referral {
+  id             String         @id @default(uuid())
+  requestId      String         @unique @map("request_id")
+  specialty      String
+  priority       String
+  facility       String
+  externalDoctor String?        @map("external_doctor")
+  reason         String
+  adminNotes     String?        @map("admin_notes")
+  status         ReferralStatus @default(pending_admin)
+  submittedAt    DateTime       @default(now()) @map("submitted_at")
+  reviewedAt     DateTime?      @map("reviewed_at")
+  reviewedBy     String?        @map("reviewed_by")
+
+  request MedicalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("referrals")
+}
+
+// ─────────────────────────────  الأقسام  ─────────────────────────────
+
+model Department {
+  id                     String  @id @default(uuid())
+  name                   String  @unique
+  managerId              String? @map("manager_id")
+  managerFinancialNumber String? @map("manager_financial_number")
+
+  @@map("departments")
+}
+
+// ─────────────────────────────  الأدوية  ─────────────────────────────
+
+model Medicine {
+  id               String   @id @default(uuid())
+  name             String
+  unit             String
+  currentStock     Int?     @map("current_stock")
+  minimumStock     Int?     @map("minimum_stock")
+  category         String?
+  activeIngredient String?  @map("active_ingredient")
+  isActive         Boolean  @default(true) @map("is_active")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("medicines")
+}
+
+// ─────────────────────────────  السجلات  ─────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  userName   String?  @map("user_name")
+  action     String
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id")
+  details    Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model SecurityLog {
+  id           String          @id @default(uuid())
+  requestId    String?         @map("request_id")
+  employeeId   String?         @map("employee_id")
+  employeeName String?         @map("employee_name")
+  type         SecurityLogType
+  officerId    String?         @map("officer_id")
+  officerName  String?         @map("officer_name")
+  notes        String?
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([requestId])
+  @@map("security_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String
+  message   String
+  requestId String?  @map("request_id")
+  unread    Boolean  @default(true)
+  icon      String?
+  color     String?
+  bg        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("notifications")
 }
