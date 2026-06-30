@@ -65,7 +65,7 @@ api/
 
 - [x] **1. Scaffold** — Fastify + Prisma + Docker + فحص صحة
 - [x] **2. Schema** — كل الجداول في `prisma/schema.prisma` (users, medical_requests + كياناتها التابعة، departments, medicines, audit/security logs, notifications)
-- [ ] 3. Seed — زرع الـ 1750 مستخدم من ملفات الداتا الحالية
+- [x] **3. Seed** — `prisma/seed.ts` يزرع 1755 مستخدم (bcrypt) + 35 قسم + 19343 دواء من ملفات الداتا الحالية. آمن لإعادة التشغيل (upsert).
 - [ ] 4. Auth API — `/login` بـ JWT + bcrypt على السيرفر
 - [ ] 5. CRUD APIs — requests / approvals / clinical / pharmacy ...
 - [ ] 6. ربط الـ frontend — استبدال Supabase client بـ `apiClient`
