@@ -1,0 +1,12 @@
+// مخطط قاعدة البيانات — كل الجداول بتتعرّف هنا في مكان واحد.
+// المرحلة 1: مفيش جداول لسه (بنتأكد إن الاتصال شغّال بس).
+// المرحلة 2: هنضيف users / requests / prescriptions / audit_logs ... هنا.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
