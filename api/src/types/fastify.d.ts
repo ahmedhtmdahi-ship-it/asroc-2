@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 // شكل البيانات اللي بنوقّعها جوه الـ JWT.
 interface AuthTokenPayload {
   sub: string; // معرّف المستخدم
+  name: string;
   role: string;
   permissions: string[];
 }
