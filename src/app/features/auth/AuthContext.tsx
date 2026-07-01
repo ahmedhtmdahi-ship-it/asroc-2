@@ -7,8 +7,8 @@ import {
   type ReactNode,
 } from "react";
 
-import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
-import { supabase } from "@/app/lib/supabaseClient";
+import { clearToken, getToken, setToken } from "@/app/lib/apiClient";
+import { apiUserToUser, loginRequest, meRequest } from "@/app/lib/authApi";
 import type { User, UserRole } from "@/app/types/user";
 
 interface AuthContextValue {
@@ -69,64 +69,49 @@ export function getHomePathByRole(role?: UserRole): string {
   return getRedirectPathByRole(role);
 }
 
-async function fetchProfile(userId: string): Promise<User | null> {
-  try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
-
-    if (error || !data) return null;
-    return profileRowToUser(data as Record<string, unknown>);
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
 
+  // عند الفتح: لو فيه توكن محفوظ نستعيد جلسة المستخدم من السيرفر.
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }: { data: { session: Session | null } }) => {
-      if (data.session?.user) {
-        const profile = await fetchProfile(data.session.user.id);
-        setUser(profile);
-      }
+    const token = getToken();
+    if (!token) {
       setReady(true);
-    });
+      return;
+    }
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
-        if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          setUser(profile);
-        } else {
-          setUser(null);
-        }
-      }
-    );
+    let cancelled = false;
+    meRequest()
+      .then((apiUser) => {
+        if (!cancelled) setUser(apiUserToUser(apiUser));
+      })
+      .catch(() => {
+        clearToken(); // توكن منتهي/غير صالح
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (username: string, password: string): Promise<User | null> => {
-    const email = `${username.trim().toLowerCase()}@asroc.local`;
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error || !data.user) return null;
-
-    const profile = await fetchProfile(data.user.id);
-    return profile;
+    try {
+      const { token, user: apiUser } = await loginRequest(username.trim(), password);
+      setToken(token);
+      const loggedIn = apiUserToUser(apiUser);
+      setUser(loggedIn);
+      return loggedIn;
+    } catch {
+      return null; // بيانات دخول غير صحيحة أو السيرفر غير متاح
+    }
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    clearToken();
     setUser(null);
   };
 
