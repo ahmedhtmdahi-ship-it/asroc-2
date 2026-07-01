@@ -1,0 +1,54 @@
+import { apiFetch } from "./apiClient";
+import type { Permission, User, UserRole } from "@/app/types/user";
+
+// شكل المستخدم اللي بيرجع من الـ API (camelCase، بدون الـ hash).
+interface ApiUser {
+  id: string;
+  username: string;
+  financialNumber?: string | null;
+  name: string;
+  jobTitle?: string | null;
+  workPlace?: string | null;
+  department?: string | null;
+  nationalId?: string | null;
+  phone?: string | null;
+  workType?: string | null;
+  role: string;
+  permissions: string[];
+  isActive: boolean;
+}
+
+// نحوّل مستخدم الـ API لنوع الـ User المستخدم في الواجهة.
+export function apiUserToUser(u: ApiUser): User {
+  return {
+    id: u.id,
+    username: u.username,
+    password: "",
+    financialNumber: u.financialNumber ?? undefined,
+    name: u.name,
+    jobTitle: u.jobTitle ?? undefined,
+    workPlace: u.workPlace ?? undefined,
+    department: u.department ?? undefined,
+    nationalId: u.nationalId ?? undefined,
+    phone: u.phone ?? undefined,
+    workType: u.workType ?? undefined,
+    role: u.role as UserRole,
+    permissions: u.permissions as Permission[],
+    isActive: u.isActive,
+  };
+}
+
+export async function loginRequest(
+  username: string,
+  password: string,
+): Promise<{ token: string; user: ApiUser }> {
+  return apiFetch<{ token: string; user: ApiUser }>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function meRequest(): Promise<ApiUser> {
+  const res = await apiFetch<{ user: ApiUser }>("/auth/me");
+  return res.user;
+}
