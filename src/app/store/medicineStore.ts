@@ -1,4 +1,4 @@
-import { supabase } from "@/app/lib/supabaseClient";
+import { listMedicinesApi } from "@/app/lib/dataApi";
 import type { Medicine, MedicineInput } from "@/app/types/medicine";
 
 const STORAGE_KEY = "asorc_medicines";
@@ -13,20 +13,6 @@ function normalizeMedicine(medicine: Medicine): Medicine {
       typeof medicine.minimumStock === "number" ? medicine.minimumStock : null,
     isActive: medicine.isActive !== false,
   };
-}
-
-function fromDb(row: Record<string, unknown>): Medicine {
-  return normalizeMedicine({
-    id: row.id as string,
-    name: row.name as string,
-    unit: (row.unit as string) || "وحدة",
-    currentStock: row.current_stock as number | null,
-    minimumStock: row.minimum_stock as number | null,
-    category: (row.category as string) || "",
-    activeIngredient: (row.active_ingredient as string) || "",
-    isActive: (row.is_active as boolean) ?? true,
-    updatedAt: (row.updated_at as string) ?? undefined,
-  });
 }
 
 function loadMedicines(): Medicine[] {
@@ -93,16 +79,13 @@ class MedicineStore {
     return this.medicines.length < before;
   }
 
+  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
   async syncFromSupabase(): Promise<void> {
     try {
-      const { data, error } = await supabase
-        .from("medicines")
-        .select("*")
-        .order("name", { ascending: true });
+      const data = await listMedicinesApi();
+      if (!data || data.length === 0) return;
 
-      if (error || !data || data.length === 0) return;
-
-      this.medicines = (data as Record<string, unknown>[]).map(fromDb);
+      this.medicines = data.map(normalizeMedicine);
       this.persist();
     } catch {
       // keep local data as fallback

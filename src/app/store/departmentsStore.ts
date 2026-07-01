@@ -1,4 +1,4 @@
-import { supabase } from "@/app/lib/supabaseClient";
+import { listUsersApi } from "@/app/lib/dataApi";
 import { mockDepartments } from "@/app/data/mockDepartments";
 
 export interface Department {
@@ -29,23 +29,22 @@ class DepartmentsStore {
     return this.getByName(departmentName)?.managerFinancialNumber;
   }
 
+  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
   async syncFromSupabase(): Promise<void> {
     try {
-      // Pull all managers from profiles — their department field IS the department they manage
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("financial_number, name, department")
-        .in("role", ["manager", "office_manager"])
-        .eq("is_active", true);
+      // كل المديرين — حقل القسم بتاعهم هو القسم اللي بيديروه
+      const data = (await listUsersApi(["manager", "office_manager"])).filter(
+        (u) => u.isActive,
+      );
 
-      if (error || !data || data.length === 0) return;
+      if (!data || data.length === 0) return;
 
-      // Build department → manager map from live profiles data
+      // بناء خريطة قسم → مدير من بيانات السيرفر
       const managerMap = new Map<string, { financialNumber: string; name: string }>();
-      for (const row of data as { financial_number: string; name: string; department: string }[]) {
+      for (const row of data) {
         if (row.department) {
           managerMap.set(normalizeArabic(row.department), {
-            financialNumber: row.financial_number,
+            financialNumber: row.financialNumber ?? "",
             name: row.name,
           });
         }

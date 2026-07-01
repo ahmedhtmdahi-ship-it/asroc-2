@@ -6,7 +6,11 @@ import {
   statusTimestampField,
   type RequestStatus,
 } from "./requests.workflow.js";
-import type { CreateRequestInput, ListQuery } from "./requests.schema.js";
+import type {
+  CreateRequestInput,
+  ListQuery,
+  UpdateRequestInput,
+} from "./requests.schema.js";
 
 interface Actor {
   id: string;
@@ -19,6 +23,12 @@ export async function listRequests(query: ListQuery) {
     where: {
       ...(query.employeeId ? { employeeId: query.employeeId } : {}),
       ...(query.status ? { status: query.status } : {}),
+    },
+    include: {
+      medications: true,
+      timeline: { orderBy: { timestamp: "asc" } },
+      attachments: true,
+      referral: true,
     },
     orderBy: { createdAt: "desc" },
   });
@@ -39,13 +49,18 @@ export async function getRequest(id: string) {
 }
 
 export async function createRequest(input: CreateRequestInput, actor: Actor) {
+  const { id, status: providedStatus, createdAt, ...rest } = input;
+
   const status: RequestStatus =
-    input.serviceType === "monthly_treatment" ? "pending_monthly_doctor" : "pending";
+    providedStatus ??
+    (rest.serviceType === "monthly_treatment" ? "pending_monthly_doctor" : "pending");
 
   const created = await prisma.medicalRequest.create({
     data: {
-      ...input,
+      ...(id ? { id } : {}),
+      ...rest,
       status,
+      ...(createdAt ? { createdAt: new Date(createdAt) } : {}),
       createdBy: actor.id,
       timeline: {
         create: [
@@ -54,7 +69,7 @@ export async function createRequest(input: CreateRequestInput, actor: Actor) {
             userId: actor.id,
             userName: actor.name,
             userRole: actor.role,
-            notes: input.notes ?? null,
+            notes: rest.notes ?? null,
           },
         ],
       },
@@ -73,6 +88,71 @@ export async function createRequest(input: CreateRequestInput, actor: Actor) {
   });
 
   return created;
+}
+
+function mapReferral(r: NonNullable<UpdateRequestInput["referralData"]>) {
+  return {
+    specialty: r.specialty,
+    priority: r.priority,
+    facility: r.facility,
+    externalDoctor: r.externalDoctor ?? null,
+    reason: r.reason,
+    adminNotes: r.adminNotes ?? null,
+    status: r.status,
+    submittedAt: new Date(r.submittedAt),
+    reviewedAt: r.reviewedAt ? new Date(r.reviewedAt) : null,
+    reviewedBy: r.reviewedBy ?? null,
+  };
+}
+
+export async function updateRequest(
+  id: string,
+  input: UpdateRequestInput,
+  actor: Actor,
+) {
+  const existing = await prisma.medicalRequest.findUnique({ where: { id } });
+  if (!existing) throw notFound("الطلب غير موجود");
+
+  const { medications, referralData, ...scalars } = input;
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.medicalRequest.update({
+      where: { id },
+      data: scalars,
+    });
+
+    // استبدال قائمة الأدوية بالكامل لو مبعوتة
+    if (medications) {
+      await tx.requestMedication.deleteMany({ where: { requestId: id } });
+      if (medications.length > 0) {
+        await tx.requestMedication.createMany({
+          data: medications.map((m) => ({ ...m, requestId: id })),
+        });
+      }
+    }
+
+    // إنشاء/تحديث الإحالة لو مبعوتة
+    if (referralData) {
+      const data = mapReferral(referralData);
+      await tx.referral.upsert({
+        where: { requestId: id },
+        create: { requestId: id, ...data },
+        update: data,
+      });
+    }
+
+    await tx.auditLog.create({
+      data: {
+        userId: actor.id,
+        userName: actor.name,
+        action: "UPDATE_REQUEST",
+        entityType: "MedicalRequest",
+        entityId: id,
+      },
+    });
+
+    return updated;
+  });
 }
 
 export async function transitionRequest(
