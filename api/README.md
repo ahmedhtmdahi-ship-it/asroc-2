@@ -68,5 +68,6 @@ api/
 - [x] **3. Seed** — `prisma/seed.ts` يزرع 1755 مستخدم (bcrypt) + 35 قسم + 19343 دواء من ملفات الداتا الحالية. آمن لإعادة التشغيل (upsert).
 - [x] **4. Auth API** — `POST /auth/login` (bcrypt + JWT على السيرفر) و `GET /auth/me`، مع `authenticate` و `requirePermission()` لحماية باقي الـ routes.
 - [x] **5. Requests API** — `GET /requests`، `GET /requests/:id`، `POST /requests`، `POST /requests/:id/transition` بنفس الـ workflow + timeline/audit/notification/security logs، محمية بالصلاحيات.
-- [x] **6. ربط الـ frontend (auth)** — `src/app/lib/apiClient.ts` + `authApi.ts`، والـ `AuthContext` بقى بيعمل login/session عبر الـ API بالـ JWT (مش Supabase). `requestsApi.ts` جاهز.
-- [ ] 6b. نضافة — تحويل requestStore/WorkflowContext لـ async عبر `requestsApi` (بالـ id من السيرفر)، مزامنة medicines/departments/profiles، وحذف ملفات الداتا الضخمة من الـ bundle.
+- [x] **6. ربط الـ frontend (auth)** — `src/app/lib/apiClient.ts` + `authApi.ts`، والـ `AuthContext` بقى بيعمل login/session عبر الـ API بالـ JWT (مش Supabase).
+- [x] **6b. ربط الـ stores بالـ API** — `requestStore` (create/updateStatus/updateFields/sync)، `medicineStore`، `profilesStore`، `managersStore`، `departmentsStore` كلهم بقوا على الـ API (تحديث محلي متفائل + مزامنة خلفية، نفس الواجهات فمفيش تغيير في الصفحات). API جديد: `PATCH /requests/:id`، `POST /requests` بيقبل id من العميل، `GET /users`، `GET /medicines`.
+- [ ] 6c. متبقّي — نقل إدارة المستخدمين في `SuperAdminPage` (لسه على Supabase عبر `lib/api.ts`) لـ API، وحذف ملفات الداتا الضخمة من الـ bundle.

@@ -6,12 +6,14 @@ import {
   createRequestSchema,
   listQuerySchema,
   transitionSchema,
+  updateRequestSchema,
 } from "./requests.schema.js";
 import {
   createRequest,
   getRequest,
   listRequests,
   transitionRequest,
+  updateRequest,
 } from "./requests.service.js";
 import { statusPermission } from "./requests.workflow.js";
 
@@ -44,6 +46,16 @@ export async function requestRoutes(app: FastifyInstance) {
       return reply.code(201).send(created);
     },
   );
+
+  // PATCH /requests/:id  — تحديث حقول (تشخيص/روشتة/إحالة/إجازة...)
+  app.patch<{ Params: { id: string } }>("/:id", auth, async (req) => {
+    const body = updateRequestSchema.parse(req.body);
+    return updateRequest(req.params.id, body, {
+      id: req.user.sub,
+      name: req.user.name,
+      role: req.user.role,
+    });
+  });
 
   // POST /requests/:id/transition  { status, note? }
   app.post<{ Params: { id: string } }>("/:id/transition", auth, async (req) => {

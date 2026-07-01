@@ -1,5 +1,5 @@
-import { supabase } from "@/app/lib/supabaseClient";
-import { profileRowToUser } from "@/app/features/auth/AuthContext";
+import { listUsersApi } from "@/app/lib/dataApi";
+import { apiUserToUser } from "@/app/lib/authApi";
 import type { User } from "@/app/types/user";
 
 class ProfilesStore {
@@ -17,14 +17,11 @@ class ProfilesStore {
     return this.profiles.filter((u) => u.role === role);
   }
 
+  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
   async syncFromSupabase(): Promise<void> {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, username, name, financial_number, job_title, work_place, department, national_id, phone, work_type, role, permissions, is_active");
-
-      if (error || !data) return;
-      this.profiles = (data as Record<string, unknown>[]).map(profileRowToUser);
+      const data = await listUsersApi();
+      this.profiles = data.map(apiUserToUser);
     } catch {
       // keep empty — callers handle missing data gracefully
     }

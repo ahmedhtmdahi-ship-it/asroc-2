@@ -42,3 +42,13 @@ export function transitionRequestApi(
     body: JSON.stringify({ status, note }),
   });
 }
+
+export function patchRequestApi(
+  id: string,
+  fields: Partial<MedicalRequest>,
+): Promise<MedicalRequest> {
+  return apiFetch<MedicalRequest>(`/requests/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(fields),
+  });
+}

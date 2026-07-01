@@ -1,4 +1,4 @@
-import { supabase } from "@/app/lib/supabaseClient";
+import { listUsersApi } from "@/app/lib/dataApi";
 import { mockManagers, type ManagerRecord } from "@/app/data/mockManagers";
 
 class ManagersStore {
@@ -12,27 +12,24 @@ class ManagersStore {
     return this.managers.find((m) => m.financialNumber === financialNumber);
   }
 
+  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
   async syncFromSupabase(): Promise<void> {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, financial_number, name, job_title, department, role, national_id, phone, work_type, is_active")
-        .in("role", ["manager", "office_manager"]);
+      const data = await listUsersApi(["manager", "office_manager"]);
+      if (!data || data.length === 0) return;
 
-      if (error || !data || data.length === 0) return;
-
-      this.managers = (data as Record<string, unknown>[]).map((row) => ({
-        id: row.id as string,
-        financialNumber: row.financial_number as string,
-        name: row.name as string,
-        jobTitle: (row.job_title as string) ?? undefined,
-        department: (row.department as string) ?? "",
-        nationalId: (row.national_id as string) ?? undefined,
-        phone: (row.phone as string) ?? undefined,
-        workType: (row.work_type as string) ?? undefined,
-        managerType: row.role as "manager" | "office_manager",
-        managedDepartments: [(row.department as string) ?? ""],
-        isActive: (row.is_active as boolean) ?? true,
+      this.managers = data.map((u) => ({
+        id: u.id,
+        financialNumber: u.financialNumber ?? "",
+        name: u.name,
+        jobTitle: u.jobTitle ?? undefined,
+        department: u.department ?? "",
+        nationalId: u.nationalId ?? undefined,
+        phone: u.phone ?? undefined,
+        workType: u.workType ?? undefined,
+        managerType: u.role as "manager" | "office_manager",
+        managedDepartments: [u.department ?? ""],
+        isActive: u.isActive,
       }));
     } catch {
       // keep mock data as fallback
