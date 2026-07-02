@@ -23,11 +23,14 @@ export function buildApp() {
   const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
   app.register(cors, { origin: allowedOrigin });
 
-  // Add rate limiting global config (can be customized per route)
-  app.register(rateLimit, {
-    max: 100,
-    timeWindow: "1 minute",
-  });
+  // Add rate limiting global config (can be customized per route).
+  // بنعطّله في بيئة الاختبار عشان طلبات الاختبار المتتالية ما تتحظرش.
+  if (process.env.NODE_ENV !== "test") {
+    app.register(rateLimit, {
+      max: 100,
+      timeWindow: "1 minute",
+    });
+  }
 
   setupAuth(app);
   app.setErrorHandler(errorHandler);
