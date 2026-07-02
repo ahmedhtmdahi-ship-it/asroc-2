@@ -1,23 +1,68 @@
 /**
- * زرع البيانات الأولية في Postgres من ملفات الداتا الحالية في الـ frontend.
+ * زرع البيانات الأولية في قاعدة البيانات من لقطات JSON (api/prisma/seed-data).
  *
  * - الباسوردات النصية بتتحوّل لـ bcrypt hash (مرة واحدة هنا، على السيرفر).
  * - upsert في كل حاجة → السكربت آمن لإعادة التشغيل (idempotent).
  * - بنحافظ على الـ ids الأصلية (USER-50, MED-00001, ...) عشان المراجع تفضل صحيحة.
+ * - بيتخطّى الزرع لو فيه مستخدمين بالفعل (إلا لو SEED_FORCE=1) عشان إعادة التشغيل تبقى سريعة.
  *
+ * البيانات مخزّنة كـ JSON جوه الـ backend (مش في الـ frontend) عشان تشتغل جوه صورة الـ Docker.
  * التشغيل:  cd api && pnpm db:seed
  */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
-// ملفات الداتا في الـ frontend — بتستخدم `import type` بس، فمفيش imports وقت التشغيل.
-import { mockUsers } from "../../src/app/data/mockUsers";
-import { mockDepartments } from "../../src/app/data/mockDepartments";
-import { medicinesSeed } from "../../src/app/data/medicinesSeed";
-
 const prisma = new PrismaClient();
-
 const BCRYPT_ROUNDS = 10;
+
+const SEED_DIR = join(dirname(fileURLToPath(import.meta.url)), "seed-data");
+
+interface SeedUser {
+  id: string;
+  username: string;
+  password?: string;
+  financialNumber?: string;
+  name: string;
+  jobTitle?: string;
+  workPlace?: string;
+  department?: string;
+  nationalId?: string;
+  phone?: string;
+  workType?: string;
+  role: string;
+  permissions?: string[];
+  isActive?: boolean;
+}
+
+interface SeedDepartment {
+  id: string;
+  name: string;
+  managerId?: string;
+  managerFinancialNumber?: string;
+}
+
+interface SeedMedicine {
+  id: string;
+  name: string;
+  unit: string;
+  currentStock?: number | null;
+  minimumStock?: number | null;
+  category?: string;
+  activeIngredient?: string;
+  isActive?: boolean;
+}
+
+function loadJson<T>(name: string): T {
+  return JSON.parse(readFileSync(join(SEED_DIR, name), "utf8")) as T;
+}
+
+const mockUsers = loadJson<SeedUser[]>("users.json");
+const mockDepartments = loadJson<SeedDepartment[]>("departments.json");
+const medicinesSeed = loadJson<SeedMedicine[]>("medicines.json");
 
 async function seedUsers() {
   console.log(`\n👤 زرع ${mockUsers.length} مستخدم (مع bcrypt)...`);
@@ -44,6 +89,8 @@ async function seedUsers() {
       role: u.role,
       permissions: JSON.stringify(u.permissions ?? []),
       isActive: u.isActive ?? true,
+      // كل الحسابات المزروعة لازم تغيّر الباسورد أول دخول (أمان on-prem).
+      mustChangePassword: true,
     };
 
     await prisma.user.upsert({
@@ -100,6 +147,16 @@ async function seedMedicines() {
 
 async function main() {
   console.log("🌱 بدء زرع قاعدة البيانات...");
+
+  // حارس idempotency: لو فيه بيانات بالفعل، ما نعيدش الزرع (إلا بالإجبار).
+  const existingUsers = await prisma.user.count();
+  if (existingUsers > 0 && process.env.SEED_FORCE !== "1") {
+    console.log(
+      `⏭️  فيه ${existingUsers} مستخدم بالفعل — تخطّي الزرع. (استخدم SEED_FORCE=1 للإجبار)`,
+    );
+    return;
+  }
+
   await seedUsers();
   await seedDepartments();
   await seedMedicines();

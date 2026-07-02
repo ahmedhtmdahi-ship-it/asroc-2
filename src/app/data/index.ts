@@ -1,5 +1,4 @@
 ﻿export * from "./mockManagers";
-export * from "./mockDepartments";
 export * from "./rolePermissions";
 
 export * from "./mockRequests";
