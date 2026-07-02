@@ -18,4 +18,5 @@ export interface User {
   role: UserRole;
   permissions: Permission[];
   isActive: boolean;
+  mustChangePassword?: boolean;
 }

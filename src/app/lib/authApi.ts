@@ -16,6 +16,7 @@ interface ApiUser {
   role: string;
   permissions: string[];
   isActive: boolean;
+  mustChangePassword?: boolean;
 }
 
 // نحوّل مستخدم الـ API لنوع الـ User المستخدم في الواجهة.
@@ -35,6 +36,7 @@ export function apiUserToUser(u: ApiUser): User {
     role: u.role as UserRole,
     permissions: u.permissions as Permission[],
     isActive: u.isActive,
+    mustChangePassword: u.mustChangePassword ?? false,
   };
 }
 
@@ -51,4 +53,14 @@ export async function loginRequest(
 export async function meRequest(): Promise<ApiUser> {
   const res = await apiFetch<{ user: ApiUser }>("/auth/me");
   return res.user;
+}
+
+export async function changePasswordRequest(
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ token: string; user: ApiUser }> {
+  return apiFetch<{ token: string; user: ApiUser }>("/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
 }

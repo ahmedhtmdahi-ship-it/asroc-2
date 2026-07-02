@@ -3,6 +3,7 @@
 import { ProtectedRoute } from "./features/auth/components/ProtectedRoute";
 
 import { LoginPage } from "./features/auth/pages/LoginPage";
+import { ChangePasswordPage } from "./features/auth/pages/ChangePasswordPage";
 import { DashboardPage } from "./features/dashboard/pages/DashboardPage";
 import { NotFound } from "./features/routing/pages/NotFound";
 
@@ -39,6 +40,15 @@ export const router = createBrowserRouter([
   {
     path: "/",
     Component: LoginPage,
+  },
+
+  {
+    path: "/change-password",
+    element: (
+      <ProtectedRoute>
+        <ChangePasswordPage />
+      </ProtectedRoute>
+    ),
   },
 
   {

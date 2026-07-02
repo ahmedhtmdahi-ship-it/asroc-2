@@ -6,6 +6,7 @@ interface AuthTokenPayload {
   name: string;
   role: string;
   permissions: string[];
+  mustChangePassword?: boolean; // لازم تغيير الباسورد أول دخول
 }
 
 declare module "@fastify/jwt" {
