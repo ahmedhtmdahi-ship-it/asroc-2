@@ -1,27 +1,25 @@
-# صورة الـ API — multi-stage عشان الصورة النهائية تبقى صغيرة
-FROM node:22-alpine AS base
+# صورة الـ API — تُبنى من جذر المشروع (workspace) عشان يتحل @asroc/shared.
+# بناء:  docker build -f api/Dockerfile .   (السياق = جذر المشروع)
+FROM node:22-alpine
 WORKDIR /app
 RUN corepack enable
 
-# 1) تثبيت كل الـ dependencies + توليد Prisma Client
-FROM base AS deps
-COPY package.json ./
-COPY prisma ./prisma
-RUN pnpm install --no-frozen-lockfile
-RUN pnpm prisma generate
+# 1) manifests الأول (طبقة install مخبّأة)
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY api/package.json ./api/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
+RUN pnpm install --frozen-lockfile
 
-# 2) بناء TypeScript → JavaScript
-FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-RUN pnpm build
+# 2) الكود
+COPY packages/shared ./packages/shared
+COPY api ./api
 
-# 3) صورة التشغيل النهائية
-FROM base AS runtime
+# 3) توليد Prisma Client (محتاج شبكة لتنزيل المحرّك أول مرة)
+WORKDIR /app/api
+RUN pnpm exec prisma generate
+
 ENV NODE_ENV=production
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY package.json ./
 EXPOSE 4000
-CMD ["node", "dist/server.js"]
+
+# migrate deploy + seed + تشغيل السيرفر (عبر tsx — مفيش خطوة compile فبنتجنّب مشاكل .ts وقت التشغيل)
+ENTRYPOINT ["/bin/sh", "/app/api/docker-entrypoint.sh"]

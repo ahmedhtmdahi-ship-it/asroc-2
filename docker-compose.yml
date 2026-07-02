@@ -1,19 +1,45 @@
-# تشغيل كامل بأمر واحد: docker compose up -d
+# تشغيل كامل بأمر واحد:  JWT_SECRET=... docker compose up -d  (أو حُطّه في .env)
 # بيشتغل بنفس الطريقة على Windows أو Linux — مناسب لسيرفر الشركة.
+#
+# web (nginx) بيقدّم الواجهة على المنفذ 80 وبيعمل بروكسي لـ /api → api:4000.
+# api مش متعرّض للمضيف مباشرةً — الدخول كله عبر web.
 services:
   api:
-    build: ./api
+    build:
+      context: .
+      dockerfile: api/Dockerfile
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: "file:/app/prisma/prod.db"
-      JWT_SECRET: ${JWT_SECRET}
+      # SQLite على volume دائم (النسخ الاحتياطي = نسخ الملف ده).
+      DATABASE_URL: "file:/data/prod.db"
+      # لازم يتحدّد (السيرفر بيرفض القيمة الافتراضية). حُطّه في .env أو البيئة.
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (>=16 chars) in .env}
       PORT: 4000
       HOST: 0.0.0.0
-    ports:
-      - "4000:4000"
     volumes:
-      - sqlite_data:/app/prisma
+      - sqlite_data:/data
+    expose:
+      - "4000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
 
 volumes:
   sqlite_data:
