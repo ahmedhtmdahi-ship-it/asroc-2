@@ -1,137 +1,103 @@
 # ملف التسليم — ASROC (نظام إدارة الخدمات الطبية)
 
-الملف ده بيلخّص اللي اتعمل عشان تكمّل عليه بسهولة (سواء بنفسك أو عبر Claude في VS Code).
+نظام طبي **on-prem**: كل الداتا والـ auth على سيرفر الشركة، تتشارك بين كل الأجهزة على الشبكة
+الداخلية — من غير أي خدمة سحابية.
+
+**الـ Stack:** React + Vite (الواجهة) · Node + TypeScript + Fastify + Prisma + **SQLite** (الباك) · Docker.
+`packages/shared` فيه تعريفات الأدوار/الصلاحيات/الـ workflow المشتركة بين الاتنين.
 
 ---
 
-## 🎯 الفكرة باختصار
-
-حوّلنا التخزين والمصادقة من **Supabase (سحابة/إنترنت)** إلى
-**backend يشتغل على سيرفر الشركة** — عشان الداتا تعيش جوه شبكة الشركة
-وتتشارك بين كل الأجهزة، من غير اعتماد على نت عالمي.
-
-**الـ Stack:** React (الواجهة القديمة) + **Node + TypeScript + Fastify + Prisma + PostgreSQL** (backend جديد) + Docker.
-
----
-
-## 🧱 المعمارية: قبل / بعد
-
-| قبل | بعد |
-|---|---|
-| Supabase cloud | PostgreSQL على سيرفر الشركة |
-| auth في المتصفح | JWT + bcrypt على السيرفر |
-| stores بتكلّم Supabase | stores بتكلّم `/api` (نفس الواجهة) |
-| باسورد plaintext | bcrypt hash |
-
----
-
-## 📂 اللي اتضاف
-
-```
-api/                         ← الـ backend الجديد
-├── prisma/
-│   ├── schema.prisma        ← كل الجداول
-│   └── seed.ts              ← زرع 1755 مستخدم + 35 قسم + 19343 دواء (bcrypt)
-├── src/
-│   ├── server.ts / app.ts   ← الإقلاع وتسجيل الـ modules
-│   ├── env.ts               ← تحقق متغيّرات البيئة (zod)
-│   ├── db/prisma.ts         ← اتصال DB
-│   ├── plugins/jwt.ts       ← JWT + authenticate
-│   ├── middleware/          ← requirePermission + معالج أخطاء
-│   └── modules/
-│       ├── auth/            ← POST /auth/login , GET /auth/me
-│       ├── requests/        ← CRUD + workflow (statusFlow)
-│       ├── users/           ← GET /users?roles=
-│       ├── medicines/       ← GET /medicines
-│       └── health/          ← /health/live , /health/ready
-├── Dockerfile
-└── README.md               ← تفاصيل + خريطة المراحل
-
-docker-compose.yml           ← Postgres + API بأمر واحد
-.env.example                 ← متغيّرات الواجهة (VITE_API_URL)
-
-src/app/lib/
-├── apiClient.ts             ← fetch wrapper + JWT
-├── authApi.ts               ← login/me + mapper
-├── requestsApi.ts           ← list/get/create/transition/patch
-└── dataApi.ts               ← listUsers / listMedicines
-```
-
-## ✏️ اللي اتعدّل في الواجهة
-
-- `src/app/features/auth/AuthContext.tsx` — login/session عبر الـ API بالـ JWT.
-- `src/app/store/requestStore.ts` — create/updateStatus/updateFields/sync → API.
-- `src/app/store/{medicineStore,profilesStore,managersStore,departmentsStore}.ts` — sync → API.
-
-> **مهم:** واجهات الـ stores زي ما هي (متزامنة) — **مفيش صفحة اتغيّرت**. التبديل جوه الـ store بس.
-
----
-
-## 🌐 الـ API endpoints
-
-| Method | Path | الوظيفة | الحماية |
-|---|---|---|---|
-| POST | `/auth/login` | تسجيل دخول → JWT | — |
-| GET | `/auth/me` | المستخدم الحالي | JWT |
-| GET | `/requests?employeeId=&status=` | قائمة | JWT |
-| GET | `/requests/:id` | تفاصيل | JWT |
-| POST | `/requests` | إنشاء (بيقبل id من العميل) | `create_request` |
-| PATCH | `/requests/:id` | تحديث حقول/روشتة/إحالة | JWT |
-| POST | `/requests/:id/transition` | نقل الحالة | صلاحية حسب التحويل |
-| GET | `/users?roles=manager,office_manager` | المستخدمون | JWT |
-| GET | `/medicines` | الأدوية | JWT |
-
----
-
-## ▶️ التشغيل محليًا (أول مرة)
+## التشغيل بأمر واحد (نشر on-prem)
 
 ```bash
-# 1) قاعدة البيانات + الـ backend
-docker compose up -d db
-cd api
-cp .env.example .env
-pnpm install
-pnpm prisma migrate dev --name init   # يبني الجداول + يشغّل الـ seed
-pnpm dev                               # API على http://localhost:4000
+# 1) سر قوي للـ JWT (السيرفر بيرفض القيمة الافتراضية)
+echo "JWT_SECRET=$(openssl rand -base64 32)" > .env
 
-# 2) الواجهة (terminal تاني، من جذر المشروع)
-cp .env.example .env.local
-pnpm install
-pnpm dev
-
-# تسجيل الدخول: admin / admin
+# 2) شغّل كل حاجة
+docker compose up -d
 ```
 
-تأكد سريع:
+- الواجهة بتتفتح على `http://<server-ip>/` (منفذ 80).
+- الـ API خلف الواجهة على `/api` (بروكسي nginx) — مش متعرّض للمضيف مباشرةً.
+- أول إقلاع بيطبّق الـ migrations ويزرع 1755 مستخدم + 35 قسم + 19343 دواء تلقائيًا (idempotent).
+
+**أول دخول:** كل الحسابات المزروعة لازم تغيّر الباسورد أول مرة (شاشة إجبارية). الباسوردات
+الأولية = الاسم الأول + الرقم المالي (زي الداتا الأصلية)؛ حساب `admin` كمان لازم يغيّر باسورده أول دخول.
+
+تأكيد سريع:
 ```bash
-curl http://localhost:4000/health/ready       # {"status":"ok","db":"up"}
-curl -X POST http://localhost:4000/auth/login -H "Content-Type: application/json" -d '{"username":"admin","password":"admin"}'
+curl http://localhost/api/health/ready    # {"status":"ok","db":"up"}
 ```
 
 ---
 
-## ✅ خلص / ⬜ متبقّي
+## التطوير المحلي (من غير Docker)
 
-- [x] Backend كامل (schema + seed + auth + requests + users + medicines)
-- [x] الواجهة: auth + stores (requests/medicines/profiles/managers/departments) على الـ API
-- [ ] **6c:** إدارة المستخدمين في `SuperAdminPage` لسه على Supabase (عبر `src/app/lib/api.ts`) → تتنقل لـ API (محتاج endpoints: إنشاء/تعديل مستخدم + تعديل صلاحيات/دور)
-- [ ] **6c:** حذف ملفات الداتا الضخمة (`src/app/data/mockUsers.ts` ~35k سطر، `medicinesSeed.ts`) من الـ bundle بعد ما بقت في الـ DB
-- [ ] **الداش بورد الموحدة:** الموظف = الأساس، وكل رول يزيد ميزته (composition by permission)
+```bash
+# الباك
+cd api && cp .env.example .env && pnpm install
+pnpm prisma:generate && pnpm prisma migrate dev && pnpm db:seed && pnpm dev   # :4000
 
----
-
-## ⚠️ ملاحظات مهمة قبل ما تكمّل
-
-1. **`pnpm prisma generate`** لازم يتنفّذ على جهازك (اتعمل تلقائيًا مع `migrate`). من غيره الـ typecheck هيشتكي من `PrismaClient` — ده طبيعي.
-2. النظام **on-prem بقصد** — متضفش خدمات cloud تخزّن الداتا بره الشركة.
-3. الـ backend بيولّد الـ audit/notification/security logs. الواجهة لسه بتكتب نسخ محلية كمان (للعرض الفوري) — تنظيفها جزء من جولة لاحقة.
-4. متغيّرات Supabase القديمة لسه مستخدمة في `SuperAdminPage` بس، لحد ما 6c تخلص.
+# الواجهة (terminal تاني من الجذر)
+cp .env.example .env.local            # VITE_API_URL=http://localhost:4000
+pnpm install && pnpm dev              # :5173
+```
 
 ---
 
-## 🤖 برومبت جاهز تديه لـ Claude في VS Code
+## 📖 دليل التشغيل (runbook) لسيرفر الشركة
 
-> اقرأ `HANDOFF.md` و `api/README.md`. المشروع نظام طبي on-prem، الـ backend في `api/`
-> (Fastify + Prisma + Postgres) والواجهة React في `src/`. عايز أكمّل من نقطة "المتبقّي":
-> [اكتب المهمة، مثلًا: نقل إدارة المستخدمين في SuperAdminPage من Supabase للـ API].
-> حافظ على نفس نمط الـ modules في `api/src/modules/` ونمط الـ stores في `src/app/store/`.
+- **السر:** `JWT_SECRET` لازم ≥ 16 حرف ومختلف عن الافتراضي (env بيرفض غير كده والسيرفر ما يقلعش).
+- **النسخ الاحتياطي:** الداتا كلها في ملف SQLite واحد على volume اسمه `sqlite_data` (`/data/prod.db`).
+  نسخة احتياطية = نسخ الملف:
+  ```bash
+  docker compose exec api sh -c "cp /data/prod.db /data/backup-$(date +%F).db"
+  ```
+  انسخ الملف بره الحاوية بـ `docker cp`.
+- **الاستعادة:** وقّف الحاوية، استبدل `/data/prod.db` بالنسخة، شغّل تاني.
+- **الترقيات/تغيير الـ schema:** أضف migration في التطوير (`pnpm prisma migrate dev`)، اعمل commit
+  لمجلد `api/prisma/migrations`، وعند النشر `docker compose up -d --build` — الـ entrypoint بيطبّق
+  `prisma migrate deploy` تلقائيًا.
+- **الأمان:** الأدوار/الصلاحيات في التوكن (JWT، 12 ساعة). تعطيل حساب (`isActive=false`) بيمنعه فورًا
+  في الطلب اللي بعده (kill switch). تغيير الصلاحيات بيتفعّل بعد إعادة تسجيل الدخول.
+- **الاستضافة:** SQLite كافية لسيرفر واحد بحمل متوسط (WAL مفعّل لتحسين القراءات المتوازية).
+  لو الحمل التزامني كبر جدًا، مسار الترقية = PostgreSQL (تغيير `datasource` + إعادة الـ migrations).
+
+---
+
+## 🌐 أهم الـ API endpoints
+
+| Method | Path | الحماية |
+|---|---|---|
+| POST | `/auth/login` | rate-limited (5/دقيقة) |
+| GET | `/auth/me` | JWT (+ فحص isActive) |
+| POST | `/auth/change-password` | JWT |
+| GET/POST | `/requests` | JWT — القراءة مقصورة على صاحب الطلب إلا بصلاحية أوسع |
+| GET/PATCH | `/requests/:id` | JWT — فحص ملكية/صلاحية |
+| POST | `/requests/:id/transition` | صلاحية حسب التحويل (atomic) |
+| GET/POST/PATCH | `/users` · `/users/:id` | `manage_system` |
+| GET | `/users/lookup` | JWT (حقول عامة محدودة) |
+| CRUD | `/medicines` | JWT |
+| GET | `/notifications` · `/audit-logs` · `/security-logs` | JWT / `view_audit_log` |
+
+---
+
+## اللي اتعمل في جولة التصليح والتكملة الأخيرة
+
+- **نشر شغّال فعلًا:** `docker compose up` بيطبّق migrations + seed تلقائيًا، وبيقدّم الواجهة عبر nginx
+  ببروكسي `/api` (same-origin، مفيش IP متبيّت). SQLite بدل Postgres السحابي.
+- **أمان:** إصلاح IDOR على الطلبات، تحويلات الـ workflow atomic (compare-and-set + 409)، قفل هوية
+  المُنشئ، إجبار تغيير الباسورد أول دخول، kill switch لتعطيل الحساب، تثبيت HS256، مقارنة bcrypt
+  وهمية ضد timing enumeration.
+- **سلامة بيانات:** توحيد مفتاح الإحالة (`referral`↔`referralData`)، تمرير ملاحظة القرار لـ timeline
+  السيرفر، تسلسل نداءات الطبيب/الأمن المترابطة.
+- **تنظيف:** شيل ملفات الـ mock الضخمة من الـ frontend (بقت JSON للـ seed في `api/prisma/seed-data`)،
+  حذف artifacts قديمة، تصحيح `tsconfig` عشان الـ typecheck يعدّي.
+- **اختبارات + CI:** اختبارات تكامل للـ API + GitHub Actions (typecheck + build + tests).
+
+## متبقّي (تحسينات لاحقة، مش حاجب للنشر)
+
+- تصغير الـ frontend bundle بالـ code-splitting (تحذير حجم الـ chunk).
+- توحيد صفحات الأدوار المتفرقة تحت الداش بورد الموحدة بالتدريج (الداش بورد الموحدة شغّالة كنقطة دخول).
+- إبطال التوكن عند تغيير الصلاحيات (حاليًا بيتطلب re-login).
