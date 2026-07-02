@@ -9,6 +9,11 @@ import type { RequestStatus } from "@/app/types/workflow";
 
 /**
  * تخزين طلبات مؤقت في الذاكرة ومزامنة البيانات من/إلى الباك.
+ *
+ * لكل تعديل نسختان:
+ *  - نسخة متزامنة (fire-and-forget): تحديث متفائل + تنبيه/إعادة تحميل عند الفشل — للنداءات البسيطة.
+ *  - نسخة async (transitionAsync/patchAsync): بترجّع Promise عشان الصفحات تعمل await وتسلسل
+ *    النداءات المترابطة (زي الكشف ثم الروشتة) وتتعامل مع الخطأ بنفسها من غير reload.
  */
 class RequestStore {
   private requests: MedicalRequest[] = [];
@@ -63,26 +68,66 @@ class RequestStore {
     return request;
   }
 
-  updateStatus(id: string, status: RequestStatus) {
+  /** نسخة async: تحديث الحالة مع await + رفض عند الفشل (بدون reload). */
+  async transitionAsync(
+    id: string,
+    status: RequestStatus,
+    note?: string,
+  ): Promise<MedicalRequest | null> {
     const request = this.getById(id);
     if (!request) return null;
 
     const oldStatus = request.status;
     request.status = status;
 
-    transitionRequestApi(id, status)
-      .then((updated) => {
-        this.mergeRequest(id, updated);
-      })
-      .catch((e) => {
-        console.warn("[api] transition:", e?.message);
-        const req = this.getById(id);
-        if (req) {
-          req.status = oldStatus;
-          window.alert("حدث خطأ أثناء تغيير الحالة. تمت استعادة الحالة السابقة.");
-          window.location.reload(); // Simple way to force UI refresh for vanilla stores
-        }
-      });
+    try {
+      const updated = await transitionRequestApi(id, status, note);
+      this.mergeRequest(id, updated);
+      return this.getById(id) ?? null;
+    } catch (e) {
+      const req = this.getById(id);
+      if (req) req.status = oldStatus;
+      throw e;
+    }
+  }
+
+  /** نسخة async: تحديث حقول مع await + رفض عند الفشل (بدون reload). */
+  async patchAsync(
+    id: string,
+    fields: Partial<MedicalRequest>,
+  ): Promise<MedicalRequest | null> {
+    const request = this.getById(id);
+    if (!request) return null;
+
+    const oldFields: Partial<MedicalRequest> = {};
+    for (const key in fields) {
+      oldFields[key as keyof MedicalRequest] = request[
+        key as keyof MedicalRequest
+      ] as never;
+    }
+
+    Object.assign(request, fields);
+
+    try {
+      const updated = await patchRequestApi(id, fields);
+      this.mergeRequest(id, updated);
+      return this.getById(id) ?? null;
+    } catch (e) {
+      const req = this.getById(id);
+      if (req) Object.assign(req, oldFields);
+      throw e;
+    }
+  }
+
+  updateStatus(id: string, status: RequestStatus, note?: string) {
+    const request = this.getById(id);
+    if (!request) return null;
+
+    this.transitionAsync(id, status, note).catch((e) => {
+      console.warn("[api] transition:", e?.message);
+      window.alert("حدث خطأ أثناء تغيير الحالة. تمت استعادة الحالة السابقة.");
+      window.location.reload(); // إعادة تحميل بسيطة لتحديث الواجهة المتزامنة
+    });
 
     return request;
   }
@@ -91,31 +136,15 @@ class RequestStore {
     const request = this.getById(id);
     if (!request) return null;
 
-    const oldFields: Partial<MedicalRequest> = {};
-    for (const key in fields) {
-      oldFields[key as keyof MedicalRequest] = request[key as keyof MedicalRequest] as any;
-    }
-
-    Object.assign(request, fields);
-
-    patchRequestApi(id, fields)
-      .then((updated) => {
-        this.mergeRequest(id, updated);
-      })
-      .catch((e) => {
-        console.warn("[api] update fields:", e?.message);
-        const req = this.getById(id);
-        if (req) {
-          Object.assign(req, oldFields);
-          window.alert("حدث خطأ أثناء التحديث. تمت استعادة البيانات القديمة.");
-          window.location.reload();
-        }
-      });
+    this.patchAsync(id, fields).catch((e) => {
+      console.warn("[api] update fields:", e?.message);
+      window.alert("حدث خطأ أثناء التحديث. تمت استعادة البيانات القديمة.");
+      window.location.reload();
+    });
 
     return request;
   }
 
-  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
   async syncFromApi(): Promise<void> {
     try {
       const data = await listRequestsApi();

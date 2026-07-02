@@ -33,9 +33,11 @@ class WorkflowStore {
     // requestStore.updateStatus calls transitionRequestApi on the backend.
     // The backend creates the AuditLog, Notification, and SecurityLog records.
     // We do NOT write to local stores here to avoid double-writes.
+    // بنمرّر الـ note عشان يتسجّل في timeline السيرفر (سبب قرار المدير/ملاحظة الطبيب).
     const updatedRequest = requestStore.updateStatus(
       payload.requestId,
-      nextStatus
+      nextStatus,
+      payload.note
     );
 
     return updatedRequest;
