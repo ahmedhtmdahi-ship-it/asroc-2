@@ -59,8 +59,18 @@ const navItems: NavItem[] = [
   {
     label: "الرئيسية",
     icon: Home,
-    link: "/employee",
-    roles: ["employee"],
+    link: "/dashboard",
+    roles: [
+      "employee",
+      "manager",
+      "office_manager",
+      "security",
+      "doctor",
+      "pharmacy",
+      "medical_admin",
+      "pension_admin",
+      "super_admin",
+    ],
   },
   {
     label: "طلب كشف طبي",
@@ -89,11 +99,11 @@ const navItems: NavItem[] = [
   {
     label: "طلب كشف طبي",
     icon: FileText,
-    link: "/request/new",
-    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
+    link: "/employee/requests",
+    roles: ["employee"],
   },
   {
-    label: "طلباتي الطبية",
+    label: "طلباتي",
     icon: ClipboardList,
     link: "/my-requests",
     roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
@@ -355,7 +365,7 @@ export function PageLayout({
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" className="w-56" dir="rtl">
+                <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div>
                       <p>{user?.name || "مستخدم"}</p>

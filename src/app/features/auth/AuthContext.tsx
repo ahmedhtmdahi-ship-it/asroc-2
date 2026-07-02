@@ -9,7 +9,15 @@ import {
 
 import { clearToken, getToken, setToken } from "@/app/lib/apiClient";
 import { apiUserToUser, loginRequest, meRequest } from "@/app/lib/authApi";
-import type { User, UserRole } from "@/app/types/user";
+import { PERMISSIONS } from "@asroc/shared/roles.js";
+import type { User, UserRole, Permission } from "@/app/types/user";
+
+function parsePermissions(raw: unknown): Permission[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(
+    (item): item is Permission => typeof item === "string" && PERMISSIONS.includes(item as Permission),
+  );
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -35,38 +43,17 @@ export function profileRowToUser(row: Record<string, unknown>): User {
     phone: (row.phone as string) ?? undefined,
     workType: (row.work_type as string) ?? undefined,
     role: row.role as UserRole,
-    permissions: (row.permissions as string[]) ?? [],
+    permissions: parsePermissions(row.permissions),
     isActive: (row.is_active as boolean) ?? true,
   };
 }
 
 export function getRedirectPathByRole(role: UserRole) {
-  switch (role) {
-    case "employee":
-      return "/employee";
-    case "manager":
-    case "office_manager":
-      return "/manager/approvals";
-    case "security":
-      return "/security";
-    case "doctor":
-      return "/doctor";
-    case "pharmacy":
-      return "/pharmacy";
-    case "medical_admin":
-      return "/medical-admin";
-    case "pension_admin":
-      return "/pension-admin";
-    case "super_admin":
-      return "/dashboard";
-    default:
-      return "/employee";
-  }
+  return "/dashboard";
 }
 
 export function getHomePathByRole(role?: UserRole): string {
-  if (!role) return "/";
-  return getRedirectPathByRole(role);
+  return "/dashboard";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

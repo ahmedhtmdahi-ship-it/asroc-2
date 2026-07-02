@@ -4,6 +4,7 @@ import {
   canMove,
   statusLabels,
   statusTimestampField,
+  isClosedStatus,
   type RequestStatus,
 } from "./requests.workflow.js";
 import type {
@@ -49,18 +50,21 @@ export async function getRequest(id: string) {
 }
 
 export async function createRequest(input: CreateRequestInput, actor: Actor) {
-  const { id, status: providedStatus, createdAt, ...rest } = input;
+  const { id, ...rest } = input;
 
   const status: RequestStatus =
-    providedStatus ??
-    (rest.serviceType === "monthly_treatment" ? "pending_monthly_doctor" : "pending");
+    rest.serviceType === "monthly_treatment"
+      ? "pending_monthly_doctor"
+      : rest.requestType === "emergency"
+      ? "approved"
+      : "pending";
 
   const created = await prisma.medicalRequest.create({
     data: {
       ...(id ? { id } : {}),
       ...rest,
       status,
-      ...(createdAt ? { createdAt: new Date(createdAt) } : {}),
+      ...(status === "approved" ? { approvedAt: new Date() } : {}),
       createdBy: actor.id,
       timeline: {
         create: [
@@ -112,6 +116,9 @@ export async function updateRequest(
 ) {
   const existing = await prisma.medicalRequest.findUnique({ where: { id } });
   if (!existing) throw notFound("الطلب غير موجود");
+  if (isClosedStatus(existing.status as RequestStatus)) {
+    throw badRequest("لا يمكن تعديل طلب مغلق");
+  }
 
   const { medications, referralData, ...scalars } = input;
 

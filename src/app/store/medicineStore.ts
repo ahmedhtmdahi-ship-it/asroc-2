@@ -1,7 +1,10 @@
-import { listMedicinesApi } from "@/app/lib/dataApi";
+import {
+  createMedicineApi,
+  deleteMedicineApi,
+  listMedicinesApi,
+  updateMedicineApi,
+} from "@/app/lib/dataApi";
 import type { Medicine, MedicineInput } from "@/app/types/medicine";
-
-const STORAGE_KEY = "asorc_medicines";
 
 function normalizeMedicine(medicine: Medicine): Medicine {
   return {
@@ -15,23 +18,8 @@ function normalizeMedicine(medicine: Medicine): Medicine {
   };
 }
 
-function loadMedicines(): Medicine[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return [];
-    const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed.map(normalizeMedicine) : [];
-  } catch {
-    return [];
-  }
-}
-
 class MedicineStore {
-  private medicines: Medicine[] = loadMedicines();
-
-  private persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.medicines));
-  }
+  private medicines: Medicine[] = [];
 
   getAll() {
     return this.medicines;
@@ -41,54 +29,49 @@ class MedicineStore {
     return this.medicines.find((medicine) => medicine.id === id);
   }
 
-  add(input: MedicineInput) {
-    const medicine: Medicine = normalizeMedicine({
-      ...input,
-      id: `MED-CUSTOM-${Date.now()}`,
-      updatedAt: new Date().toISOString(),
-    });
-
+  async add(input: MedicineInput): Promise<Medicine> {
+    const created = await createMedicineApi(input);
+    const medicine = normalizeMedicine(created);
     this.medicines = [medicine, ...this.medicines];
-    this.persist();
     return medicine;
   }
 
-  update(id: string, input: Partial<MedicineInput>) {
+  async update(id: string, input: Partial<MedicineInput>): Promise<Medicine | null> {
+    const updated = await updateMedicineApi(id, input);
+    const normalized = normalizeMedicine(updated);
     const index = this.medicines.findIndex((medicine) => medicine.id === id);
-    if (index === -1) return null;
-
-    const updated = normalizeMedicine({
-      ...this.medicines[index],
-      ...input,
-      updatedAt: new Date().toISOString(),
-    });
+    if (index === -1) {
+      this.medicines = [normalized, ...this.medicines];
+      return normalized;
+    }
 
     this.medicines = [
       ...this.medicines.slice(0, index),
-      updated,
+      normalized,
       ...this.medicines.slice(index + 1),
     ];
-    this.persist();
-    return updated;
+    return normalized;
   }
 
-  remove(id: string) {
-    const before = this.medicines.length;
+  async remove(id: string): Promise<boolean> {
+    const response = await deleteMedicineApi(id);
+    if (!response.ok) return false;
     this.medicines = this.medicines.filter((medicine) => medicine.id !== id);
-    this.persist();
-    return this.medicines.length < before;
+    return true;
   }
 
-  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
-  async syncFromSupabase(): Promise<void> {
+  async resetToSeed(): Promise<void> {
+    await this.syncFromApi();
+  }
+
+  async syncFromApi(): Promise<void> {
     try {
       const data = await listMedicinesApi();
       if (!data || data.length === 0) return;
 
       this.medicines = data.map(normalizeMedicine);
-      this.persist();
     } catch {
-      // keep local data as fallback
+      // keep current in-memory data if sync fails
     }
   }
 }

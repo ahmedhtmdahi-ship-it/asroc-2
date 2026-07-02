@@ -21,7 +21,7 @@ import { Input } from "@/app/components/ui/input";
 export function MyMedicalRequestsPage() {
   const { requests } = useWorkflow();
   const { user } = useAuth();
-  const backLink = user?.role === "employee" ? "/employee" : getHomePathByRole(user?.role);
+  const backLink = getHomePathByRole(user?.role);
 
   const myRequests = requests.filter((request) => {
     return (

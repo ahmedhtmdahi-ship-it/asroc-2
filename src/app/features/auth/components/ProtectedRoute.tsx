@@ -14,7 +14,7 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
     return <Navigate to="/" replace />;
   }
 
-  if (roles && !roles.includes(user.role)) {
+  if (roles && user.role !== "super_admin" && !roles.includes(user.role)) {
     // Redirect to the user's own home page instead of hardcoded /dashboard
     return <Navigate to={getHomePathByRole(user.role)} replace />;
   }

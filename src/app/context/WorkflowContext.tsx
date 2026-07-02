@@ -14,6 +14,7 @@ import { managersStore } from "../store/managersStore";
 import { departmentsStore } from "../store/departmentsStore";
 import { medicineStore } from "../store/medicineStore";
 import { profilesStore } from "../store/profilesStore";
+import { notificationStore } from "../store/notificationStore";
 import { workflowStore } from "../store/workflowStore";
 import { useAuth } from "@/app/features/auth/AuthContext";
 
@@ -60,14 +61,18 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     setSyncing(true);
-    managersStore.syncFromSupabase();
-    departmentsStore.syncFromSupabase();
-    medicineStore.syncFromSupabase();
-    profilesStore.syncFromSupabase();
-    requestStore.syncFromSupabase().then(() => {
-      refreshRequests();
-      setSyncing(false);
-    });
+
+    Promise.all([
+      requestStore.syncFromApi(),
+      managersStore.syncFromApi(),
+      departmentsStore.syncFromApi(),
+      medicineStore.syncFromApi(),
+      profilesStore.syncFromApi(),
+      notificationStore.syncFromApi(user.id),
+    ])
+      .then(() => refreshRequests())
+      .catch(() => {})
+      .finally(() => setSyncing(false));
   }, [user?.id]);
 
   const createRequest = (request: MedicalRequest) => {

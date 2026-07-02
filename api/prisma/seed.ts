@@ -42,7 +42,7 @@ async function seedUsers() {
       phone: u.phone ?? null,
       workType: u.workType ?? null,
       role: u.role,
-      permissions: u.permissions,
+      permissions: JSON.stringify(u.permissions ?? []),
       isActive: u.isActive ?? true,
     };
 

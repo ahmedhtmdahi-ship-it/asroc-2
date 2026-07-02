@@ -1,9 +1,6 @@
-﻿import type { RequestStatus } from "@/app/types/workflow";
-import { requestStatusLabels } from "@/app/types/workflow";
+import type { RequestStatus } from "@/app/types/workflow";
+import { canMove } from "@/app/types/workflow";
 import { requestStore } from "./requestStore";
-import { notificationStore } from "./notificationStore";
-import { auditStore } from "./auditStore";
-import { securityStore } from "./securityStore";
 
 interface WorkflowActionPayload {
   requestId: string;
@@ -13,50 +10,9 @@ interface WorkflowActionPayload {
   note?: string;
 }
 
-const statusFlow: Record<RequestStatus, RequestStatus[]> = {
-  // Checkup flow
-  pending: ["approved", "rejected", "postponed", "cancelled"],
-  approved: ["checked_out"],
-  checked_out: ["in_diagnosis"],
-  in_diagnosis: ["prescribed"],
-  prescribed: ["dispensed"],
-  dispensed: ["returned"],
-  returned: ["completed"],
-
-  // Closed / alternative checkup states
-  completed: [],
-  rejected: [],
-  postponed: ["pending", "cancelled"],
-  cancelled: [],
-
-  // Monthly treatment flow
-  pending_monthly_doctor: [
-    "monthly_approved",
-    "monthly_rejected",
-    "monthly_modified",
-    "cancelled",
-  ],
-  monthly_approved: ["monthly_ready_pharmacy"],
-  monthly_modified: ["monthly_ready_pharmacy", "monthly_rejected"],
-  monthly_ready_pharmacy: ["monthly_dispensed"],
-  monthly_dispensed: ["monthly_completed"],
-
-  // Closed monthly treatment states
-  monthly_rejected: [],
-  monthly_completed: [],
-};
-
-function generateId(prefix: string) {
-  return `${prefix}-${Date.now()}`;
-}
-
-function getStatusLabel(status: RequestStatus) {
-  return requestStatusLabels[status] || status;
-}
-
 class WorkflowStore {
   canMove(currentStatus: RequestStatus, nextStatus: RequestStatus) {
-    return statusFlow[currentStatus]?.includes(nextStatus) ?? false;
+    return canMove(currentStatus, nextStatus);
   }
 
   moveStatus(payload: WorkflowActionPayload, nextStatus: RequestStatus) {
@@ -74,60 +30,13 @@ class WorkflowStore {
       );
     }
 
+    // requestStore.updateStatus calls transitionRequestApi on the backend.
+    // The backend creates the AuditLog, Notification, and SecurityLog records.
+    // We do NOT write to local stores here to avoid double-writes.
     const updatedRequest = requestStore.updateStatus(
       payload.requestId,
       nextStatus
     );
-
-    auditStore.add({
-      id: generateId("AUD"),
-      userId: payload.userId,
-      userName: payload.userName,
-      role: payload.role,
-      action: "MOVE_REQUEST_STATUS",
-      requestId: payload.requestId,
-      serviceType: request.serviceType,
-      statusBefore: previousStatus,
-      statusAfter: nextStatus,
-      note: payload.note,
-      createdAt: new Date().toISOString(),
-    });
-
-    notificationStore.add({
-      id: generateId("NOT"),
-      userId: request.employeeId,
-      title: "تحديث حالة الطلب",
-      message: `تم تحديث حالة الطلب من ${getStatusLabel(
-        previousStatus
-      )} إلى ${getStatusLabel(nextStatus)}`,
-      requestId: payload.requestId,
-      isRead: false,
-      createdAt: new Date().toISOString(),
-    });
-
-    if (nextStatus === "checked_out") {
-      securityStore.add({
-        id: generateId("SEC"),
-        requestId: payload.requestId,
-        employeeId: request.employeeId,
-        employeeName: request.employeeName,
-        action: "CHECK_OUT",
-        doneBy: payload.userName,
-        createdAt: new Date().toISOString(),
-      });
-    }
-
-    if (nextStatus === "returned") {
-      securityStore.add({
-        id: generateId("SEC"),
-        requestId: payload.requestId,
-        employeeId: request.employeeId,
-        employeeName: request.employeeName,
-        action: "CHECK_IN",
-        doneBy: payload.userName,
-        createdAt: new Date().toISOString(),
-      });
-    }
 
     return updatedRequest;
   }

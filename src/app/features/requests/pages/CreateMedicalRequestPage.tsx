@@ -287,12 +287,10 @@ export function EmployeeRequestsPage() {
           : requestType === "emergency"
           ? "approved"
           : "pending",
+      createdAt: now.toISOString(),
 
       reason: reason.trim(),
       notes: notes.trim(),
-
-      createdAt: now.toISOString(),
-      createdBy: user.id,
 
       managerId:
         serviceType === "checkup" && requestType === "normal"

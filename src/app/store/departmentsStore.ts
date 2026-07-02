@@ -1,5 +1,4 @@
-import { listUsersApi } from "@/app/lib/dataApi";
-import { mockDepartments } from "@/app/data/mockDepartments";
+import { lookupUsersApi } from "@/app/lib/dataApi";
 
 export interface Department {
   id: string;
@@ -9,11 +8,7 @@ export interface Department {
 }
 
 class DepartmentsStore {
-  private departments: Department[] = mockDepartments.map((d) => ({
-    id: d.id,
-    name: d.name,
-    managerFinancialNumber: (d as { managerFinancialNumber?: string }).managerFinancialNumber,
-  }));
+  private departments: Department[] = [];
 
   getAll(): Department[] {
     return this.departments;
@@ -29,11 +24,10 @@ class DepartmentsStore {
     return this.getByName(departmentName)?.managerFinancialNumber;
   }
 
-  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
-  async syncFromSupabase(): Promise<void> {
+  async syncFromApi(): Promise<void> {
     try {
-      // كل المديرين — حقل القسم بتاعهم هو القسم اللي بيديروه
-      const data = (await listUsersApi(["manager", "office_manager"])).filter(
+      // كل المديرين — حقل القسم بتاعهم هو القسم الذي يديرونه
+      const data = (await lookupUsersApi(["manager", "office_manager"])) .filter(
         (u) => u.isActive,
       );
 
@@ -58,20 +52,20 @@ class DepartmentsStore {
           : dept;
       });
 
-      // Also add any departments that appear in profiles but aren't in the static list
+      // Also add any departments that appear in profiles but aren't in the current list
       for (const [normalizedName, mgr] of managerMap) {
         const exists = this.departments.some((d) => normalizeArabic(d.name) === normalizedName);
         if (!exists) {
           this.departments.push({
             id: `DYN-${mgr.financialNumber}`,
-            name: mgr.name, // fallback — actual name comes from profiles.department
+            name: mgr.name,
             managerFinancialNumber: mgr.financialNumber,
             managerName: mgr.name,
           });
         }
       }
     } catch {
-      // keep static data as fallback
+      // keep current in-memory data if sync fails
     }
   }
 }

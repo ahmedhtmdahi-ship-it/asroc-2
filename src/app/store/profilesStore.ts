@@ -1,4 +1,4 @@
-import { listUsersApi } from "@/app/lib/dataApi";
+import { lookupUsersApi } from "@/app/lib/dataApi";
 import { apiUserToUser } from "@/app/lib/authApi";
 import type { User } from "@/app/types/user";
 
@@ -17,11 +17,24 @@ class ProfilesStore {
     return this.profiles.filter((u) => u.role === role);
   }
 
-  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
-  async syncFromSupabase(): Promise<void> {
+  async syncFromApi(): Promise<void> {
     try {
-      const data = await listUsersApi();
-      this.profiles = data.map(apiUserToUser);
+      const data = await lookupUsersApi();
+      this.profiles = data.map((u) => apiUserToUser({
+        id: u.id,
+        username: "",
+        financialNumber: u.financialNumber,
+        name: u.name,
+        jobTitle: u.jobTitle,
+        workPlace: u.workPlace,
+        department: u.department,
+        nationalId: null,
+        phone: null,
+        workType: u.workType,
+        role: u.role,
+        permissions: [],
+        isActive: u.isActive,
+      }));
     } catch {
       // keep empty — callers handle missing data gracefully
     }

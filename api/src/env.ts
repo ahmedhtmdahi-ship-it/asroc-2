@@ -9,7 +9,10 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   HOST: z.string().min(1).default("0.0.0.0"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL مطلوب"),
-  JWT_SECRET: z.string().min(16, "JWT_SECRET لازم 16 حرف على الأقل"),
+  JWT_SECRET: z.string().min(16, "JWT_SECRET لازم 16 حرف على الأقل").refine(
+    (val) => val !== "change-me-in-production-min-16-chars",
+    { message: "يجب تغيير JWT_SECRET وعدم استخدام القيمة الافتراضية" }
+  ),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

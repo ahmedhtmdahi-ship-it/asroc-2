@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import type { ComponentType, SVGProps } from "react";
 import {
   Bell,
   Calendar,
@@ -99,17 +100,17 @@ export function EmployeeDashboardPage() {
 
         <nav className="mt-6 space-y-2 px-4">
           {[
-            ["الرئيسية", Home, "/employee"],
-            ["طلب فحص طبي", FilePlus2, "/employee/requests"],
-            ["طلباتي", ClipboardList, "/employee/my-requests"],
-            ["التاريخ الطبي", HeartPulse, "/employee/history"],
-            ["الإشعارات", Bell, "/employee/notifications"],
-            ["الملف الشخصي", UserCircle, "/profile"],
-            ["المساعدة والدعم", HelpCircle, "#"],
-          ].map(([label, Icon, path], index) => (
+            { label: "الرئيسية", Icon: Home, path: "/employee" },
+            { label: "طلب فحص طبي", Icon: FilePlus2, path: "/employee/requests" },
+            { label: "طلباتي", Icon: ClipboardList, path: "/employee/my-requests" },
+            { label: "التاريخ الطبي", Icon: HeartPulse, path: "/employee/history" },
+            { label: "الإشعارات", Icon: Bell, path: "/employee/notifications" },
+            { label: "الملف الشخصي", Icon: UserCircle, path: "/profile" },
+            { label: "المساعدة والدعم", Icon: HelpCircle, path: "#" },
+          ].map(({ label, Icon, path }, index) => (
             <Link
-              key={label as string}
-              to={path as string}
+              key={label}
+              to={path}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-lg transition ${
                 index === 0 ? "bg-teal-600" : "hover:bg-white/10"
               }`}
