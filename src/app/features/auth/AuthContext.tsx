@@ -8,7 +8,12 @@ import {
 } from "react";
 
 import { clearToken, getToken, setToken } from "@/app/lib/apiClient";
-import { apiUserToUser, loginRequest, meRequest } from "@/app/lib/authApi";
+import {
+  apiUserToUser,
+  changePasswordRequest,
+  loginRequest,
+  meRequest,
+} from "@/app/lib/authApi";
 import { PERMISSIONS } from "@asroc/shared/roles.js";
 import type { User, UserRole, Permission } from "@/app/types/user";
 
@@ -25,6 +30,7 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -108,6 +114,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return roleList.includes(user.role);
   };
 
+  // بيرمي ApiError عند الفشل (باسورد حالي غلط...) عشان الصفحة تعرض الرسالة.
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    const { token, user: apiUser } = await changePasswordRequest(
+      currentPassword,
+      newPassword,
+    );
+    setToken(token);
+    setUser(apiUserToUser(apiUser));
+  };
+
   const value = useMemo(
     () => ({
       user,
@@ -115,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       hasRole,
+      changePassword,
     }),
     [user]
   );
