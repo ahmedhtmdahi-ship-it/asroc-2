@@ -1,6 +1,10 @@
 packages:
   - '.'
   - 'api'
+  - 'packages/*'
 allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
   '@tailwindcss/oxide': false
   esbuild: false
+  prisma: true

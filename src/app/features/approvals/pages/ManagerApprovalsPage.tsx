@@ -1,4 +1,5 @@
 ﻿import { useMemo, useState } from "react";
+import type { MedicalRequest } from "@/app/types/request";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -99,8 +100,8 @@ export function ManagerApprovalsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("pending");
-  const [selectedRequest, setSelectedRequest] = useState<any>(
-    pendingRequests[0] || null
+  const [selectedRequest, setSelectedRequest] = useState<MedicalRequest | null>(
+    null
   );
   const [actionType, setActionType] = useState<ActionType | null>(null);
   const [decisionReason, setDecisionReason] = useState("");

@@ -11,8 +11,11 @@ import {
   Pill,
   Shield,
   Stethoscope,
+  PlusCircle,
   Users,
+  Bell,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { PageLayout } from "@/app/components/PageLayout";
 import { Badge } from "@/app/components/ui/badge";
@@ -20,8 +23,10 @@ import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { profilesStore } from "@/app/store/profilesStore";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { useAuth } from "@/app/features/auth/AuthContext";
 import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
+import type { Permission, UserRole } from "@/app/types/user";
 
 const activeStatuses: RequestStatus[] = [
   "pending",
@@ -76,6 +81,99 @@ function statusBadgeClass(status: RequestStatus) {
   if (["pending", "pending_monthly_doctor", "postponed"].includes(status)) return "bg-yellow-100 text-yellow-700";
   if (["prescribed", "monthly_ready_pharmacy"].includes(status)) return "bg-purple-100 text-purple-700";
   return "bg-blue-100 text-blue-700";
+}
+
+type DashboardAction = {
+  label: string;
+  link: string;
+  icon: LucideIcon;
+  permission?: Permission;
+  roles?: UserRole[];
+  color: string;
+  bg: string;
+};
+
+const dashboardActions: DashboardAction[] = [
+  {
+    label: "طلب جديد",
+    link: "/request/new",
+    icon: PlusCircle,
+    color: "text-cyan-700",
+    bg: "bg-cyan-50",
+  },
+  {
+    label: "طلباتي",
+    link: "/my-requests",
+    icon: FolderOpen,
+    color: "text-blue-700",
+    bg: "bg-blue-50",
+  },
+  {
+    label: "الإشعارات",
+    link: "/employee/notifications",
+    icon: Bell,
+    roles: ["employee"],
+    color: "text-violet-700",
+    bg: "bg-violet-50",
+  },
+  {
+    label: "الملف الشخصي",
+    link: "/profile",
+    icon: Users,
+    color: "text-slate-700",
+    bg: "bg-slate-100",
+  },
+  {
+    label: "موافقات المدير",
+    link: "/manager/approvals",
+    icon: Users,
+    permission: "approve_request",
+    roles: ["manager", "office_manager"],
+    color: "text-orange-700",
+    bg: "bg-orange-50",
+  },
+  {
+    label: "فحص الطبيب",
+    link: "/doctor",
+    icon: Stethoscope,
+    permission: "diagnose_patient",
+    roles: ["doctor"],
+    color: "text-emerald-700",
+    bg: "bg-emerald-50",
+  },
+  {
+    label: "صيدلية",
+    link: "/pharmacy",
+    icon: Pill,
+    permission: "dispense_prescription",
+    roles: ["pharmacy"],
+    color: "text-purple-700",
+    bg: "bg-purple-50",
+  },
+  {
+    label: "العلاج الشهري",
+    link: "/monthly-treatment",
+    icon: HeartPulse,
+    permission: "manage_monthly_treatment",
+    roles: ["medical_admin", "pension_admin"],
+    color: "text-indigo-700",
+    bg: "bg-indigo-50",
+  },
+  {
+    label: "إدارة النظام",
+    link: "/super-admin",
+    icon: Shield,
+    permission: "manage_system",
+    roles: ["super_admin"],
+    color: "text-slate-700",
+    bg: "bg-slate-100",
+  },
+];
+
+function canViewAction(action: DashboardAction, userRole: UserRole, permissions: Permission[]) {
+  if (userRole === "super_admin") return true;
+  if (action.roles && !action.roles.includes(userRole)) return false;
+  return action.permission ? permissions.includes(action.permission) : true;
 }
 
 function StatCard({
@@ -182,6 +280,14 @@ export function DashboardPage() {
     }, {})
   ).sort((a, b) => b[1] - a[1]);
 
+  const { user } = useAuth();
+
+  const availableActions = user
+    ? dashboardActions.filter((action) =>
+        canViewAction(action, user.role, user.permissions),
+      )
+    : [];
+
   return (
     <PageLayout
       title="لوحة التحكم"
@@ -189,6 +295,27 @@ export function DashboardPage() {
       icon={<BarChart3 className="h-5 w-5" />}
     >
       <div className="space-y-6">
+        {availableActions.length > 0 && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {availableActions.map((action) => (
+              <Link key={action.label} to={action.link}>
+                <Card className="h-full transition hover:shadow-md">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${action.bg}`}>
+                        <action.icon className={`h-6 w-6 ${action.color}`} />
+                      </div>
+                      <div className="text-left">
+                        <p className={`text-2xl font-bold ${action.color}`}>{action.label}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <StatCard label="طلبات مفتوحة" value={openRequests.length} icon={FolderOpen} color="text-cyan-700" bg="bg-cyan-50" link="/reports" />
           <StatCard label="طلبات اليوم" value={todaysRequests.length} icon={CalendarCheck} color="text-blue-700" bg="bg-blue-50" link="/reports" />

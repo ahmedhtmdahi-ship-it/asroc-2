@@ -1,4 +1,4 @@
-const STORAGE_KEY = "asorc_notifications";
+import { listNotificationsApi, markNotificationsReadApi } from "@/app/lib/dataApi";
 
 export interface AppNotification {
   id: string;
@@ -13,22 +13,11 @@ export interface AppNotification {
   bg?: string;
 }
 
-function load(): AppNotification[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return [];
-    const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 class NotificationStore {
-  private notifications: AppNotification[] = load();
+  private notifications: AppNotification[] = [];
 
-  private persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.notifications));
+  private setNotifications(notifications: AppNotification[]) {
+    this.notifications = notifications;
   }
 
   getAll(): AppNotification[] {
@@ -46,12 +35,9 @@ class NotificationStore {
       createdAt: new Date().toISOString(),
       unread: true,
       ...raw,
-      // normalize legacy isRead field if coming from old code
-      unread: raw.unread !== undefined ? raw.unread : !(raw as any).isRead,
     };
     this.notifications.unshift(notification);
     if (this.notifications.length > 200) this.notifications = this.notifications.slice(0, 200);
-    this.persist();
     return notification;
   }
 
@@ -59,7 +45,7 @@ class NotificationStore {
     const n = this.notifications.find((item) => item.id === id);
     if (!n) return null;
     n.unread = false;
-    this.persist();
+    markNotificationsReadApi([id]).catch(() => {});
     return n;
   }
 
@@ -69,12 +55,33 @@ class NotificationStore {
         n.unread = false;
       }
     });
-    this.persist();
+    markNotificationsReadApi().catch(() => {});
+  }
+
+  async syncFromApi(userId: string): Promise<void> {
+    try {
+      const data = await listNotificationsApi(userId, 100);
+      this.setNotifications(
+        data.map((n) => ({
+          id:        n.id,
+          userId:    n.userId,
+          title:     n.title,
+          message:   n.message,
+          requestId: n.requestId ?? undefined,
+          unread:    n.unread,
+          icon:      n.icon ?? undefined,
+          color:     n.color ?? undefined,
+          bg:        n.bg ?? undefined,
+          createdAt: n.createdAt,
+        })),
+      );
+    } catch {
+      // keep in-memory data if sync fails
+    }
   }
 
   clear() {
     this.notifications = [];
-    this.persist();
   }
 }
 

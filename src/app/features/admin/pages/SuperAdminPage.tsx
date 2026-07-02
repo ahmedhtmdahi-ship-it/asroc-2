@@ -32,13 +32,35 @@ import {
 } from "@/app/components/ui/dialog";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
-import { supabase } from "@/app/lib/api";
-import { profileRowToUser } from "@/app/features/auth/AuthContext";
-import { mockUsers } from "@/app/data/mockUsers";
-import { mockAuditLogs } from "@/app/data/mockAuditLogs";
+import {
+  listUsersApi,
+  updateUserApi,
+  listAuditLogsApi,
+  countAuditLogsApi,
+  type ApiUser,
+} from "@/app/lib/dataApi";
 import type { Permission, User, UserRole } from "@/app/types/user";
 
 const isDev = (typeof import.meta !== "undefined" ? (import.meta as any).env?.DEV : false) || false;
+
+function apiUserToUser(u: ApiUser): User {
+  return {
+    id:              u.id,
+    name:            u.name,
+    username:        u.username,
+    password:        "",
+    financialNumber: u.financialNumber ?? undefined,
+    jobTitle:        u.jobTitle ?? undefined,
+    workPlace:       u.workPlace ?? undefined,
+    department:      u.department ?? undefined,
+    nationalId:      u.nationalId ?? undefined,
+    phone:           u.phone ?? undefined,
+    workType:        u.workType ?? undefined,
+    role:            u.role as UserRole,
+    permissions:     u.permissions as Permission[],
+    isActive:        u.isActive,
+  };
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────
 interface AuditLog {
@@ -244,21 +266,11 @@ function UsersTab() {
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
-    // debug
-    // eslint-disable-next-line no-console
-    console.log("fetchUsers: start");
     try {
-      const { data, error: supaError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("name", { ascending: true });
-
-      if (supaError) throw supaError;
-      setUsers((data ?? []).map(profileRowToUser));
+      const data = await listUsersApi();
+      setUsers(data.map(apiUserToUser));
     } catch (err) {
-      console.error("fetchUsers error:", err);
-      setUsers(mockUsers);
-      setError(null);
+      setError(err instanceof Error ? err.message : "فشل تحميل المستخدمين");
     } finally {
       setLoading(false);
     }
@@ -271,11 +283,10 @@ function UsersTab() {
   async function handleChangeRole(userId: string, newRole: UserRole) {
     setSavingRoleId(userId);
     try {
-      const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
-      if (error) throw error;
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+      const updated = await updateUserApi(userId, { role: newRole });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? apiUserToUser(updated) : u)));
     } catch {
-      // silently keep old value on error
+      // keep old value on error
     } finally {
       setSavingRoleId(null);
     }
@@ -283,17 +294,9 @@ function UsersTab() {
 
   async function handleSavePermissions(userId: string, newPermissions: string[]) {
     try {
-      // update remote
-      const { error: upErr } = await supabase.from("profiles").update({ permissions: newPermissions }).eq("id", userId);
-      if (upErr) throw upErr;
-
-      // update local state
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, permissions: newPermissions } : u)));
-      setPermissionsOpen(false);
-      setEditingUser(null);
-    } catch (err) {
-      // fallback: update local only
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, permissions: newPermissions } : u)));
+      const updated = await updateUserApi(userId, { permissions: newPermissions });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? apiUserToUser(updated) : u)));
+    } finally {
       setPermissionsOpen(false);
       setEditingUser(null);
     }
@@ -598,17 +601,19 @@ function AuditLogsTab() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: supaError } = await supabase
-        .from("audit_logs")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (supaError) throw supaError;
-      setLogs(data || []);
-    } catch {
-      setLogs(mockAuditLogs as AuditLog[]);
-      setError(null);
+      const data = await listAuditLogsApi(500);
+      setLogs(data.map((l) => ({
+        id:           l.id,
+        user_id:      l.user_id ?? "",
+        user_name:    l.user_name ?? "",
+        action:       l.action,
+        request_id:   l.request_id ?? undefined,
+        status_before: l.status_before ?? undefined,
+        status_after:  l.status_after ?? undefined,
+        created_at:   l.created_at,
+      })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل السجل");
     } finally {
       setLoading(false);
     }
@@ -671,27 +676,14 @@ export function SuperAdminPage() {
     setError(null);
 
     try {
-      // Attempt Supabase first
-      const { data: usersData, error: usersError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("name", { ascending: true });
-
-      if (usersError) throw usersError;
-
-      setUsers((usersData ?? []).map(profileRowToUser));
-
-      const { count, error: countError } = await supabase
-        .from("audit_logs")
-        .select("*", { count: "exact", head: true });
-
-      if (countError) throw countError;
-      setAuditLogsCount(count || 0);
-    } catch {
-      // Fallback to mock data so the page isn't empty without backend setup
-      setUsers(mockUsers);
-      setAuditLogsCount(mockAuditLogs.length);
-      setError(null);
+      const [usersData, countData] = await Promise.all([
+        listUsersApi(),
+        countAuditLogsApi(),
+      ]);
+      setUsers(usersData.map(apiUserToUser));
+      setAuditLogsCount(countData.count);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل البيانات");
     } finally {
       setLoading(false);
     }

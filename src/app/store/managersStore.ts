@@ -1,8 +1,23 @@
-import { listUsersApi } from "@/app/lib/dataApi";
-import { mockManagers, type ManagerRecord } from "@/app/data/mockManagers";
+import { lookupUsersApi } from "@/app/lib/dataApi";
+
+interface ManagerRecord {
+  id: string;
+  financialNumber: string;
+  nationalId?: string;
+  name: string;
+  jobTitle: string;
+  department?: string;
+  workPlace?: string;
+  workType?: string;
+  phone?: string;
+  status: "active" | "retired" | "on_leave" | "suspended";
+  managerType: "manager" | "office_manager";
+  managedDepartments: string[];
+  isActive: boolean;
+}
 
 class ManagersStore {
-  private managers: ManagerRecord[] = [...mockManagers];
+  private managers: ManagerRecord[] = [];
 
   getAll(): ManagerRecord[] {
     return this.managers;
@@ -12,27 +27,28 @@ class ManagersStore {
     return this.managers.find((m) => m.financialNumber === financialNumber);
   }
 
-  // ملاحظة: الاسم متساب زي ما هو مؤقتًا — المصدر بقى الـ API مش Supabase.
-  async syncFromSupabase(): Promise<void> {
+  async syncFromApi(): Promise<void> {
     try {
-      const data = await listUsersApi(["manager", "office_manager"]);
+      const data = await lookupUsersApi(["manager", "office_manager"]);
       if (!data || data.length === 0) return;
 
       this.managers = data.map((u) => ({
         id: u.id,
         financialNumber: u.financialNumber ?? "",
-        name: u.name,
-        jobTitle: u.jobTitle ?? undefined,
-        department: u.department ?? "",
         nationalId: u.nationalId ?? undefined,
-        phone: u.phone ?? undefined,
+        name: u.name,
+        jobTitle: u.jobTitle ?? "",
+        department: u.department ?? "",
+        workPlace: u.workPlace ?? undefined,
         workType: u.workType ?? undefined,
+        phone: u.phone ?? undefined,
+        status: u.isActive ? "active" : "suspended",
         managerType: u.role as "manager" | "office_manager",
         managedDepartments: [u.department ?? ""],
         isActive: u.isActive,
       }));
     } catch {
-      // keep mock data as fallback
+      // keep current in-memory data if sync fails
     }
   }
 }

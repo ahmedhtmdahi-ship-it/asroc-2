@@ -1,21 +1,10 @@
-﻿import { mockSecurityLogs } from "@/app/data/mockSecurityLogs";
-
-const STORAGE_KEY = "asorc_security_logs";
-
-function loadSecurityLogs(): any[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [...mockSecurityLogs];
-  } catch {
-    return [...mockSecurityLogs];
-  }
-}
+import { listSecurityLogsApi } from "@/app/lib/dataApi";
 
 class SecurityStore {
-  private records: any[] = loadSecurityLogs();
+  private records: any[] = [];
 
-  private persist() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.records));
+  private setRecords(records: any[]) {
+    this.records = records;
   }
 
   getAll() {
@@ -24,13 +13,20 @@ class SecurityStore {
 
   add(record: any) {
     this.records.push(record);
-    this.persist();
     return record;
   }
 
+  async syncFromApi(): Promise<void> {
+    try {
+      const data = await listSecurityLogsApi(200);
+      this.setRecords(data);
+    } catch {
+      // keep in-memory records if sync fails
+    }
+  }
+
   clear() {
-    this.records = [...mockSecurityLogs];
-    this.persist();
+    this.records = [];
   }
 }
 

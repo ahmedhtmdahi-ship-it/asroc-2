@@ -20,6 +20,7 @@ export const mockManagers = [
       "المراجعه الداخليه"
     ],
     "isActive": true,
+    "status": "active",
     "nationalId": "26708192500321",
     "phone": "01001644470",
     "workType": "نهارى"
@@ -37,7 +38,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "26905152500328",
     "phone": "01006990100",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-933",
@@ -52,7 +54,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "26810062500719",
     "phone": "01006262366",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-957",
@@ -67,7 +70,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "26812042500171",
     "phone": "01001696541",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-983",
@@ -82,7 +86,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "26904252400413",
     "phone": "01000531720",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-991",
@@ -97,7 +102,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27301012403919",
     "phone": "01094371789",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-995",
@@ -112,7 +118,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27003142100291",
     "phone": "01005024643",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1011",
@@ -127,7 +134,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27507270200469",
     "phone": "01004610607",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1040",
@@ -142,7 +150,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27211272400051",
     "phone": "01001633499",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1051",
@@ -157,7 +166,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27403172501159",
     "phone": "01006721983",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1061",
@@ -172,7 +182,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "26909092500931",
     "phone": "01001696526",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1090",
@@ -187,7 +198,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27405022500319",
     "phone": "01001694062",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1137",
@@ -202,7 +214,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27310232501333",
     "phone": "01003894333",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1230",
@@ -217,7 +230,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27804302500979",
     "phone": "01005684487",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1244",
@@ -232,7 +246,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27410282500316",
     "phone": "01004964702",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1337",
@@ -247,7 +262,8 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27601192500651",
     "phone": "01006803383",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   },
   {
     "id": "EMP-1432",
@@ -262,6 +278,7 @@ export const mockManagers = [
     "isActive": true,
     "nationalId": "27702092201755",
     "phone": "01001213561",
-    "workType": "نهارى"
+    "workType": "نهارى",
+    status: "active"
   }
 ] satisfies ManagerRecord[];

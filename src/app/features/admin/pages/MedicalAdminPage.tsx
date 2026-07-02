@@ -133,7 +133,7 @@ function CreateEmergencyDialog({ open, onClose }: { open: boolean; onClose: () =
   const allEmployees = profilesStore.getAll().filter((u) => u.role === "employee");
   const filtered = allEmployees.filter((e) => {
     const term = search.trim().toLowerCase();
-    return !term || e.name.toLowerCase().includes(term) || e.financialNumber.toLowerCase().includes(term);
+    return !term || e.name.toLowerCase().includes(term) || e.financialNumber?.toLowerCase().includes(term);
   }).slice(0, 20);
 
   const selected = allEmployees.find((e) => e.id === selectedId);
@@ -152,15 +152,14 @@ function CreateEmergencyDialog({ open, onClose }: { open: boolean; onClose: () =
       id,
       employeeId: selected.id,
       employeeName: selected.name,
-      financialNumber: selected.financialNumber,
+      financialNumber: selected.financialNumber || "",
       department: selected.department || "",
       reason: reason.trim(),
+      serviceType: "checkup",
+      requestType: "emergency",
       status: "approved",
       createdAt: now,
       approvedAt: now,
-      createdBy: user?.id,
-      serviceType: "checkup",
-      requestType: "emergency",
       jobTitle: selected.jobTitle,
       workType: selected.workType,
       managerName: user?.name,

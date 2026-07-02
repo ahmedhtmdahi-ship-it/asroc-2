@@ -168,7 +168,7 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim()) {
       toast.error("اكتب اسم الدواء");
       return;
@@ -179,33 +179,56 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
       unit: form.unit.trim() || "وحدة",
       currentStock: numberOrNull(form.currentStock),
       minimumStock: numberOrNull(form.minimumStock),
-      category: form.category.trim(),
-      activeIngredient: form.activeIngredient.trim(),
+      category: form.category.trim() || undefined,
+      activeIngredient: form.activeIngredient.trim() || undefined,
       isActive: true,
     };
 
-    if (editing) {
-      medicineStore.update(editing.id, payload);
-      toast.success("تم تعديل الدواء");
-    } else {
-      medicineStore.add(payload);
-      toast.success("تم إضافة الدواء");
+    try {
+      if (editing) {
+        const updated = await medicineStore.update(editing.id, payload);
+        if (!updated) throw new Error("لم يتم العثور على الدواء للتعديل");
+        toast.success("تم تعديل الدواء");
+      } else {
+        await medicineStore.add(payload);
+        toast.success("تم إضافة الدواء");
+      }
+
+      refresh();
+      setDialogOpen(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "حدث خطأ أثناء حفظ الدواء",
+      );
     }
-
-    refresh();
-    setDialogOpen(false);
   };
 
-  const handleDelete = (medicine: Medicine) => {
-    medicineStore.remove(medicine.id);
-    refresh();
-    toast.success("تم حذف الدواء من الكتالوج المحلي");
+  const handleDelete = async (medicine: Medicine) => {
+    try {
+      const removed = await medicineStore.remove(medicine.id);
+      if (!removed) {
+        toast.error("فشل حذف الدواء");
+        return;
+      }
+      refresh();
+      toast.success("تم حذف الدواء بنجاح");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "حدث خطأ أثناء حذف الدواء",
+      );
+    }
   };
 
-  const handleReset = () => {
-    medicineStore.resetToSeed();
-    refresh();
-    toast.success("تم استرجاع كتالوج الأدوية الأصلي من الشيت");
+  const handleReset = async () => {
+    try {
+      await medicineStore.resetToSeed();
+      refresh();
+      toast.success("تم تحديث كتالوج الأدوية من السيرفر");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "حدث خطأ أثناء تحديث الكتالوج",
+      );
+    }
   };
 
   return (
@@ -248,7 +271,7 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleReset}>
                 <RotateCcw className="ml-2 h-4 w-4" />
-                استرجاع الشيت
+                تحديث من السيرفر
               </Button>
               <Button size="sm" onClick={openAddDialog}>
                 <Plus className="ml-2 h-4 w-4" />

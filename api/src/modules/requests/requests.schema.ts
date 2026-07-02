@@ -3,11 +3,9 @@ import { z } from "zod";
 import { REQUEST_STATUSES } from "./requests.workflow.js";
 
 export const createRequestSchema = z.object({
-  // نقبل id/status/createdAt من العميل عشان التحديث المتفائل ما يتعارضش
-  // مع الـ id اللي بيتولّد على السيرفر. لو مش مبعوتين، السيرفر بيولّدهم.
+  // نقبل id من العميل فقط لأجل العرض المتفائل.
+  // حالة الطلب ووقت الإنشاء تحددها السيرفر.
   id: z.string().optional(),
-  status: z.enum(REQUEST_STATUSES).optional(),
-  createdAt: z.string().optional(),
 
   employeeId: z.string().min(1),
   employeeName: z.string().min(1),
@@ -42,7 +40,6 @@ const referralDataSchema = z.object({
 
 // تحديث حقول الطلب (تشخيص/روشتة/إحالة/إجازة...).
 export const updateRequestSchema = z.object({
-  status: z.enum(REQUEST_STATUSES).optional(),
   notes: z.string().optional(),
   doctorDiagnosis: z.string().optional(),
   sickLeaveDays: z.number().int().optional(),
