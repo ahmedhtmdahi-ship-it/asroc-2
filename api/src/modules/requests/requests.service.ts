@@ -1,5 +1,5 @@
 import { prisma } from "../../db/prisma.js";
-import { badRequest, notFound } from "../../lib/httpError.js";
+import { badRequest, conflict, notFound } from "../../lib/httpError.js";
 import {
   canMove,
   statusLabels,
@@ -168,23 +168,29 @@ export async function transitionRequest(
   note: string | undefined,
   actor: Actor,
 ) {
-  const current = await prisma.medicalRequest.findUnique({ where: { id: requestId } });
-  if (!current) throw notFound("الطلب غير موجود");
-
-  if (!canMove(current.status as RequestStatus, nextStatus)) {
-    throw badRequest(`تحويل غير صالح: ${current.status} → ${nextStatus}`);
-  }
-
   // كل التغييرات في معاملة واحدة — يا كلها تنجح يا تترجع.
+  // القراءة + التعديل جوه نفس المعاملة، والتعديل مشروط بالحالة الحالية (compare-and-set)
+  // عشان النداءات المتتالية/المتزامنة ما تتسابقش وتسيب الطلب في حالة غلط.
   return prisma.$transaction(async (tx) => {
+    const current = await tx.medicalRequest.findUnique({ where: { id: requestId } });
+    if (!current) throw notFound("الطلب غير موجود");
+
+    if (!canMove(current.status as RequestStatus, nextStatus)) {
+      throw badRequest(`تحويل غير صالح: ${current.status} → ${nextStatus}`);
+    }
+
     const updateData: Record<string, unknown> = { status: nextStatus };
     const tsField = statusTimestampField[nextStatus];
     if (tsField) updateData[tsField] = new Date();
 
-    const updated = await tx.medicalRequest.update({
-      where: { id: requestId },
+    // تعديل مشروط: يتنفّذ بس لو الحالة لسه زي ما قرأناها.
+    const res = await tx.medicalRequest.updateMany({
+      where: { id: requestId, status: current.status },
       data: updateData,
     });
+    if (res.count === 0) {
+      throw conflict("تغيّرت حالة الطلب أثناء المعالجة — حدّث الصفحة وحاول تاني");
+    }
 
     await tx.requestTimelineEvent.create({
       data: {
@@ -230,6 +236,15 @@ export async function transitionRequest(
       });
     }
 
-    return updated;
+    // نرجّع الطلب كامل بعلاقاته عشان الواجهة تحدّث الـ timeline/الأدوية بعد التحويل.
+    return tx.medicalRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        medications: true,
+        timeline: { orderBy: { timestamp: "asc" } },
+        attachments: true,
+        referral: true,
+      },
+    });
   });
 }

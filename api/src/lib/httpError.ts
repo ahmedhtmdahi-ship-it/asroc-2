@@ -13,3 +13,4 @@ export class HttpError extends Error {
 export const badRequest = (m = "طلب غير صالح") => new HttpError(400, m);
 export const forbidden = (m = "صلاحية غير كافية") => new HttpError(403, m);
 export const notFound = (m = "غير موجود") => new HttpError(404, m);
+export const conflict = (m = "تعارض في الحالة") => new HttpError(409, m);

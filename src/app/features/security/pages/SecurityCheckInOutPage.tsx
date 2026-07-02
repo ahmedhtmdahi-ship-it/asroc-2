@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { useState } from "react";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { requestStore } from "@/app/store/requestStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 
 export function SecurityCheckInOutPage() {
@@ -23,8 +24,7 @@ export function SecurityCheckInOutPage() {
   const {
     requests,
     checkOutRequest,
-    checkInRequest,
-    completeRequest,
+    refreshRequests,
   } = useWorkflow();
 
   const approvedRequests = requests.filter(
@@ -58,10 +58,19 @@ export function SecurityCheckInOutPage() {
     toast.success(`تم تسجيل خروج ${employeeName}`);
   };
 
-  const handleCheckInAndComplete = (requestId: string, employeeName: string) => {
-    checkInRequest(requestId);
-    completeRequest(requestId);
-    toast.success(`تم تسجيل عودة ${employeeName} وإغلاق الطلب`);
+  const handleCheckInAndComplete = async (requestId: string, employeeName: string) => {
+    try {
+      // تسلسل: تسجيل العودة (returned) ثم إغلاق الطلب (completed) — الثانية تنتظر الأولى.
+      await requestStore.transitionAsync(requestId, "returned");
+      await requestStore.transitionAsync(requestId, "completed");
+      refreshRequests();
+      toast.success(`تم تسجيل عودة ${employeeName} وإغلاق الطلب`);
+    } catch (error) {
+      refreshRequests();
+      toast.error("تعذر إتمام العملية", {
+        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+      });
+    }
   };
 
   return (

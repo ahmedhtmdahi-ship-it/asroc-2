@@ -44,7 +44,7 @@ type Medication = {
 export function DoctorDiagnosisPage() {
   const params = useParams();
   const navigate = useNavigate();
-  const { requests, startDiagnosis, prescribeRequest } = useWorkflow();
+  const { requests, refreshRequests } = useWorkflow();
   const request = requests.find((item) => item.id === params.id);
 
   const [complaint, setComplaint] = useState(request?.reason || "");
@@ -96,7 +96,7 @@ export function DoctorDiagnosisPage() {
     setMedications(updated);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!request) return;
 
     if (!diagnosis.trim()) {
@@ -118,36 +118,45 @@ export function DoctorDiagnosisPage() {
       return;
     }
 
+    const structuredMeds: PrescriptionMedication[] = filledMedications.map((med) => ({
+      id: med.medicationId || `med-${Date.now()}-${Math.random()}`,
+      name: med.name,
+      dosage: med.dosage,
+      duration: med.duration,
+      instructions: med.instructions,
+    }));
+
     try {
+      // تسلسل النداءات على السيرفر (كل خطوة بتنتظر اللي قبلها) عشان الـ workflow
+      // ما يتسابقش: بدء الكشف → حفظ التشخيص/الروشتة → إرسال للصيدلية.
       if (request.status === "checked_out") {
-        startDiagnosis(request.id, "بدأ الطبيب جلسة الكشف الطبي");
+        await requestStore.transitionAsync(
+          request.id,
+          "in_diagnosis",
+          "بدأ الطبيب جلسة الكشف الطبي",
+        );
       }
 
-      const structuredMeds: PrescriptionMedication[] = filledMedications.map((med) => ({
-        id: med.medicationId || `med-${Date.now()}-${Math.random()}`,
-        name: med.name,
-        dosage: med.dosage,
-        duration: med.duration,
-        instructions: med.instructions,
-      }));
-
-      requestStore.updateFields(request.id, {
+      await requestStore.patchAsync(request.id, {
         doctorDiagnosis: diagnosis.trim(),
         medications: structuredMeds,
         sickLeaveDays: sickLeaveDays ? Number(sickLeaveDays) : undefined,
         sickLeaveReason: sickLeaveReason.trim() || undefined,
       });
 
-      prescribeRequest(
+      await requestStore.transitionAsync(
         request.id,
-        `التشخيص: ${diagnosis.trim()} | الأدوية: ${filledMedications.map((med) => `${med.name} ${med.dosage}`.trim()).join("، ")}`
+        "prescribed",
+        `التشخيص: ${diagnosis.trim()} | الأدوية: ${filledMedications.map((med) => `${med.name} ${med.dosage}`.trim()).join("، ")}`,
       );
 
+      refreshRequests();
       toast.success("تم حفظ الكشف وإرسال الروشتة للصيدلية", {
         description: "تم تحديث حالة الطلب وإضافة التشخيص الطبي.",
       });
       navigate("/pharmacy");
     } catch (error) {
+      refreshRequests();
       toast.error("تعذر حفظ الكشف", {
         description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
       });

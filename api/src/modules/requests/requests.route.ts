@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
 
-import { requirePermission } from "../../middleware/requirePermission.js";
 import { forbidden } from "../../lib/httpError.js";
 import {
   createRequestSchema,
@@ -124,19 +123,32 @@ export async function requestRoutes(app: FastifyInstance) {
   });
 
   // POST /requests
-  app.post(
-    "/",
-    { preHandler: [app.authenticate, requirePermission("create_request")] },
-    async (req, reply) => {
-      const body = createRequestSchema.parse(req.body);
-      const created = await createRequest(body, {
-        id: req.user.sub,
-        name: req.user.name,
-        role: req.user.role,
-      });
-      return reply.code(201).send(created);
-    },
-  );
+  // بيسمح لصاحب create_request (الموظف لنفسه) أو manage_system/all (إنشاء نيابةً — طوارئ).
+  app.post("/", auth, async (req, reply) => {
+    const user = req.user as any;
+    const canCreateOnBehalf =
+      user.permissions.includes("all") || user.permissions.includes("manage_system");
+    const canCreate = canCreateOnBehalf || user.permissions.includes("create_request");
+    if (!canCreate) {
+      return reply
+        .code(403)
+        .send({ error: "Forbidden", message: "صلاحية غير كافية لإنشاء طلب" });
+    }
+
+    const body = createRequestSchema.parse(req.body);
+
+    // قفل الهوية: الموظف العادي ما يقدرش ينشئ طلب باسم حد تاني.
+    // الإنشاء نيابةً (طوارئ) مسموح بس لمن يملك manage_system/all.
+    const identity = canCreateOnBehalf
+      ? { employeeId: body.employeeId, employeeName: body.employeeName }
+      : { employeeId: user.sub, employeeName: user.name };
+
+    const created = await createRequest(
+      { ...body, ...identity },
+      { id: req.user.sub, name: req.user.name, role: req.user.role },
+    );
+    return reply.code(201).send(created);
+  });
 
   // PATCH /requests/:id  — تحديث حقول (تشخيص/روشتة/إحالة/إجازة...)
   app.patch<{ Params: { id: string } }>("/:id", auth, async (req, reply) => {
