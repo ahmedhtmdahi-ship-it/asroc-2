@@ -40,28 +40,9 @@ function getInitialUser() {
   }
 }
 
-export function getRedirectPathByRole(role: UserRole) {
-  switch (role) {
-    case "employee":
-      return "/employee";
-    case "manager":
-    case "office_manager":
-      return "/manager/approvals";
-    case "security":
-      return "/security";
-    case "doctor":
-      return "/doctor";
-    case "pharmacy":
-      return "/pharmacy";
-    case "medical_admin":
-      return "/medical-admin";
-    case "pension_admin":
-      return "/pension-admin";
-    case "super_admin":
-      return "/dashboard";
-    default:
-      return "/employee";
-  }
+// الكل يدخل على داشبورد واحدة — الاختلاف في الودجتس والسايدبار حسب الدور
+export function getRedirectPathByRole(_role: UserRole) {
+  return "/dashboard";
 }
 
 // Returns the "home" path for the current role — used for backLinks and logout redirects

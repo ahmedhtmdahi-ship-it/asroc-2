@@ -14,12 +14,24 @@ class InternalPharmacyController extends Controller
 
     public function index(Request $request)
     {
-        $prescriptions = Prescription::whereNull('dispensed_at')
+        // status: pending (افتراضي) | dispensed | all — للوحة متابعة الاستلام
+        $status = $request->get('status', 'pending');
+
+        $query = Prescription::query()
             ->with([
                 'checkupRequest.employee.user',
                 'checkupRequest.department',
                 'items.medicine',
-            ])
+            ]);
+
+        if ($status === 'pending') {
+            $query->whereNull('dispensed_at');
+        } elseif ($status === 'dispensed') {
+            $query->whereNotNull('dispensed_at');
+        }
+
+        $prescriptions = $query
+            ->latest()
             ->paginate((int) $request->get('per_page', 10));
 
         return PrescriptionResource::collection($prescriptions);

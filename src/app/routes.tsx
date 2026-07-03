@@ -6,7 +6,6 @@ import { LoginPage } from "./features/auth/pages/LoginPage";
 import { DashboardPage } from "./features/dashboard/pages/DashboardPage";
 import { NotFound } from "./features/routing/pages/NotFound";
 
-import { EmployeeDashboardPage } from "./features/dashboard/pages/EmployeeDashboardPage";
 import { EmployeeRequestsPage } from "./features/requests/pages/CreateMedicalRequestPage";
 import { MyMedicalRequestsPage } from "./features/requests/pages/MyMedicalRequestsPage";
 import { MedicalHistoryPage } from "./features/clinical/pages/MedicalHistoryPage";
@@ -45,20 +44,22 @@ export const router = createBrowserRouter([
     Component: LoginPage,
   },
 
+  // الداشبورد الموحّدة — كل الأدوار تدخل هنا، والودجتس تتغير حسب الدور
   {
     path: "/dashboard",
     element: (
-      <ProtectedRoute roles={["super_admin"]}>
+      <ProtectedRoute>
         <DashboardPage />
       </ProtectedRoute>
     ),
   },
 
+  // مسار قديم — بيعرض نفس الداشبورد الموحّدة
   {
     path: "/employee",
     element: (
-      <ProtectedRoute roles={["employee"]}>
-        <EmployeeDashboardPage />
+      <ProtectedRoute>
+        <DashboardPage />
       </ProtectedRoute>
     ),
   },
