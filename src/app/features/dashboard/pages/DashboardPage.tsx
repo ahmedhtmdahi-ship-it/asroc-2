@@ -151,6 +151,14 @@ const dashboardActions: DashboardAction[] = [
     bg: "bg-purple-50",
   },
   {
+    label: "الإدارة الطبية",
+    link: "/medical-admin",
+    icon: HeartPulse,
+    roles: ["medical_admin"],
+    color: "text-teal-700",
+    bg: "bg-teal-50",
+  },
+  {
     label: "العلاج الشهري",
     link: "/monthly-treatment",
     icon: HeartPulse,
