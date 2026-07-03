@@ -1,0 +1,1138 @@
+[
+  {
+    "id": "CONTRACT-001",
+    "name": "مركز الرحاب للطب النفسي والمخ والاعصاب",
+    "specialty": "مخ وأعصاب",
+    "address": "ش محمد علي مكارم بجوار الجمعية الشرعية",
+    "phone": "0882084211:01007999562",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-002",
+    "name": "مصطفى محمد هاشم",
+    "specialty": "مخ وأعصاب",
+    "address": "برج سيدى جلال-ش يسرى راغب-الدور4شقه4-",
+    "phone": "01010391023",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-003",
+    "name": "شركة الاركان للسماعات",
+    "specialty": "أجهزه تعويضيه وسماعات",
+    "address": "ش26 يوليو برج مكة بجوار عمر افندي",
+    "phone": "01000171146",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-004",
+    "name": "شركة الغطريفى",
+    "specialty": "أجهزه تعويضيه وسماعات",
+    "address": "المجذوب أمام مستشفي الشاملة",
+    "phone": "01003699905",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-005",
+    "name": "شركة الوفاء للسماعات الطبية",
+    "specialty": "أجهزه تعويضيه وسماعات",
+    "address": "أسيوط – المحطة - برج الشيماء – الدور الثالث",
+    "phone": "01002019419 - 0882346340",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-006",
+    "name": "مركز السمالوطى",
+    "specialty": "أجهزه تعويضيه وسماعات",
+    "address": "عمارة الأوقاف فوق مطعم الناحل",
+    "phone": "01005263695",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-007",
+    "name": "محمد الصالح عبد الراضى",
+    "specialty": "أسنان",
+    "address": "يسرى راغب – برج التجاريين بجوار التركى",
+    "phone": "088/012532",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-008",
+    "name": "احمد ممدوح محمد جاد الرب",
+    "specialty": "أسنان",
+    "address": "يسرى راغب برج التجاريين الدور الخامس",
+    "phone": "01008142442",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-009",
+    "name": "عمرو الشويخ",
+    "specialty": "أسنان",
+    "address": "امتداد يسرى راغب - برج التوحيد",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-010",
+    "name": "طاهر شريف",
+    "specialty": "أسنان",
+    "address": "ش يسرى راغب برج التجاريين",
+    "phone": "2334000",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-011",
+    "name": "عمر محمد عبد الحكيم مكاوى",
+    "specialty": "أسنان",
+    "address": "عمارة الأوقاف رقم 5 شقة 23",
+    "phone": "01556699689",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-012",
+    "name": "مصطفى محمد محمديين",
+    "specialty": "أسنان",
+    "address": "العتبة الزرقاء بجوار محلات جلال عامر",
+    "phone": "01151227518",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-013",
+    "name": "عماد حمدى",
+    "specialty": "أسنان",
+    "address": "امام مستشفى الشاملة مركز الصفوة",
+    "phone": "01019999212",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-014",
+    "name": "مؤمن عبد الصادق فرحان احمد",
+    "specialty": "أسنان",
+    "address": "ش الازهر  - أبراج النصر - اعلى قصر نابولى",
+    "phone": "01029470817",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-015",
+    "name": "أبو المواهب إبراهيم",
+    "specialty": "أسنان",
+    "address": "ش الجمهورية - أبراج عثمان بن عفان",
+    "phone": "0882298229",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-016",
+    "name": "أحمد علي أحمد مخلوف",
+    "specialty": "أسنان",
+    "address": "برج مكة بجوار عمر افندي امام الهدي مول",
+    "phone": "01117788165",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-017",
+    "name": "ابراهيم محمود موافى",
+    "specialty": "أسنان",
+    "address": "أبراج القضاء أسيوط",
+    "phone": "01097950050",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-018",
+    "name": "محمد جمال حسين حسن",
+    "specialty": "أسنان",
+    "address": "أبراج الزراعيين /سيتى برج ه امام اسماك الحمد",
+    "phone": "01099416292",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-019",
+    "name": "محمد احمد سيد احمد",
+    "specialty": "أسنان",
+    "address": "برج الازهر امام قصر نابولى",
+    "phone": "01151275789",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-020",
+    "name": "محمود عصمت بخيت",
+    "specialty": "أسنان",
+    "address": "برج ابن سيناء اعلى بيتك الدور الخامس",
+    "phone": "01030222654",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-021",
+    "name": "عمرو محمود محمد",
+    "specialty": "أسنان",
+    "address": "المعلميين بجوار قاعة جرند لامول",
+    "phone": "01062908908",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-022",
+    "name": "محمد سيد ثابت",
+    "specialty": "أسنان",
+    "address": "ش يسرى راغب اعلى كنز لاروش",
+    "phone": "2336606",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-023",
+    "name": "إسلام محمد محمود كشمير",
+    "specialty": "أسنان",
+    "address": "شارع ثابت- أعلي محلات كشمير",
+    "phone": "01095354039",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-024",
+    "name": "محمد حمدى محمد مرسى",
+    "specialty": "أسنان",
+    "address": "23ش عمر بن عبد العزيز المتفرع من المنفذ أسيوط",
+    "phone": "01006267405",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-025",
+    "name": "أيه عاطف عبد العليم",
+    "specialty": "أسنان",
+    "address": "المركز التجاري الدولي/ش يسري راغب الدور 7",
+    "phone": "01002355923",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-026",
+    "name": "محمد عصام عزت",
+    "specialty": "أسنان",
+    "address": "برج نايل بلازا - بجوار مواقف النزلة",
+    "phone": "01551795337",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-027",
+    "name": "أماني احمد محمروس (الشريف)",
+    "specialty": "أطفال",
+    "address": "أبراج النصرأ3 امام مدرية الصحة",
+    "phone": "01013997600",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-028",
+    "name": "محمد وائل احمد عبد الغنى",
+    "specialty": "أطفال",
+    "address": "الازهر أبراج القضاه",
+    "phone": "01017771212",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-029",
+    "name": "ايناس احمد حامد",
+    "specialty": "أطفال",
+    "address": "ش 26 يوليو بجوار مستشفى الايمان",
+    "phone": "01025540023",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-030",
+    "name": "امانى محمد على احمد",
+    "specialty": "أطفال",
+    "address": "المعلمين بعد قاعة جراند لامور",
+    "phone": "01558585518",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-031",
+    "name": "محمد عمر جاد",
+    "specialty": "أنف وأذن",
+    "address": "برج صبرة امام فندق اخناتون",
+    "phone": "01091597624",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-032",
+    "name": "مستشفي طيبة لجراحة الأنف والأذن",
+    "specialty": "أنف وأذن",
+    "address": "شارع نزيه خليفة متفرع من شارع المحافظة",
+    "phone": "01021276883:0882143636",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-033",
+    "name": "مركز النخبة لعلاج الاورام",
+    "specialty": "أورام",
+    "address": "ميدان الازهر – برج المصطفى",
+    "phone": "01061000433",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-034",
+    "name": "محمد إبراهيم احمد",
+    "specialty": "أوعيه دمويه وشرايين",
+    "address": "مول الهدى امام عمر افندى",
+    "phone": "01118692260-01009316444",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-035",
+    "name": "مركز سيتي إسكان",
+    "specialty": "الأشعه وفحوصات القلب",
+    "address": "شارع سيتي بجوار الجمعية الشرعية",
+    "phone": "2084126 - 2368030",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-036",
+    "name": "مركز نفادى",
+    "specialty": "الأشعه وفحوصات القلب",
+    "address": "الجمهورية برج عثمان ابن عفان",
+    "phone": "2303200",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-037",
+    "name": "مركز الرواد للأشعة",
+    "specialty": "الأشعه وفحوصات القلب",
+    "address": "شارع يسري راغب بجوار برج الزهور",
+    "phone": "2368020",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-038",
+    "name": "مركز الأمل",
+    "specialty": "الأشعه وفحوصات القلب",
+    "address": "ش مكة المكرمة شركة فريال",
+    "phone": "2295544",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-039",
+    "name": "مركز الزهور للاشعة",
+    "specialty": "الأشعه وفحوصات القلب",
+    "address": "أسيوط يسرى راغب برج الزهور الدور الثانى",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-040",
+    "name": "مركز فور ايز",
+    "specialty": "النظارات الطبيه",
+    "address": "8 برج التوحيد2 يسرى راغب",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-041",
+    "name": "مركز لطفي",
+    "specialty": "النظارات الطبيه",
+    "address": "شركة فريال/ ش العادلي بجوار مكتب بريدالزهراء",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-042",
+    "name": "مركز مرجان",
+    "specialty": "النظارات الطبيه",
+    "address": "12 ش الجمهورية",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-043",
+    "name": "مركز هانى لوك للبصريات",
+    "specialty": "النظارات الطبيه",
+    "address": "النميس 3 شارع الجنينة – أمام نادي الواي",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-044",
+    "name": "مركز عزت للبصريات",
+    "specialty": "النظارات الطبيه",
+    "address": "أسيوط-أبراج المشتل أمام نادي القضاة",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-045",
+    "name": "مركز نيولوك للنظارات",
+    "specialty": "النظارات الطبيه",
+    "address": "أسيوط – النميس – تقسيم المعلمين 01",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-046",
+    "name": "مركز الهدى",
+    "specialty": "النظارات الطبيه",
+    "address": "عمارة الشرق للتامين شارع الجيش",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-047",
+    "name": "دكتور أبتكيس",
+    "specialty": "النظارات الطبيه",
+    "address": "شارع محمود رشوان بجوار مسجد مكة",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-048",
+    "name": "مركز أبو كريشة",
+    "specialty": "النظارات الطبيه",
+    "address": "عمارة الأوقاف رقم 1 بجوار مصعم الناحل",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-049",
+    "name": "مركز عمرو",
+    "specialty": "النظارات الطبيه",
+    "address": "أسيوط -امتداد ش يسري راغب برج التوحيد",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-050",
+    "name": "مركز ابتكيس",
+    "specialty": "النظارات الطبيه",
+    "address": "المحطة برج الشيماء الدور الأول",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-051",
+    "name": "مركز علاء الدين",
+    "specialty": "النظارات الطبيه",
+    "address": "ش 26يوليوامام عمارة ساو يرس",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-052",
+    "name": "مركز ايز مغربي",
+    "specialty": "النظارات الطبيه",
+    "address": "21برج السلام ش توفيق الجمهورية",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-053",
+    "name": "مركز بدر",
+    "specialty": "النظارات الطبيه",
+    "address": "ش محمد توفيق خشبة",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-054",
+    "name": "مركز جرين ايز",
+    "specialty": "النظارات الطبيه",
+    "address": "أبراج القضاة ميدان الأزهر",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-055",
+    "name": "مركز رفعت",
+    "specialty": "النظارات الطبيه",
+    "address": "عمارة الأوقاف رقم 1 أعلي مطعم الناحل",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-056",
+    "name": "مركز سعد مصطفى",
+    "specialty": "النظارات الطبيه",
+    "address": "ش الجلاء بجوار مسجد ابوالجود",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-057",
+    "name": "محمد حسام مغربى",
+    "specialty": "باطنة عامة",
+    "address": "برج التوحيد امتداد يسرى راغب",
+    "phone": "2144240 - 2144030",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-058",
+    "name": "ممدوح محمد جاد الرب",
+    "specialty": "باطنة عامة",
+    "address": "برج التجاريين فوق عصير التركى",
+    "phone": "01066072993",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-059",
+    "name": "معمل ابن سينا",
+    "specialty": "تحاليل طبيه",
+    "address": "الجمهورية برج عثمان ابن عفان",
+    "phone": "2308314",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-060",
+    "name": "معمل الأمين",
+    "specialty": "تحاليل طبيه",
+    "address": "برج جيبكوا-الدور(5)-بجوار بنك فيصل",
+    "phone": "01061060054",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-061",
+    "name": "معمل الرحاب",
+    "specialty": "تحاليل طبيه",
+    "address": "برج الزهور ش يسرى راغب",
+    "phone": "2355040",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-062",
+    "name": "معمل الرسالة",
+    "specialty": "تحاليل طبيه",
+    "address": "ش يسرى راغب امام بنك فيصل",
+    "phone": "01027085850",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-063",
+    "name": "معمل النيل",
+    "specialty": "تحاليل طبيه",
+    "address": "برج الأزهر أمام قصر نانولى",
+    "phone": "2351005",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-064",
+    "name": "معمل الهلال",
+    "specialty": "تحاليل طبيه",
+    "address": "يسرى راغب برج التجاريين",
+    "phone": "2352347",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-065",
+    "name": "معمل البرج",
+    "specialty": "تحاليل طبيه",
+    "address": "أسيوط- الجمهورية - برج الراعى",
+    "phone": "الخط الساخن19911",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-066",
+    "name": "معمل الفا",
+    "specialty": "تحاليل طبيه",
+    "address": "أسيوط -ش الجمهورية-برج الراعى",
+    "phone": "الخطالساخن 16191",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-067",
+    "name": "معمل المختبر",
+    "specialty": "تحاليل طبيه",
+    "address": "أسيوط- امتداد يسرى راغب - عمارة الأوقاف رقم 4",
+    "phone": "19014",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-068",
+    "name": "معامل سيدار للتحاليل الطبية",
+    "specialty": "تحاليل طبيه",
+    "address": "أسيوط -الهدي مول",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-069",
+    "name": "ميجا لاب للتحاليل الطبية",
+    "specialty": "تحاليل طبيه",
+    "address": "المحطة-برج خالدبن الوليد (أ)",
+    "phone": "01149944548--2333377",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-070",
+    "name": "زهران لاب للتحاليل الطبية",
+    "specialty": "تحاليل طبيه",
+    "address": "برج زهراءالمدينة الدور3-ش 26يوليو",
+    "phone": "01021361889--2354060",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-071",
+    "name": "احمد محمد طه",
+    "specialty": "جراحة قلب وصدر",
+    "address": "أسيوط - برج خالد بن الوليد الدور الثامن",
+    "phone": "01026949141",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-072",
+    "name": "إسماعيل محمد طه",
+    "specialty": "جراحة مخ وأعصاب",
+    "address": "أسيوط - برج خالد بن الوليد الدور الثامن",
+    "phone": "01097515016",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-073",
+    "name": "خالد أبو بكر العمدة",
+    "specialty": "جهاز هضمي",
+    "address": "ش يسرى راغب-امام عصير التركى",
+    "phone": "088/2330599 - 01024159233",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-074",
+    "name": "حمدى محفوظ",
+    "specialty": "جهاز هضمي",
+    "address": "برج السعد أمام مسجد الهدي بطريق الشارد",
+    "phone": "2100005 - 01069175492",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-075",
+    "name": "محمود فتحى راتب",
+    "specialty": "رمد وليزك",
+    "address": "برج الناحل ش بين الجانيين",
+    "phone": "01000019716",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-076",
+    "name": "مركزحورس لطب وجراحة العيون",
+    "specialty": "رمد وليزك",
+    "address": "أبراج الشرق للتأمين /المحطة الدور 2",
+    "phone": "01151600057:01040471402",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-077",
+    "name": "مركز النهار",
+    "specialty": "رمد وليزك",
+    "address": "اسيوط ميدان الميدوب امام مستشفى الشاملة",
+    "phone": "01030313186",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-078",
+    "name": "مركز النور لأبحاث العيون",
+    "specialty": "رمد وليزك",
+    "address": "أمام أسماء الله الحسنى بجوار مطعم جاد",
+    "phone": "2141228",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-079",
+    "name": "محمد طارق عبد المنعم",
+    "specialty": "رمد وليزك",
+    "address": "برج الشيماء ميدان المحطة",
+    "phone": "2341408",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-080",
+    "name": "إيهاب إسماعيل احمد وصفى",
+    "specialty": "رمد وليزك",
+    "address": "ش يسرى راغب - برج معونة الشتاء الدور الثالث",
+    "phone": "01001160800 - 0882362205",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-081",
+    "name": "مركز الفرسان",
+    "specialty": "رمد وليزك",
+    "address": "أسيوط/ش النميس/بجوار اللجنه الطبيه",
+    "phone": "01000951312/01021110026",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-082",
+    "name": "مركز طيبة ليزك",
+    "specialty": "رمد وليزك",
+    "address": "11ش نزيه خليفة-ش المحافظة",
+    "phone": "2297069",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-083",
+    "name": "مستشفى نور الحياة بالقاهرة",
+    "specialty": "رمد وليزك",
+    "address": "مصر الجديدة- شارع المرغنى",
+    "phone": "01099990378  - 0202229070",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-084",
+    "name": "مستشفى طيبة",
+    "specialty": "رمد وليزك",
+    "address": "11ش نزيه خليفة-ش المحافظة",
+    "phone": "0882143636",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-085",
+    "name": "صفاء على جمال الدين مهران",
+    "specialty": "روماتيزم وتأهيل ومناعه",
+    "address": "برج بلازا / بجوار موقف النزله /أعلي مظلوم",
+    "phone": "01551795337",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-086",
+    "name": "مها عبد الجابر عبد اللاه",
+    "specialty": "سمعيات",
+    "address": "المركز التجاري الدولي/ شارع يسري راغب الدور7",
+    "phone": "01555059131",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-087",
+    "name": "ايمان عبد الفتاح الجندى",
+    "specialty": "سمعيات",
+    "address": "ش يسرى راغب عمارة جيبكوا بجوار بنك فيصل",
+    "phone": "01095533258",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-088",
+    "name": "احمد محمد عبده خضر شداد",
+    "specialty": "صدر وحساسية",
+    "address": "ش ثابت – بجوار الفرعونية للصرافة - أسيوط",
+    "phone": "028656688 - 01100022774",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-089",
+    "name": "عاطف فاروق محمد القرن",
+    "specialty": "صدر وحساسية",
+    "address": "يسرى راغب-إمام بنك فيصل",
+    "phone": "2341428",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-090",
+    "name": "يسرى زكى احمد",
+    "specialty": "عظام",
+    "address": "برج الهدى مول",
+    "phone": "01010111379",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-091",
+    "name": "علاء احمد علم الدين",
+    "specialty": "عظام",
+    "address": "الازهر-أمام مستشفي القدس",
+    "phone": "01033396674--0882141224",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-092",
+    "name": "محمد احمد محمد أبو صغير",
+    "specialty": "عظام",
+    "address": "ش ثابت اعلى مصوغات العدوى",
+    "phone": "01095040040",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-093",
+    "name": "محمد مصطفى قطب",
+    "specialty": "عظام",
+    "address": "امام مستشفى الشاملة -مركز الصفوة",
+    "phone": "2330500",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-094",
+    "name": "محمد مصطفى علاء الدين",
+    "specialty": "عظام",
+    "address": "ش ثابت بجوار الفرعونية للصرافة",
+    "phone": "01142015151",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-095",
+    "name": "محمد جمال حسن",
+    "specialty": "عظام",
+    "address": "برج معونة الشتاء",
+    "phone": "2334234",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-096",
+    "name": "أسامة احمد فاروق",
+    "specialty": "عظام",
+    "address": "امام شركة المحاريث والهندسة",
+    "phone": "2356741",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-097",
+    "name": "مركز المروة",
+    "specialty": "علاج طبيعى",
+    "address": "أسيوط الزهراء امام مستشفي العقاد",
+    "phone": "01000166394",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-098",
+    "name": "مركز التوحيد",
+    "specialty": "علاج طبيعى",
+    "address": "ش يسرى راغب برج التوحيد",
+    "phone": "01113269144",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-099",
+    "name": "مركز الامل التخصصى للعلاج الطبيعى",
+    "specialty": "علاج طبيعى",
+    "address": "أسيوط الهلالى برج المدينة المنورة الدور الثانى",
+    "phone": "01144229924",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-100",
+    "name": "مركز دار الصحة",
+    "specialty": "علاج طبيعى",
+    "address": "شارع الجيش أمام ميدان السنبلة",
+    "phone": "01006698748",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-101",
+    "name": "حسام حسن العربى",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "برج خالد بن الوليد . ميدان المحطة",
+    "phone": "2361015 - 01065315230",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-102",
+    "name": "مركز السلام للقلب",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "أسيوط-  برج ابن سينا- أعلى بى تك",
+    "phone": "01128212141 01277708789",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-103",
+    "name": "مركزالرحاب سيتي لقسطرة القلب",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "15ش محمد علي مكارم-امام الجمعية الشرعية",
+    "phone": "01001402128--01099971741",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-104",
+    "name": "محمود عبد الصبور عبد الله",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "برج خالد بن الوليد . ميدان المحطة",
+    "phone": "2374448 - 01007713426",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-105",
+    "name": "مركز القلب والأوعية الدموية",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "برج الطائف شارع الجمهورية",
+    "phone": "2306033 - 01553466634",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-106",
+    "name": "محمد عبد الغنى كريم",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "ش يسرى فوق كنز لاروش",
+    "phone": "2350560",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-107",
+    "name": "عادل جمال حسنين",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "لقاهرة- عيادة 55 شارع الحجاز",
+    "phone": "01224412515",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-108",
+    "name": "سلمى طه",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "برج خالد بن الوليد . ميدان المحطة",
+    "phone": "01026688366",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-109",
+    "name": "ايمن حسن جلال",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "برج زهراء المدينة بجوار مستشفى الايمان القديمة",
+    "phone": "01013140126",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-110",
+    "name": "ايمن خيرى محمد",
+    "specialty": "قلب وأوعيه دموية",
+    "address": "ش توفيق –برج صبره أمام عصير التركي",
+    "phone": "01007001091",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-111",
+    "name": "مستشفى الوادى",
+    "specialty": "مستشفى",
+    "address": "أسيوط - الوليدية – ش البحر",
+    "phone": "0882158632",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-112",
+    "name": "مستشفي الهنا",
+    "specialty": "مستشفى",
+    "address": "12 شارع تقسيم المزلاوي متفرع من طريق سوهاج أسيوط محافظة سوهاج",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-113",
+    "name": "مستشفي دار السلام للعظام",
+    "specialty": "مستشفى",
+    "address": "عمارة الأوقاف رقم 1 الدور الأول أسيوط",
+    "phone": "01281435554 / 0882334690",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-114",
+    "name": "مستشفى الغازات البترولية",
+    "specialty": "مستشفى",
+    "address": "خلف محكمة مصر الجديدة",
+    "phone": "222404831",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-115",
+    "name": "مستشفى دار الشفاء بأسيوط",
+    "specialty": "مستشفى",
+    "address": "شارع جودة الاسدى-الزهراء",
+    "phone": "0882060110",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-116",
+    "name": "المركز الطبي بقطاع البترول",
+    "specialty": "مستشفى",
+    "address": "امتداد ش مكرم عبيد القاهرة",
+    "phone": "222715643",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-117",
+    "name": "مستشفي الحياة باسيوط",
+    "specialty": "مستشفى",
+    "address": "أسيوط-شركة فريال-ش مكة المكرمة",
+    "phone": "0882053915--2053916",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-118",
+    "name": "مستشفي دار الفؤاد (6 أكتوبر)",
+    "specialty": "مستشفى",
+    "address": "6 أكتوبر -  شارع 26 يوليو - المنطقة السياحية",
+    "phone": "16370 الخط الساخن",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-119",
+    "name": "مستشفى جامعة أسيوط",
+    "specialty": "مستشفى",
+    "address": "مستشفيات جامعة أسيوط",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-120",
+    "name": "مستشفي الرحاب 2 التخصصي",
+    "specialty": "مستشفى",
+    "address": "أسيوط-بجوارمصنع سيد_بجوارالمطافي",
+    "phone": "01099941905",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-121",
+    "name": "مستشفى الأمل التخصصي",
+    "specialty": "مستشفى",
+    "address": "شارع 11 تقسيم الحقوقيين - أسيوط",
+    "phone": "2053909",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-122",
+    "name": "دار الصفوة للجراحة والمناظير",
+    "specialty": "مستشفى",
+    "address": "ميدان المجذوب- امام مستشفي الشاملة",
+    "phone": "0882347999-01019999216",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-123",
+    "name": "المستشفى التخصصي جامعة عين شمس",
+    "specialty": "مستشفى",
+    "address": "ش الخليفة المأمون - العباسية - القاهرة",
+    "phone": "24024158/01206665479",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-124",
+    "name": "مستشفى الدرة بالقاهرة",
+    "specialty": "مستشفى",
+    "address": "91 ش محمد فريد- ميدان الحجاز- مصر الجديدة",
+    "phone": "22411110(202)",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-125",
+    "name": "مستشفي القلب الجامعي ( الاورمان )",
+    "specialty": "مستشفى",
+    "address": "مستشفيات جامعة أسيوط",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-126",
+    "name": "مستشفى جامعه أسيوط( جراحه مسالك)م",
+    "specialty": "مستشفى",
+    "address": "مستشفيات جامعه أسيوط",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-127",
+    "name": "مستشفى المنيا الوطنى",
+    "specialty": "مستشفى",
+    "address": "المنيا - 33 ش سعد زغلول",
+    "phone": "2319319",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-128",
+    "name": "معهد جنوب مصر للأورام",
+    "specialty": "مستشفى",
+    "address": "ش الميثاق بأسيوط",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-129",
+    "name": "بنك دم الهلال الأحمر المصري",
+    "specialty": "مستشفى",
+    "address": "الأربعين شارع الشرطة مبني الهلال الأحمر",
+    "phone": "0882343469:01098727442",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-130",
+    "name": "مركز القلب والجهاز الهضمي بسوهاج",
+    "specialty": "مستشفى",
+    "address": "سوهاج مدينه مبارك كورنيش النيل",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-131",
+    "name": "مستشفى الراجحى",
+    "specialty": "مستشفى",
+    "address": "مستشفيات جامعة أسيوط",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-132",
+    "name": "عيادة وان هليث",
+    "specialty": "مستشفى",
+    "address": "الجمهورية برج سريا الحمد امام محكمة الاسرة",
+    "phone": "15292",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-133",
+    "name": "مستشفى الرواد التخصصي",
+    "specialty": "مستشفى",
+    "address": "ش محمد على مكارم –بجوار مستشفى الجلدية",
+    "phone": "01551556959 - 0882086024 - 01062144007",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-134",
+    "name": "مستشفى صحه المراة",
+    "specialty": "مستشفى",
+    "address": "مستشفيات جامعة أسيوط",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-135",
+    "name": "مستشفى الزراعيين",
+    "specialty": "مستشفى",
+    "address": "شارع المساحه المتفرع من الحمهورية",
+    "phone": "01110911182",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-136",
+    "name": "مستشفى الزهراء بأسيوط",
+    "specialty": "مستشفى",
+    "address": "شــارع الجلاء",
+    "phone": "2326023",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-137",
+    "name": "مستشفى السلامة",
+    "specialty": "مستشفى",
+    "address": "الأزهر - تقسيم الحقوقيين - خلف كوك دور",
+    "phone": "01098352888 - 01098351777",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-138",
+    "name": "مستشفى العطيفى",
+    "specialty": "مستشفى",
+    "address": "أسيوط شركة فريال",
+    "phone": "22321511",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-139",
+    "name": "مستشفي نور الحياة للعيون",
+    "specialty": "مستشفى",
+    "address": "93 شارع المرغني -- مصر الجديدة --القاهرة",
+    "phone": "01099990378/01227399993",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-140",
+    "name": "مستشفى المنيا الدولى",
+    "specialty": "مستشفى",
+    "address": "المنيا - كوبرى النيل - أبراج السكرية",
+    "phone": null,
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-141",
+    "name": "مستشفي الحكمة التخصصي",
+    "specialty": "مستشفى",
+    "address": "أمام محطة القطار ميدان المحطة",
+    "phone": "01000427566",
+    "isActive": true
+  },
+  {
+    "id": "CONTRACT-142",
+    "name": "مستشفى مصر الدولى بالدقي",
+    "specialty": "مستشفى",
+    "address": "12 ش السرية –الدقى –الجيزة - القاهرة",
+    "phone": "01099778933 - 01008222130",
+    "isActive": true
+  }
+]

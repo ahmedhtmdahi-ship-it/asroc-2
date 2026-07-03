@@ -12,6 +12,7 @@ import { medicineRoutes } from "./modules/medicines/medicines.route.js";
 import { auditRoutes }         from "./modules/audit/audit.route.js";
 import { notificationRoutes } from "./modules/notifications/notifications.route.js";
 import { securityRoutes }     from "./modules/security/security.route.js";
+import { contractRoutes }     from "./modules/contracts/contracts.route.js";
 
 /**
  * بنبني التطبيق هنا (من غير ما نشغّل الاستماع) عشان نقدر نختبره بسهولة.
@@ -44,6 +45,7 @@ export function buildApp() {
   app.register(auditRoutes,         { prefix: "/audit-logs" });
   app.register(notificationRoutes,  { prefix: "/notifications" });
   app.register(securityRoutes,      { prefix: "/security-logs" });
+  app.register(contractRoutes,      { prefix: "/contracts" });
 
   return app;
 }

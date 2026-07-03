@@ -239,7 +239,7 @@ export const router = createBrowserRouter([
   {
     path: "/pharmacy",
     element: (
-      <ProtectedRoute roles={["pharmacy"]}>
+      <ProtectedRoute roles={["pharmacy", "medical_admin"]}>
         <PharmacyPage />
       </ProtectedRoute>
     ),
@@ -247,7 +247,7 @@ export const router = createBrowserRouter([
   {
     path: "/pharmacy/dispense/:id",
     element: (
-      <ProtectedRoute roles={["pharmacy"]}>
+      <ProtectedRoute roles={["pharmacy", "medical_admin"]}>
         <PharmacyDispensePage />
       </ProtectedRoute>
     ),
@@ -255,7 +255,7 @@ export const router = createBrowserRouter([
   {
     path: "/pharmacy/external",
     element: (
-      <ProtectedRoute roles={["pharmacy", "pension_admin"]}>
+      <ProtectedRoute roles={["pharmacy", "pension_admin", "medical_admin"]}>
         <ExternalPharmacyPage />
       </ProtectedRoute>
     ),
@@ -282,7 +282,7 @@ export const router = createBrowserRouter([
   {
     path: "/pension-admin",
     element: (
-      <ProtectedRoute roles={["pension_admin"]}>
+      <ProtectedRoute roles={["pension_admin", "medical_admin"]}>
         <PensionAdminPage />
       </ProtectedRoute>
     ),
