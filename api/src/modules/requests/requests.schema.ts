@@ -23,6 +23,8 @@ export const createRequestSchema = z.object({
   workType: z.string().optional(),
   nationalId: z.string().optional(),
   phone: z.string().optional(),
+  managerId: z.string().optional(),
+  managerName: z.string().optional(),
 });
 
 const referralDataSchema = z.object({

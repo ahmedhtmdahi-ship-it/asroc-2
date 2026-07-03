@@ -78,7 +78,12 @@ export async function createRequest(input: CreateRequestInput, actor: Actor) {
         ],
       },
     },
-    include: { timeline: true },
+    include: {
+      medications: true,
+      timeline: { orderBy: { timestamp: "asc" } },
+      attachments: true,
+      referral: true,
+    },
   });
 
   await prisma.auditLog.create({
@@ -123,7 +128,7 @@ export async function updateRequest(
   const { medications, referralData, ...scalars } = input;
 
   return prisma.$transaction(async (tx) => {
-    const updated = await tx.medicalRequest.update({
+    await tx.medicalRequest.update({
       where: { id },
       data: scalars,
     });
@@ -158,7 +163,15 @@ export async function updateRequest(
       },
     });
 
-    return updated;
+    return tx.medicalRequest.findUnique({
+      where: { id },
+      include: {
+        medications: true,
+        timeline: { orderBy: { timestamp: "asc" } },
+        attachments: true,
+        referral: true,
+      },
+    });
   });
 }
 
