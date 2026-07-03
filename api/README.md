@@ -21,6 +21,18 @@ curl http://localhost/api/health/ready   # المفروض يرد {"status":"ok",
 
 ## التشغيل للتطوير (محلي بدون Docker)
 
+**أسهل طريقة — أمر واحد من جذر المشروع** (بيجهّز قاعدة البيانات ويشغّل الباك + الواجهة مع بعض):
+
+```bash
+pnpm install
+pnpm dev:all
+```
+
+`dev:all` بيعمل: إنشاء `api/.env` لو مش موجود → توليد Prisma Client → migrations → زرع البيانات
+→ تشغيل الـ API (`:4000`) والواجهة (`:5173`) في نفس النافذة. (لإيقافهم: Ctrl+C).
+
+**أو خطوة بخطوة (للباك بس):**
+
 ```bash
 cd api
 cp .env.example .env                 # فيه DATABASE_URL=file:./dev.db + JWT_SECRET للتطوير
