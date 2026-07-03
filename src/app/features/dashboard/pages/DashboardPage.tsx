@@ -66,6 +66,9 @@ export function DashboardPage() {
   const isPharmacy = role === "pharmacy";
   const isSecurity = role === "security";
   const isSuper = role === "super_admin";
+  // مدير الطبية = يشوف الكل + بياخد قرار + بيشوف الصيدلية. السوبر فوقه.
+  const isMedicalAdmin = role === "medical_admin";
+  const isOversight = isMedicalAdmin || isSuper;
 
   // الموظف يشوف طلباته هو — الأدوار الإشرافية تشوف كل المرئي ليها
   const myRequests = useMemo(() => {
@@ -104,22 +107,22 @@ export function DashboardPage() {
 
         {/* تنبيهات حسب الدور */}
         <div className="space-y-3">
-          {(isManager || isSuper) && pendingApproval > 0 && (
+          {(isManager || isOversight) && pendingApproval > 0 && (
             <AlertBanner color="yellow" icon={ClipboardCheck}
               text={`${pendingApproval} طلب بانتظار موافقتك`}
               to="/manager/approvals" cta="مراجعة الطلبات" />
           )}
-          {(isDoctor || isSuper) && readyForDoctor > 0 && (
+          {(isDoctor || isOversight) && readyForDoctor > 0 && (
             <AlertBanner color="blue" icon={Stethoscope}
               text={`${readyForDoctor} مريض جاهز للكشف`}
               to="/doctor" cta="فتح قائمة الفحص" />
           )}
-          {(isPharmacy || isSuper) && readyToDispense > 0 && (
+          {(isPharmacy || isOversight) && readyToDispense > 0 && (
             <AlertBanner color="purple" icon={Pill}
               text={`${readyToDispense} روشتة جاهزة للصرف`}
               to="/pharmacy" cta="فتح قائمة الصيدلية" />
           )}
-          {(isSecurity || isSuper) && readyToExit > 0 && (
+          {(isSecurity || isOversight) && readyToExit > 0 && (
             <AlertBanner color="teal" icon={Shield}
               text={`${readyToExit} طلب موافق عليه جاهز للخروج`}
               to="/security" cta="فتح بوابة الأمن" />
@@ -142,10 +145,10 @@ export function DashboardPage() {
             <CardContent className="grid grid-cols-2 gap-3">
               <QuickAction title="طلب جديد" icon={FilePlus2} to="/request/new" />
               <QuickAction title="طلباتي" icon={ClipboardList} to="/my-requests" />
-              {(isManager || isSuper) && <QuickAction title="موافقات المدير" icon={ClipboardCheck} to="/manager/approvals" />}
-              {(isDoctor || isSuper) && <QuickAction title="فحص الطبيب" icon={Stethoscope} to="/doctor" />}
-              {(isPharmacy || isSuper) && <QuickAction title="قائمة الصيدلية" icon={Pill} to="/pharmacy" />}
-              {(isSecurity || isSuper) && <QuickAction title="بوابة الأمن" icon={Shield} to="/security" />}
+              {(isManager || isOversight) && <QuickAction title="موافقات المدير" icon={ClipboardCheck} to="/manager/approvals" />}
+              {(isDoctor || isOversight) && <QuickAction title="فحص الطبيب" icon={Stethoscope} to="/doctor" />}
+              {(isPharmacy || isOversight) && <QuickAction title="قائمة الصيدلية" icon={Pill} to="/pharmacy" />}
+              {(isSecurity || isOversight) && <QuickAction title="بوابة الأمن" icon={Shield} to="/security" />}
               <QuickAction title="الإشعارات" icon={Bell} to="/employee/notifications" />
               <QuickAction title="الملف الشخصي" icon={UserCircle} to="/profile" />
             </CardContent>
@@ -184,11 +187,11 @@ export function DashboardPage() {
           </Card>
         </div>
 
-        {/* لوحة المدير: توزيع إداراته */}
-        {(isManager || isSuper) && <ManagerDeptPanel requests={requests} />}
+        {/* لوحة توزيع الإدارات: المدير (إداراته) · الطبية والسوبر (الكل) */}
+        {(isManager || isOversight) && <ManagerDeptPanel requests={requests} />}
 
-        {/* لوحة الصيدلية: مين استلم ومين لسه (منع التهرب) */}
-        {(isPharmacy || isSuper) && <PharmacyPickupBoard requests={requests} />}
+        {/* لوحة الصيدلية: مين استلم ومين لسه (منع التهرب) — الصيدلية والطبية والسوبر */}
+        {(isPharmacy || isOversight) && <PharmacyPickupBoard requests={requests} />}
       </div>
     </AppShell>
   );

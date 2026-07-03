@@ -85,9 +85,13 @@ export const navConfig: Record<UserRole, NavItem[]> = {
     profile,
   ],
 
+  // مدير الطبية: يشوف كل الطلبات + بياخد قرار + بيشوف الصيدلية
   medical_admin: [
     home,
     { label: "الإدارة الطبية", icon: FileText, to: "/medical-admin" },
+    { label: "موافقات الطلبات", icon: ClipboardCheck, to: "/manager/approvals" },
+    { label: "فحص الطبيب", icon: Stethoscope, to: "/doctor" },
+    { label: "قائمة الصيدلية", icon: Pill, to: "/pharmacy" },
     { label: "العلاج الشهري", icon: BedDouble, to: "/monthly-treatment" },
     { label: "التقارير", icon: ScrollText, to: "/reports" },
     notifications,
