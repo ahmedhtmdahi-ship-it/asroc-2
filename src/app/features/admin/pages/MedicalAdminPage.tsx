@@ -1,12 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Activity,
   AlertTriangle,
+  Building2,
   CheckCircle2,
   ClipboardCheck,
   ExternalLink,
   FileText,
   HeartPulse,
+  Phone,
+  MapPin,
   Plus,
   Printer,
   Search,
@@ -30,6 +33,7 @@ import { requestStore } from "@/app/store/requestStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 import { toast } from "sonner";
+import { listContractsApi, type Contract } from "@/app/lib/contractsApi";
 
 function StatCard({ item }: { item: any }) {
   return (
@@ -264,6 +268,14 @@ export function MedicalAdminPage() {
   const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
   const [, forceRender] = useState(0);
 
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [contractSearch, setContractSearch] = useState("");
+  const [contractSpecialty, setContractSpecialty] = useState("");
+
+  useEffect(() => {
+    listContractsApi().then(setContracts).catch(() => {});
+  }, []);
+
   const today = new Date();
   const todayRequests = requests.filter((r) => {
     const d = new Date(r.createdAt);
@@ -289,6 +301,23 @@ export function MedicalAdminPage() {
         r.id.toLowerCase().includes(term)
     );
   }, [emergencyRequests, emergencySearch]);
+
+  const contractSpecialties = useMemo(
+    () => [...new Set(contracts.map((c) => c.specialty))].sort(),
+    [contracts],
+  );
+
+  const filteredContracts = useMemo(() => {
+    const term = contractSearch.trim().toLowerCase();
+    return contracts.filter(
+      (c) =>
+        (!term ||
+          c.name.toLowerCase().includes(term) ||
+          c.specialty.toLowerCase().includes(term) ||
+          c.address?.toLowerCase().includes(term)) &&
+        (!contractSpecialty || c.specialty === contractSpecialty),
+    );
+  }, [contracts, contractSearch, contractSpecialty]);
 
   const handleApproveReferral = (requestId: string) => {
     requestStore.updateFields(requestId, {
@@ -359,6 +388,10 @@ export function MedicalAdminPage() {
               <ExternalLink className="h-3.5 w-3.5" />
               التحويلات ({pendingReferrals.length})
             </TabsTrigger>
+            <TabsTrigger value="contracts" className="gap-1.5 text-xs">
+              <Building2 className="h-3.5 w-3.5" />
+              التعاقدات ({contracts.length})
+            </TabsTrigger>
             <TabsTrigger value="summary" className="gap-1.5 text-xs">
               <TrendingUp className="h-3.5 w-3.5" />
               الملخص التشغيلي
@@ -424,6 +457,77 @@ export function MedicalAdminPage() {
                         onApprove={() => handleApproveReferral(r.id)}
                         onReject={() => handleRejectReferral(r.id)}
                       />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="contracts">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-teal-700" />
+                  جهات التعاقد الخارجية
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 flex flex-col gap-3 md:flex-row">
+                  <div className="relative flex-1">
+                    <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      className="h-11 pr-10"
+                      placeholder="بحث بالاسم أو التخصص أو العنوان..."
+                      value={contractSearch}
+                      onChange={(e) => setContractSearch(e.target.value)}
+                    />
+                  </div>
+                  <select
+                    className="h-11 rounded-md border border-slate-200 bg-white px-3 text-sm"
+                    value={contractSpecialty}
+                    onChange={(e) => setContractSpecialty(e.target.value)}
+                  >
+                    <option value="">كل التخصصات</option>
+                    {contractSpecialties.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="text-xs text-slate-500 mb-3">
+                  {filteredContracts.length} جهة من أصل {contracts.length}
+                </div>
+
+                {filteredContracts.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-slate-500">
+                    لا توجد جهات تعاقد مطابقة للبحث.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredContracts.map((c) => (
+                      <div key={c.id} className="rounded-2xl border bg-white p-4 hover:shadow-md transition">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="font-bold text-slate-900">{c.name}</h3>
+                              <Badge className="bg-teal-100 text-teal-700">{c.specialty}</Badge>
+                            </div>
+                            {c.address && (
+                              <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                                {c.address}
+                              </p>
+                            )}
+                          </div>
+                          {c.phone && (
+                            <div className="flex items-center gap-1 text-sm text-slate-600 flex-shrink-0" dir="ltr">
+                              <Phone className="h-3.5 w-3.5" />
+                              {c.phone}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}

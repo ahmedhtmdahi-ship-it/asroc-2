@@ -56,6 +56,15 @@ interface SeedMedicine {
   isActive?: boolean;
 }
 
+interface SeedContract {
+  id: string;
+  name: string;
+  specialty: string;
+  address?: string | null;
+  phone?: string | null;
+  isActive?: boolean;
+}
+
 function loadJson<T>(name: string): T {
   return JSON.parse(readFileSync(join(SEED_DIR, name), "utf8")) as T;
 }
@@ -63,6 +72,7 @@ function loadJson<T>(name: string): T {
 const mockUsers = loadJson<SeedUser[]>("users.json");
 const mockDepartments = loadJson<SeedDepartment[]>("departments.json");
 const medicinesSeed = loadJson<SeedMedicine[]>("medicines.json");
+const contractsSeed = loadJson<SeedContract[]>("contracts.json");
 
 async function seedUsers() {
   console.log(`\n👤 زرع ${mockUsers.length} مستخدم (مع bcrypt)...`);
@@ -145,6 +155,27 @@ async function seedMedicines() {
   console.log(`✅ الأدوية: ${medicinesSeed.length}`);
 }
 
+async function seedContracts() {
+  console.log(`\n📋 زرع ${contractsSeed.length} جهة تعاقد...`);
+  let done = 0;
+  for (const c of contractsSeed) {
+    const data = {
+      name: c.name,
+      specialty: c.specialty,
+      address: c.address ?? null,
+      phone: c.phone ?? null,
+      isActive: c.isActive ?? true,
+    };
+    await prisma.contract.upsert({
+      where: { id: c.id },
+      create: { id: c.id, ...data },
+      update: data,
+    });
+    if (++done % 50 === 0) console.log(`   ... ${done}/${contractsSeed.length}`);
+  }
+  console.log(`✅ التعاقدات: ${contractsSeed.length}`);
+}
+
 async function main() {
   console.log("🌱 بدء زرع قاعدة البيانات...");
 
@@ -160,6 +191,7 @@ async function main() {
   await seedUsers();
   await seedDepartments();
   await seedMedicines();
+  await seedContracts();
   console.log("\n🎉 تم الزرع بنجاح.");
 }
 
