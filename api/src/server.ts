@@ -7,8 +7,8 @@ async function main() {
   // SQLite: WAL بيسمح بقراءات متوازية أثناء الكتابة (أفضل للتزامن على شبكة الشركة)،
   // و busy_timeout بيخلّي الاتصال يستنّى بدل ما يفشل فورًا لو الملف مقفول.
   try {
-    await prisma.$executeRawUnsafe("PRAGMA journal_mode=WAL;");
-    await prisma.$executeRawUnsafe("PRAGMA busy_timeout=5000;");
+    await prisma.$queryRawUnsafe("PRAGMA journal_mode=WAL;");
+    await prisma.$queryRawUnsafe("PRAGMA busy_timeout=5000;");
   } catch (err) {
     console.warn("⚠️ تعذّر ضبط إعدادات SQLite (WAL/busy_timeout):", err);
   }
