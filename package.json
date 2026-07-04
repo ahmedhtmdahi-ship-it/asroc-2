@@ -8,7 +8,10 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "setup": "node scripts/setup.mjs",
-    "dev:all": "pnpm setup && concurrently -n api,web -c blue,green \"pnpm --filter @asroc/api dev\" \"pnpm dev\""
+    "dev:all": "pnpm setup && concurrently -n api,web -c blue,green \"pnpm --filter @asroc/api dev\" \"pnpm dev\"",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed"
   },
   "dependencies": {
     "@asroc/shared": "workspace:*",
@@ -70,6 +73,7 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "4.1.12",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
