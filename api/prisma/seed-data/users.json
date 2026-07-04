@@ -35488,5 +35488,79 @@
     ],
     "isActive": true,
     "notes": "أضيف يدويًا لعدم وجود الرقم المالي في الشيت المرسل"
+  },
+  {
+    "id": "TEST-DOCTOR",
+    "username": "test-doctor",
+    "password": "TestDoc123",
+    "financialNumber": "TEST-DOC",
+    "name": "طبيب اختبار",
+    "jobTitle": "طبيب عام",
+    "workPlace": "العيادة الطبية",
+    "department": "الخدمات الطبية",
+    "role": "doctor",
+    "permissions": [
+      "diagnose_patient",
+      "create_prescription",
+      "create_referral",
+      "create_sick_leave",
+      "view_medical_history"
+    ],
+    "isActive": true
+  },
+  {
+    "id": "TEST-PHARMACY",
+    "username": "test-pharmacy",
+    "password": "TestPharm123",
+    "financialNumber": "TEST-PHARM",
+    "name": "صيدلي اختبار",
+    "jobTitle": "صيدلي",
+    "workPlace": "الصيدلية",
+    "department": "الخدمات الطبية",
+    "role": "pharmacy",
+    "permissions": [
+      "dispense_prescription",
+      "manage_inventory",
+      "dispense_regular_treatment",
+      "dispense_monthly_treatment"
+    ],
+    "isActive": true
+  },
+  {
+    "id": "TEST-OFFICE-MGR",
+    "username": "test-office-mgr",
+    "password": "TestOffice123",
+    "financialNumber": "TEST-OMGR",
+    "name": "مدير مكتب اختبار",
+    "jobTitle": "مدير مكتب",
+    "workPlace": "مكتب المدير العام",
+    "department": "الإدارة",
+    "role": "office_manager",
+    "permissions": [
+      "approve_request",
+      "reject_request",
+      "postpone_request",
+      "view_reports",
+      "print_documents"
+    ],
+    "isActive": true
+  },
+  {
+    "id": "TEST-PENSION",
+    "username": "test-pension",
+    "password": "TestPension123",
+    "financialNumber": "TEST-PEN",
+    "name": "مشرف معاشات اختبار",
+    "jobTitle": "مشرف معاشات",
+    "workPlace": "شئون المعاشات",
+    "department": "الخدمات الطبية",
+    "role": "pension_admin",
+    "permissions": [
+      "manage_pensioners",
+      "manage_monthly_treatment",
+      "dispense_monthly_treatment",
+      "view_reports"
+    ],
+    "isActive": true
   }
 ]
