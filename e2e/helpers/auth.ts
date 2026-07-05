@@ -85,6 +85,7 @@ export async function loginAs(
   opts: { skipPasswordChange?: boolean } = {},
 ) {
   const user = TEST_USERS[role];
+  let usedPassword = user.password;
 
   await page.goto("/");
   await page.waitForSelector("#username");
@@ -93,16 +94,35 @@ export async function loginAs(
   await page.fill("#password", user.password);
   await page.click('button[type="submit"]');
 
-  // Wait for navigation — either to /change-password or /dashboard
-  await page.waitForURL(/\/(change-password|dashboard|employee|security|doctor|pharmacy|medical-admin|pension-admin|super-admin|manager)/);
+  const errorOrNav = await Promise.race([
+    page.waitForURL(/\/(change-password|dashboard)/).then(() => "navigated" as const),
+    page.getByText("اسم المستخدم أو كلمة المرور غير صحيحة").waitFor({ timeout: 5000 }).then(() => "error" as const).catch(() => null),
+  ]);
 
-  // Handle forced password change
+  if (errorOrNav === "error" || page.url().endsWith("/")) {
+    usedPassword = user.newPassword;
+    await page.fill("#username", user.username);
+    await page.fill("#password", user.newPassword);
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/(change-password|dashboard)/);
+  }
+
+  // Login navigates to /dashboard first; ProtectedRoute may then redirect
+  // to /change-password if mustChangePassword is set. Wait for that redirect.
+  if (page.url().includes("/dashboard")) {
+    try {
+      await page.waitForURL("**/change-password", { timeout: 2000 });
+    } catch {
+      // No redirect — user doesn't need to change password
+    }
+  }
+
   if (page.url().includes("/change-password") && !opts.skipPasswordChange) {
-    await page.fill("#currentPassword", user.password);
+    await page.fill("#currentPassword", usedPassword);
     await page.fill("#newPassword", user.newPassword);
     await page.fill("#confirmPassword", user.newPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL("**/dashboard");
+    await page.waitForURL("**/dashboard", { timeout: 15000 });
   }
 }
 
