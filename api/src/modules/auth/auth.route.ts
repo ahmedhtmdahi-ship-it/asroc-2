@@ -13,6 +13,8 @@ function parsePermissions(raw: string): string[] {
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /auth/login — يتحقق ويرجّع JWT + بيانات المستخدم (بدون الـ hash)
+  // الـ rate-limit plugin مش بيتسجّل أصلاً في NODE_ENV=test (شوف app.ts)،
+  // فالإعداد ده بيتجاهل تلقائيًا وقت الاختبار.
   app.post("/login", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (req, reply) => {
     const { username, password } = loginSchema.parse(req.body);
 
