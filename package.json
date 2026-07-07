@@ -10,6 +10,7 @@
     "setup": "node scripts/setup.mjs",
     "dev:all": "pnpm setup && concurrently -n api,web -c blue,green \"pnpm --filter @asroc/api dev\" \"pnpm dev\"",
     "test:e2e": "npx playwright test",
+    "test:e2e:clean": "./e2e.sh",
     "test:e2e:ui": "npx playwright test --ui",
     "test:e2e:headed": "npx playwright test --headed"
   },
