@@ -3,15 +3,25 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { env } from "../env.js";
 import { prisma } from "../db/prisma.js";
+import type { UserRole, Permission } from "@asroc/shared/roles.js";
 
-/**
- * بنسجّل @fastify/jwt وبنضيف decorator اسمه `authenticate`
- * نستخدمه كـ preHandler على أي route محتاج تسجيل دخول.
- */
+// ✅ توسيع نوع الـ Request عشان نوفر البيانات للـ middleware
+// ملاحظة: req.user (شكل التوكن) متعرّف في types/fastify.d.ts عبر FastifyJWT —
+// هنا بنضيف بس authenticatedUser (نسخة حيّة من الداتابيز) من غير ما نعيد تعريف user.
+declare module "fastify" {
+  interface FastifyRequest {
+    authenticatedUser?: {
+      id: string;
+      role: UserRole;
+      permissions: Permission[];
+      isActive: boolean;
+    };
+  }
+}
+
 export function setupAuth(app: FastifyInstance) {
   app.register(fastifyJwt, {
     secret: env.JWT_SECRET,
-    // تثبيت الخوارزمية (defense-in-depth ضد algorithm confusion).
     sign: { algorithm: "HS256" },
     verify: { algorithms: ["HS256"] },
   });
@@ -27,16 +37,30 @@ export function setupAuth(app: FastifyInstance) {
           .send({ error: "Unauthorized", message: "توكن غير صالح أو منتهي" });
       }
 
-      // kill switch: لو الحساب اتعطّل بعد إصدار التوكن، امنع فورًا (مش مستنيين انتهاء الـ 12 ساعة).
+      // ✅ نجللب البيانات مرة واحدة هنا
       const account = await prisma.user.findUnique({
         where: { id: req.user.sub },
-        select: { isActive: true },
+        select: {
+          id: true,
+          role: true,
+          permissions: true,
+          isActive: true,
+        },
       });
+
       if (!account || !account.isActive) {
         return reply
           .code(401)
           .send({ error: "Unauthorized", message: "الحساب غير مفعّل" });
       }
+
+      // ✅ نحفظها في الـ request عشان middleware/requirePermission.js يقرأها من هنا
+      req.authenticatedUser = {
+        id: account.id,
+        role: account.role as UserRole,
+        permissions: JSON.parse(account.permissions) as Permission[],
+        isActive: account.isActive,
+      };
     },
   );
 }

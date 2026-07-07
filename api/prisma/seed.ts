@@ -14,7 +14,13 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 import bcrypt from "bcryptjs";
-import { PrismaClient } from "@prisma/client";
+// Avoid requiring @types/node in the project: provide a minimal `process` typing
+// Include `exit` because this script calls process.exit(1) on failure.
+declare const process: {
+  env: { [key: string]: string | undefined };
+  exit(code?: number): never;
+};
+import { PrismaClient, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const BCRYPT_ROUNDS = 10;
@@ -86,7 +92,8 @@ async function seedUsers() {
       nationalId: u.nationalId ?? null,
       phone: u.phone ?? null,
       workType: u.workType ?? null,
-      role: u.role,
+      // Prisma doesn't export a UserRole type in some client versions; cast to any to avoid TS errors.
+      role: u.role as any,
       permissions: JSON.stringify(u.permissions ?? []),
       isActive: u.isActive ?? true,
       // كل الحسابات المزروعة لازم تغيّر الباسورد أول دخول (أمان on-prem).

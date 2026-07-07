@@ -1,7 +1,6 @@
 import { apiFetch } from "./apiClient";
 import type { Permission, User, UserRole } from "@/app/types/user";
 
-// شكل المستخدم اللي بيرجع من الـ API (camelCase، بدون الـ hash).
 interface ApiUser {
   id: string;
   username: string;
@@ -19,12 +18,11 @@ interface ApiUser {
   mustChangePassword?: boolean;
 }
 
-// نحوّل مستخدم الـ API لنوع الـ User المستخدم في الواجهة.
+// ✅ تم حذف password بالكامل
 export function apiUserToUser(u: ApiUser): User {
   return {
     id: u.id,
     username: u.username,
-    password: "",
     financialNumber: u.financialNumber ?? undefined,
     name: u.name,
     jobTitle: u.jobTitle ?? undefined,

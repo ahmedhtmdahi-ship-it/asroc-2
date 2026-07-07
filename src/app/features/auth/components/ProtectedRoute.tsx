@@ -1,29 +1,28 @@
-import { Navigate, useLocation } from "react-router";
+﻿import { Navigate } from "react-router";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
-import type { UserRole } from "@/app/types/user";
+import type { UserRole, Permission } from "@/app/types/user";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   roles?: UserRole[];
+  permissions?: Permission[];
 }
 
-const CHANGE_PASSWORD_PATH = "/change-password";
+export function ProtectedRoute({ children, roles, permissions }: ProtectedRouteProps) {
+  const { user, isAuthenticated, hasRole, hasPermission } = useAuth();
 
-export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
-  const { user, isAuthenticated } = useAuth();
-  const location = useLocation();
-
+  // ١. غير مسجل دخول
   if (!isAuthenticated || !user) {
     return <Navigate to="/" replace />;
   }
 
-  // إجبار تغيير الباسورد أول دخول قبل استخدام أي صفحة (مع تجنّب حلقة إعادة التوجيه).
-  if (user.mustChangePassword && location.pathname !== CHANGE_PASSWORD_PATH) {
-    return <Navigate to={CHANGE_PASSWORD_PATH} replace />;
+  // ٢. تحقق الأدوار (super_admin يتجاوز)
+  if (roles && user.role !== "super_admin" && !hasRole(roles)) {
+    return <Navigate to={getHomePathByRole(user.role)} replace />;
   }
 
-  if (roles && user.role !== "super_admin" && !roles.includes(user.role)) {
-    // Redirect to the user's own home page instead of hardcoded /dashboard
+  // ٣. تحقق الصلاحيات (super_admin يتجاوز)
+  if (permissions && user.role !== "super_admin" && !hasPermission(permissions)) {
     return <Navigate to={getHomePathByRole(user.role)} replace />;
   }
 

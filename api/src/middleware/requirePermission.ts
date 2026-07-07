@@ -1,21 +1,24 @@
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyRequest, FastifyReply } from "fastify";
+import type { Permission } from "@asroc/shared/roles.js";
 
-/**
- * حارس صلاحيات — يُستخدم كـ preHandler بعد `authenticate`.
- * بيسمح لو المستخدم عنده صلاحية "all" أو كل الصلاحيات المطلوبة.
- *
- *   app.get("/x", { preHandler: [app.authenticate, requirePermission("view_reports")] }, ...)
- */
-export function requirePermission(...required: string[]) {
-  return async (req: FastifyRequest, reply: FastifyReply) => {
-    const perms = req.user?.permissions ?? [];
-    const allowed =
-      perms.includes("all") || required.every((p) => perms.includes(p));
+export function requirePermission(...perms: Permission[]) {
+  return async function (req: FastifyRequest, reply: FastifyReply) {
+    // ✅ نأخذ البيانات جاهزة من الـ authenticate اللي شغلناها قبل كده
+    const user = req.authenticatedUser;
 
-    if (!allowed) {
-      return reply
-        .code(403)
-        .send({ error: "Forbidden", message: "صلاحية غير كافية" });
+    if (!user) {
+      return reply.code(401).send({ error: "Unauthorized", message: "لم يتم التحقق من المستخدم" });
+    }
+
+    // super_admin يتجاوز كل الصلاحيات
+    if (user.role === "super_admin") return;
+
+    const hasAll = perms.every((p) => user.permissions.includes(p));
+    if (!hasAll) {
+      return reply.code(403).send({
+        error: "Forbidden",
+        message: "ليس لديك الصلاحية المطلوبة",
+      });
     }
   };
 }
