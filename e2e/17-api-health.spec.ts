@@ -2,11 +2,26 @@ import { test, expect } from "@playwright/test";
 
 let cachedAdminToken: string | null = null;
 
+// admin's password may still be the seed default ("admin") or already rotated
+// to the new password by the auth suite — try both so this file passes whether
+// it runs standalone or after 01-auth.
+const ADMIN_PASSWORDS = ["admin", "Admin@2025!"];
+
+async function loginAdmin(request: any): Promise<any> {
+  let lastRes: any;
+  for (const password of ADMIN_PASSWORDS) {
+    const res = await request.post("http://localhost:4000/auth/login", {
+      data: { username: "admin", password },
+    });
+    if (res.ok()) return res;
+    lastRes = res;
+  }
+  return lastRes;
+}
+
 async function getAdminToken(request: any): Promise<string> {
   if (cachedAdminToken) return cachedAdminToken;
-  const res = await request.post("http://localhost:4000/auth/login", {
-    data: { username: "admin", password: "admin" },
-  });
+  const res = await loginAdmin(request);
   const body = await res.json();
   cachedAdminToken = body.token;
   return cachedAdminToken!;
@@ -31,9 +46,7 @@ test.describe("API Health Checks", () => {
 
 test.describe("API Auth Endpoints", () => {
   test("login with valid credentials returns token", async ({ request }) => {
-    const response = await request.post("http://localhost:4000/auth/login", {
-      data: { username: "admin", password: "admin" },
-    });
+    const response = await loginAdmin(request);
     expect(response.ok()).toBeTruthy();
     const body = await response.json();
     expect(body.token).toBeTruthy();

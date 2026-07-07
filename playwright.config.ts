@@ -30,7 +30,9 @@ export default defineConfig({
 
   webServer: [
     {
-      command: "pnpm --filter @asroc/api dev",
+      // NODE_ENV=test يمنع تسجيل الـ rate-limit plugin (شوف api/src/app.ts)
+      // عشان تشغيل الحزمة كاملة ما يتحظرش على /auth/login.
+      command: "NODE_ENV=test pnpm --filter @asroc/api dev",
       port: 4000,
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
