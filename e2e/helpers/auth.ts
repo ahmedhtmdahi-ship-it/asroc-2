@@ -23,12 +23,14 @@ export const TEST_USERS: Record<string, TestUser> = {
     role: "employee",
     name: "خالد عيد فرغلى محمد",
   },
+  // مدير قسم "التقطير" — نفس قسم الموظف خالد (USER-50) عشان فلو الموافقة
+  // يكون واقعيًا (المدير يوافق على طلب موظف من قسمه فعلًا).
   manager: {
-    username: "816",
-    password: "إيناس 816",
+    username: "995",
+    password: "فارس 995",
     newPassword: "Manager@2025!",
     role: "manager",
-    name: "إيناس على السيد فرغلى",
+    name: "فارس عبدالله عبدالحميد محمد",
   },
   security: {
     username: "597",
