@@ -293,6 +293,11 @@ model AuditLog {
   entityType String?  @map("entity_type")
   entityId   String?  @map("entity_id")
   details    Json?
+  // بيانات مستوى HTTP — بتتسجّل تلقائيًا لكل طلب كتابة (onSend hook في app.ts).
+  endpoint   String?
+  method     String?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([userId])

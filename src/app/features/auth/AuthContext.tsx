@@ -30,6 +30,7 @@ interface AuthContextValue {
   login: (username: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   hasRole: (roles: UserRole | UserRole[]) => boolean;
+   hasPermission: (permissions: Permission | Permission[]) => boolean;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
@@ -39,7 +40,6 @@ export function profileRowToUser(row: Record<string, unknown>): User {
   return {
     id: row.id as string,
     username: row.username as string,
-    password: "",
     financialNumber: (row.financial_number as string) ?? undefined,
     name: row.name as string,
     jobTitle: (row.job_title as string) ?? undefined,
@@ -54,18 +54,34 @@ export function profileRowToUser(row: Record<string, unknown>): User {
   };
 }
 
-export function getRedirectPathByRole(role: UserRole) {
-  return "/dashboard";
+export function getRedirectPathByRole(role: UserRole): string {
+  const map: Record<UserRole, string> = {
+    employee: "/employee",
+    manager: "/dashboard",
+    office_manager: "/dashboard",
+    doctor: "/doctor",
+    pharmacy: "/pharmacy",
+    security: "/security",
+    medical_admin: "/medical-admin",
+    pension_admin: "/pension-admin",
+    super_admin: "/dashboard",
+  };
+  return map[role] ?? "/dashboard";
 }
 
 export function getHomePathByRole(role?: UserRole): string {
-  return "/dashboard";
+  if (!role) return "/dashboard";
+  return getRedirectPathByRole(role);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
-
+  const hasPermission = (perms: Permission | Permission[]) => {
+  if (!user) return false;
+  const permList = Array.isArray(perms) ? perms : [perms];
+  return permList.every((p) => user.permissions.includes(p));
+};
   // عند الفتح: لو فيه توكن محفوظ نستعيد جلسة المستخدم من السيرفر.
   useEffect(() => {
     const token = getToken();
@@ -125,16 +141,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const value = useMemo(
-    () => ({
-      user,
-      isAuthenticated: Boolean(user),
-      login,
-      logout,
-      hasRole,
-      changePassword,
-    }),
-    [user]
-  );
+  () => ({
+    user,
+    isAuthenticated: Boolean(user),
+    login,
+    logout,
+    hasRole,
+    hasPermission,  // ✅
+    changePassword,
+  }),
+  [user]
+);
 
   if (!ready) return null;
 

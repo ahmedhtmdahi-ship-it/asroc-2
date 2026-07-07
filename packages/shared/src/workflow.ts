@@ -2,6 +2,8 @@
 // كان هذا المنطق مكررًا يدويًا في الباك (requests.workflow.ts) والفرونت
 // (types/workflow.ts + store/workflowStore.ts) — أي تعديل هنا ينعكس على الطرفين.
 
+import type { Permission } from "./roles.js";
+
 export const REQUEST_STATUSES = [
   "pending",
   "approved",
@@ -71,7 +73,7 @@ export const statusTimestampField: Partial<Record<RequestStatus, string>> = {
 };
 
 // الصلاحية المطلوبة لتنفيذ كل تحويل (undefined = يكفي تسجيل الدخول).
-export const statusPermission: Partial<Record<RequestStatus, string>> = {
+export const statusPermission: Partial<Record<RequestStatus, Permission>> = {
   approved: "approve_request",
   rejected: "reject_request",
   postponed: "postpone_request",

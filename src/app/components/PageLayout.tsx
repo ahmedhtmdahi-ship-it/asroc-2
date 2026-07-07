@@ -1,4 +1,4 @@
-﻿import { ReactNode } from "react";
+﻿import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "./ui/button";
 import {
@@ -9,6 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "./ui/sheet";
 import {
   User,
   LogOut,
@@ -33,6 +40,7 @@ import {
   ClipboardList,
   HeartPulse,
   Loader2,
+  X,
 } from "lucide-react";
 
 import logo from "../../assets/logo.png";
@@ -48,6 +56,22 @@ interface PageLayoutProps {
   backLink?: string;
 }
 
+// ✅ مصدر واحد للأدوار (نفس اللي في routes.tsx)
+const ALL_ROLES: UserRole[] = [
+  "employee",
+  "manager",
+  "office_manager",
+  "security",
+  "doctor",
+  "pharmacy",
+  "medical_admin",
+  "pension_admin",
+  "super_admin",
+];
+
+// ✅ علامة خاصة — الرابط هيتبدل ديناميكياً حسب دور المستخدم
+const HOME_LINK = "__HOME__";
+
 type NavItem = {
   label: string;
   icon: any;
@@ -55,33 +79,33 @@ type NavItem = {
   roles: UserRole[];
 };
 
+// ✅ كل عنصر مرة واحدة بس — بدون تكرار
 const navItems: NavItem[] = [
+  // ─── عام ───
   {
     label: "الرئيسية",
     icon: Home,
-    link: "/dashboard",
-    roles: [
-      "employee",
-      "manager",
-      "office_manager",
-      "security",
-      "doctor",
-      "pharmacy",
-      "medical_admin",
-      "pension_admin",
-      "super_admin",
-    ],
-  },
-  {
-    label: "طلب كشف طبي",
-    icon: FileText,
-    link: "/employee/requests",
-    roles: ["employee"],
+    link: HOME_LINK,
+    roles: ALL_ROLES,
   },
   {
     label: "طلباتي",
     icon: ClipboardList,
-    link: "/employee/my-requests",
+    link: "/my-requests",
+    roles: ALL_ROLES,
+  },
+  {
+    label: "الإشعارات",
+    icon: Bell,
+    link: "/notifications",
+    roles: ALL_ROLES,
+  },
+
+  // ─── الموظف ───
+  {
+    label: "طلب كشف طبي",
+    icon: FileText,
+    link: "/request/new",
     roles: ["employee"],
   },
   {
@@ -90,30 +114,16 @@ const navItems: NavItem[] = [
     link: "/employee/history",
     roles: ["employee"],
   },
-  {
-    label: "الإشعارات",
-    icon: Bell,
-    link: "/employee/notifications",
-    roles: ["employee"],
-  },
-  {
-    label: "طلب كشف طبي",
-    icon: FileText,
-    link: "/employee/requests",
-    roles: ["employee"],
-  },
-  {
-    label: "طلباتي",
-    icon: ClipboardList,
-    link: "/my-requests",
-    roles: ["employee", "manager", "office_manager", "security", "doctor", "pharmacy", "medical_admin", "pension_admin", "super_admin"],
-  },
+
+  // ─── المدير ───
   {
     label: "موافقات المدير",
     icon: UserCheck,
     link: "/manager/approvals",
     roles: ["manager", "office_manager"],
   },
+
+  // ─── الأمن ───
   {
     label: "الأمن",
     icon: Shield,
@@ -126,18 +136,30 @@ const navItems: NavItem[] = [
     link: "/security/checkinout",
     roles: ["security"],
   },
+
+  // ─── الطبيب ───
   {
     label: "الطبيب",
     icon: Stethoscope,
     link: "/doctor",
     roles: ["doctor"],
   },
+
+  // ─── الصيدلية ───
   {
     label: "الصيدلية الداخلية",
     icon: Pill,
     link: "/pharmacy",
     roles: ["pharmacy"],
   },
+  {
+    label: "الصيدلية الخارجية",
+    icon: Store,
+    link: "/pharmacy/external",
+    roles: ["pharmacy", "pension_admin"],
+  },
+
+  // ─── الإدارات ───
   {
     label: "الإدارة الطبية",
     icon: Users,
@@ -156,12 +178,8 @@ const navItems: NavItem[] = [
     link: "/pension-admin",
     roles: ["pension_admin"],
   },
-  {
-    label: "الصيدلية الخارجية",
-    icon: Store,
-    link: "/pharmacy/external",
-    roles: ["pension_admin", "pharmacy"],
-  },
+
+  // ─── Super Admin ───
   {
     label: "لوحة التحكم",
     icon: BarChart3,
@@ -174,43 +192,113 @@ const navItems: NavItem[] = [
     link: "/super-admin",
     roles: ["super_admin"],
   },
+
+  // ─── التقارير والطباعة ───
   {
     label: "التقارير",
     icon: BarChart3,
     link: "/reports",
-    roles: ["medical_admin", "super_admin"],
+    roles: ["manager", "office_manager", "medical_admin", "super_admin"],
   },
   {
     label: "المطبوعات",
     icon: Printer,
     link: "/print",
-    roles: ["medical_admin", "super_admin"],
+    roles: ["manager", "office_manager", "medical_admin", "super_admin"],
   },
 ];
 
 function getRoleLabel(role?: UserRole) {
   switch (role) {
-    case "employee":
-      return "موظف";
-    case "manager":
-      return "مدير إدارة";
-    case "office_manager":
-      return "مدير مكتب";
-    case "security":
-      return "الأمن";
-    case "doctor":
-      return "طبيب";
-    case "pharmacy":
-      return "صيدلية";
-    case "medical_admin":
-      return "إدارة طبية";
-    case "pension_admin":
-      return "إدارة معاشات";
-    case "super_admin":
-      return "مدير النظام";
-    default:
-      return "مستخدم";
+    case "employee":       return "موظف";
+    case "manager":        return "مدير إدارة";
+    case "office_manager": return "مدير مكتب";
+    case "security":       return "الأمن";
+    case "doctor":         return "طبيب";
+    case "pharmacy":       return "صيدلية";
+    case "medical_admin":  return "إدارة طبية";
+    case "pension_admin":  return "إدارة معاشات";
+    case "super_admin":    return "مدير النظام";
+    default:               return "مستخدم";
   }
+}
+
+// ✅ منطق active state نظيف
+function isActive(pathname: string, itemLink: string, resolvedHome: string): boolean {
+  const link = itemLink === HOME_LINK ? resolvedHome : itemLink;
+  if (pathname === link) return true;
+  // صفحات فرعية: /doctor/diagnosis/123 → active لـ /doctor
+  if (link !== "/" && link !== resolvedHome && pathname.startsWith(link + "/")) {
+    return true;
+  }
+  return false;
+}
+
+// ✅ محتوى السايدبار — مشترك بين desktop و mobile
+function SidebarNav({
+  items,
+  pathname,
+  homePath,
+  onClose,
+}: {
+  items: NavItem[];
+  pathname: string;
+  homePath: string;
+  onClose?: () => void;
+}) {
+  return (
+    <>
+      {/* اللوگو */}
+      <div className="flex h-20 items-center gap-3 border-b border-white/10 px-5">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1.5">
+          <img
+            src={logo}
+            alt="ASROC Logo"
+            className="h-full w-full object-contain"
+          />
+        </div>
+        <div>
+          <p className="text-lg font-extrabold tracking-wide">ASORC</p>
+          <p className="text-xs text-white/60">الخدمات الطبية</p>
+        </div>
+        {/* زر إغلاق في الموبايل فقط */}
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mr-auto text-white/70 hover:text-white hover:bg-white/10"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
+      </div>
+
+      {/* القائمة */}
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {items.map((item) => {
+          const resolvedLink = item.link === HOME_LINK ? homePath : item.link;
+          const active = isActive(pathname, item.link, homePath);
+
+          return (
+            <Link
+              key={`${item.label}-${item.link}`}
+              to={resolvedLink}
+              onClick={onClose}
+              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all ${
+                active
+                  ? "bg-[#14B8A6] text-white shadow-lg shadow-teal-900/20"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <item.icon className="h-5 w-5 shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
+  );
 }
 
 export function PageLayout({
@@ -225,6 +313,9 @@ export function PageLayout({
   const { user, logout } = useAuth();
   const { syncing } = useWorkflow();
 
+  // ✅ حالة الموبايل
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const visibleNavItems = user
     ? navItems.filter((item) => item.roles.includes(user.role))
     : [];
@@ -236,58 +327,20 @@ export function PageLayout({
     navigate("/");
   };
 
-  // If backLink is "/dashboard", replace with the user's actual home path
   const resolvedBackLink =
     backLink === "/dashboard" ? homePath : backLink;
 
   return (
     <div className="min-h-screen bg-[#F5F7FB]" dir="rtl">
+      {/* ═══════════ Desktop Sidebar ═══════════ */}
       <aside className="fixed right-0 top-0 z-50 hidden h-screen w-72 border-l border-white/10 bg-[#0B1F3A] text-white xl:flex xl:flex-col">
-        <div className="flex h-20 items-center gap-3 border-b border-white/10 px-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1.5">
-            <img
-              src={logo}
-              alt="ASORC Logo"
-              className="h-full w-full object-contain"
-            />
-          </div>
-          <div>
-            <p className="text-lg font-extrabold tracking-wide">ASORC</p>
-            <p className="text-xs text-white/60">الخدمات الطبية</p>
-          </div>
-        </div>
+        <SidebarNav
+          items={visibleNavItems}
+          pathname={location.pathname}
+          homePath={homePath}
+        />
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {visibleNavItems.map((item) => {
-            const active =
-              location.pathname === item.link ||
-              (item.link !== "/dashboard" &&
-                item.link !== "/employee" &&
-                item.link !== "/security" &&
-                item.link !== "/doctor" &&
-                item.link !== "/pharmacy" &&
-                item.link !== "/medical-admin" &&
-                item.link !== "/pension-admin" &&
-                item.link !== "/manager/approvals" &&
-                location.pathname.startsWith(item.link + "/"));
-
-            return (
-              <Link
-                key={item.link}
-                to={item.link}
-                className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all ${
-                  active
-                    ? "bg-[#14B8A6] text-white shadow-lg shadow-teal-900/20"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
+        {/* معلومات المستخدم */}
         <div className="border-t border-white/10 p-4">
           <div className="rounded-2xl bg-white/10 p-3">
             <p className="text-xs text-white/50">المستخدم الحالي</p>
@@ -301,11 +354,51 @@ export function PageLayout({
         </div>
       </aside>
 
+      {/* ═══════════ Mobile Sidebar (Sheet) ═══════════ */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent
+          side="right"
+          className="w-72 bg-[#0B1F3A] p-0 text-white [&>button]:hidden"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>القائمة الجانبية</SheetTitle>
+            <SheetDescription>قائمة التنقل الرئيسية</SheetDescription>
+          </SheetHeader>
+          <div className="flex h-full flex-col">
+            <SidebarNav
+              items={visibleNavItems}
+              pathname={location.pathname}
+              homePath={homePath}
+              onClose={() => setMobileOpen(false)}
+            />
+
+            <div className="border-t border-white/10 p-4">
+              <div className="rounded-2xl bg-white/10 p-3">
+                <p className="text-xs text-white/50">المستخدم الحالي</p>
+                <p className="mt-1 text-sm font-bold">
+                  {user?.name || "غير مسجل"}
+                </p>
+                <p className="text-xs text-teal-300">
+                  {getRoleLabel(user?.role)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ═══════════ Main Content ═══════════ */}
       <div className="xl:mr-72">
         <header className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur">
           <div className="flex h-20 items-center justify-between px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="xl:hidden">
+              {/* ✅ زر الموبايل بيشتغل دلوقتي */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="xl:hidden"
+                onClick={() => setMobileOpen(true)}
+              >
                 <Menu className="h-5 w-5" />
               </Button>
 
@@ -314,7 +407,6 @@ export function PageLayout({
                   variant="ghost"
                   size="sm"
                   onClick={() => navigate(resolvedBackLink)}
-                  className="ml-1"
                 >
                   <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -345,9 +437,17 @@ export function PageLayout({
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="relative">
-                <Bell className="h-4 w-4" />
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+              {/* ✅ زر الإشعارات يروح لصفحة الإشعارات */}
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative"
+                asChild
+              >
+                <Link to="/notifications">
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+                </Link>
               </Button>
 
               <DropdownMenu>

@@ -33,8 +33,18 @@ export async function apiFetch<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const token = getToken();
+  const url = `${BASE_URL}${path}`;
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  // --- debug auth (helps diagnose 401) ---
+  // eslint-disable-next-line no-console
+  console.debug("[apiFetch]", {
+    url,
+    tokenPresent: Boolean(token),
+    tokenPrefix: token ? token.slice(0, 10) : null,
+  });
+  // ----------------------------------------
+
+  const res = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -42,6 +52,7 @@ export async function apiFetch<T>(
       ...(options.headers ?? {}),
     },
   });
+
 
   if (!res.ok) {
     let message = `HTTP ${res.status}`;

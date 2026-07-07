@@ -36,11 +36,49 @@ import { SuperAdminPage } from "./features/admin/pages/SuperAdminPage";
 import { ReportsPage } from "./features/reports/pages/ReportsPage";
 import { PrintPage } from "./features/print/pages/PrintPage";
 
+import type { UserRole } from "@/app/types/user";
+
+// ✅ مصدر واحد — لو ضفت دور جديد تعدل هنا بس
+const ALL_ROLES: UserRole[] = [
+  "employee",
+  "manager",
+  "office_manager",
+  "security",
+  "doctor",
+  "pharmacy",
+  "medical_admin",
+  "pension_admin",
+  "super_admin",
+];
+
+// ✅ الأدوار اللي تقدر تشوف تفاصيل طلب
+const CAN_VIEW_REQUEST: UserRole[] = [
+  "employee",
+  "manager",
+  "office_manager",
+  "security",
+  "doctor",
+  "pharmacy",
+  "medical_admin",
+  "pension_admin",  // ✅ كانت ناقصة
+  "super_admin",
+];
+
+// ✅ الأدوار الإدارية (تقدر تشوف الداشبورد العامة)
+const ADMIN_ROLES: UserRole[] = [
+  "manager",
+  "office_manager",
+  "doctor",
+  "pharmacy",
+  "security",
+  "medical_admin",
+  "pension_admin",
+  "super_admin",
+];
+
 export const router = createBrowserRouter([
-  {
-    path: "/",
-    Component: LoginPage,
-  },
+  // ─── عام ───
+  { path: "/", Component: LoginPage },
 
   {
     path: "/change-password",
@@ -51,15 +89,17 @@ export const router = createBrowserRouter([
     ),
   },
 
+  // ─── لوحة التحكم العامة (الموظف يروح لـ /employee) ───
   {
     path: "/dashboard",
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute roles={ADMIN_ROLES}>
         <DashboardPage />
       </ProtectedRoute>
     ),
   },
 
+  // ─── لوحة الموظف ───
   {
     path: "/employee",
     element: (
@@ -76,58 +116,6 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
-  // Universal my-requests — all roles can view their own submitted requests
-  {
-    path: "/my-requests",
-    element: (
-      <ProtectedRoute
-        roles={[
-          "employee",
-          "manager",
-          "office_manager",
-          "security",
-          "doctor",
-          "pharmacy",
-          "medical_admin",
-          "pension_admin",
-          "super_admin",
-        ]}
-      >
-        <MyMedicalRequestsPage />
-      </ProtectedRoute>
-    ),
-  },
-
-  // Universal request creation — all authenticated roles can submit a request
-  {
-    path: "/request/new",
-    element: (
-      <ProtectedRoute
-        roles={[
-          "employee",
-          "manager",
-          "office_manager",
-          "security",
-          "doctor",
-          "pharmacy",
-          "medical_admin",
-          "pension_admin",
-          "super_admin",
-        ]}
-      >
-        <EmployeeRequestsPage />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/employee/my-requests",
-    element: (
-      <ProtectedRoute roles={["employee"]}>
-        <MyMedicalRequestsPage />
-      </ProtectedRoute>
-    ),
-  },
   {
     path: "/employee/history",
     element: (
@@ -136,55 +124,58 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  // ─── إشعارات — كل الأدوار ───
   {
-    path: "/employee/notifications",
+    path: "/notifications",
     element: (
-      <ProtectedRoute roles={["employee"]}>
+      <ProtectedRoute roles={ALL_ROLES}>
         <NotificationsPage />
       </ProtectedRoute>
     ),
   },
+
+  // ─── طلباتي — كل الأدوار ───
   {
-    path: "/profile",
+    path: "/my-requests",
     element: (
-      <ProtectedRoute
-        roles={[
-          "employee",
-          "manager",
-          "office_manager",
-          "security",
-          "doctor",
-          "pharmacy",
-          "medical_admin",
-          "pension_admin",
-          "super_admin",
-        ]}
-      >
-        <ProfilePage />
+      <ProtectedRoute roles={ALL_ROLES}>
+        <MyMedicalRequestsPage />
       </ProtectedRoute>
     ),
   },
 
+  // ─── طلب جديد — كل الأدوار ───
+  {
+    path: "/request/new",
+    element: (
+      <ProtectedRoute roles={ALL_ROLES}>
+        <EmployeeRequestsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // ─── تفاصيل طلب ───
   {
     path: "/requests/:id",
     element: (
-      <ProtectedRoute
-        roles={[
-          "employee",
-          "manager",
-          "office_manager",
-          "security",
-          "doctor",
-          "pharmacy",
-          "medical_admin",
-          "super_admin",
-        ]}
-      >
+      <ProtectedRoute roles={CAN_VIEW_REQUEST}>
         <RequestDetailsPage />
       </ProtectedRoute>
     ),
   },
 
+  // ─── الملف الشخصي — كل الأدوار ───
+  {
+    path: "/profile",
+    element: (
+      <ProtectedRoute roles={ALL_ROLES}>
+        <ProfilePage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // ─── المدير ───
   {
     path: "/manager/approvals",
     element: (
@@ -194,6 +185,7 @@ export const router = createBrowserRouter([
     ),
   },
 
+  // ─── الأمن ───
   {
     path: "/security",
     element: (
@@ -211,6 +203,7 @@ export const router = createBrowserRouter([
     ),
   },
 
+  // ─── الطبيب ───
   {
     path: "/doctor",
     element: (
@@ -236,6 +229,7 @@ export const router = createBrowserRouter([
     ),
   },
 
+  // ─── الصيدلية ───
   {
     path: "/pharmacy",
     element: (
@@ -261,6 +255,7 @@ export const router = createBrowserRouter([
     ),
   },
 
+  // ─── العلاج الشهري ───
   {
     path: "/monthly-treatment",
     element: (
@@ -270,6 +265,7 @@ export const router = createBrowserRouter([
     ),
   },
 
+  // ─── الإدارات ───
   {
     path: "/medical-admin",
     element: (
@@ -278,7 +274,6 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/pension-admin",
     element: (
@@ -287,7 +282,6 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/super-admin",
     element: (
@@ -297,26 +291,24 @@ export const router = createBrowserRouter([
     ),
   },
 
+  // ─── التقارير والطباعة ───
   {
     path: "/reports",
     element: (
-      <ProtectedRoute roles={["medical_admin", "super_admin"]}>
+      <ProtectedRoute roles={["manager", "office_manager", "medical_admin", "super_admin"]}>
         <ReportsPage />
       </ProtectedRoute>
     ),
   },
-
   {
     path: "/print",
     element: (
-      <ProtectedRoute roles={["medical_admin", "super_admin"]}>
+      <ProtectedRoute roles={["manager", "office_manager", "medical_admin", "super_admin"]}>
         <PrintPage />
       </ProtectedRoute>
     ),
   },
 
-  {
-    path: "*",
-    Component: NotFound,
-  },
+  // ─── 404 ───
+  { path: "*", Component: NotFound },
 ]);

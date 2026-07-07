@@ -1,10 +1,27 @@
-﻿import { Badge } from "@/app/components/ui/badge";
+﻿import { useState } from "react";
+import { toast } from "sonner";
+
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
 import { PageLayout } from "@/app/components/PageLayout";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { ApiError } from "@/app/lib/apiClient";
 import { requestStatusLabels } from "@/app/types/workflow";
-import { Activity, BadgeCheck, Building, ClipboardList, IdCard, Phone, User, UserCog } from "lucide-react";
+import {
+  Activity,
+  BadgeCheck,
+  Building,
+  ClipboardList,
+  IdCard,
+  LockKeyhole,
+  Phone,
+  User,
+  UserCog,
+} from "lucide-react";
 
 const roleLabels = {
   employee: "موظف",
@@ -23,8 +40,54 @@ function valueOrDash(value?: string) {
 }
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user, changePassword } = useAuth();
   const { requests } = useWorkflow();
+
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError("");
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+
+    if (newPassword.length < 8) {
+      setPasswordError("كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("كلمة المرور الجديدة وتأكيدها غير متطابقين");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError("كلمة المرور الجديدة يجب أن تختلف عن الحالية");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      toast.success("تم تغيير كلمة المرور بنجاح");
+      resetPasswordForm();
+      setShowPasswordForm(false);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : "تعذر تغيير كلمة المرور، حاول مرة أخرى";
+      setPasswordError(message);
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   const userRequests = requests.filter(
     (request) => request.employeeId === user?.id || request.financialNumber === user?.financialNumber
@@ -115,6 +178,88 @@ export function ProfilePage() {
               })}
             </div>
           </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="flex items-center gap-2">
+              <LockKeyhole className="h-4 w-4" />
+              كلمة المرور
+            </CardTitle>
+            {!showPasswordForm && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPasswordForm(true)}
+              >
+                تغيير كلمة المرور
+              </Button>
+            )}
+          </CardHeader>
+          {showPasswordForm && (
+            <CardContent>
+              <form onSubmit={handleChangePassword} className="max-w-md space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="currentPassword">كلمة المرور الحالية</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword">تأكيد كلمة المرور الجديدة</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+
+                {passwordError && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {passwordError}
+                  </p>
+                )}
+
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={isChangingPassword}>
+                    {isChangingPassword ? "جارٍ الحفظ..." : "حفظ كلمة المرور"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      resetPasswordForm();
+                      setShowPasswordForm(false);
+                    }}
+                  >
+                    إلغاء
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          )}
         </Card>
 
         <Card>

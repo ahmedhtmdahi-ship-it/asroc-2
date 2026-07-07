@@ -46,7 +46,6 @@ const activeStatuses: RequestStatus[] = [
 function isToday(value: string) {
   const date = new Date(value);
   const today = new Date();
-
   return (
     date.getFullYear() === today.getFullYear() &&
     date.getMonth() === today.getMonth() &&
@@ -56,9 +55,7 @@ function isToday(value: string) {
 
 function formatDateTime(value: string) {
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return "غير محدد";
-
   return date.toLocaleString("ar-EG", {
     day: "2-digit",
     month: "2-digit",
@@ -71,7 +68,6 @@ function requestKind(request: MedicalRequest) {
   if (request.serviceType === "monthly_treatment") {
     return request.monthlyTreatmentType === "renewal" ? "تجديد علاج شهري" : "علاج شهري جديد";
   }
-
   return request.requestType === "emergency" ? "كشف طوارئ" : "كشف عادي";
 }
 
@@ -146,26 +142,9 @@ const dashboardActions: DashboardAction[] = [
     link: "/pharmacy",
     icon: Pill,
     permission: "dispense_prescription",
-    roles: ["pharmacy", "medical_admin"],
+    roles: ["pharmacy"],
     color: "text-purple-700",
     bg: "bg-purple-50",
-  },
-  {
-    label: "الإدارة الطبية",
-    link: "/medical-admin",
-    icon: HeartPulse,
-    roles: ["medical_admin"],
-    color: "text-teal-700",
-    bg: "bg-teal-50",
-  },
-  {
-    label: "إدارة المعاشات",
-    link: "/pension-admin",
-    icon: Users,
-    permission: "manage_pensioners",
-    roles: ["pension_admin", "medical_admin"],
-    color: "text-amber-700",
-    bg: "bg-amber-50",
   },
   {
     label: "العلاج الشهري",
@@ -193,6 +172,18 @@ function canViewAction(action: DashboardAction, userRole: UserRole, permissions:
   return action.permission ? permissions.includes(action.permission) : true;
 }
 
+// ✅ إضافة تعريف أدوار لكل بطاقة إحصائية
+type StatCardConfig = {
+  label: string;
+  getValue: (requests: MedicalRequest[], allUsers: any[]) => number;
+  icon: LucideIcon;
+  color: string;
+  bg: string;
+  link: string;
+  /** إذا لم يتم تحديدها، تظهر للجميع */
+  roles?: UserRole[];
+};
+
 function StatCard({
   label,
   value,
@@ -203,7 +194,7 @@ function StatCard({
 }: {
   label: string;
   value: string | number;
-  icon: any;
+  icon: LucideIcon;
   color: string;
   bg: string;
   link: string;
@@ -213,10 +204,11 @@ function StatCard({
       <Card className="h-full transition hover:shadow-md">
         <CardContent className="p-5">
           <div className="flex items-center justify-between gap-4">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${bg}`}>
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${bg}`}>
               <Icon className={`h-6 w-6 ${color}`} />
             </div>
-            <div className="text-left">
+            {/* ✅ إصلاح: text-left → محذوف (RTL يتعامل معه تلقائياً) */}
+            <div>
               <p className={`text-3xl font-bold ${color}`}>{value}</p>
               <p className="mt-1 text-sm text-slate-500">{label}</p>
             </div>
@@ -263,36 +255,25 @@ function RequestsTable({ requests }: { requests: MedicalRequest[] }) {
   );
 }
 
-const operationalRoles: UserRole[] = [
-  "manager", "office_manager", "security", "doctor",
-  "pharmacy", "medical_admin", "pension_admin", "super_admin",
-];
-
-const adminRoles: UserRole[] = ["medical_admin", "super_admin"];
-
 export function DashboardPage() {
   const { requests } = useWorkflow();
   const { user } = useAuth();
 
-  const role = user?.role;
-  const isOperational = role != null && operationalRoles.includes(role);
-  const isAdmin = role != null && adminRoles.includes(role);
-
-  const openRequests = requests.filter((request) => activeStatuses.includes(request.status));
-  const todaysRequests = requests.filter((request) => isToday(request.createdAt));
-  const emergencyRequests = requests.filter((request) => request.requestType === "emergency");
-  const monthlyRequests = requests.filter((request) => request.serviceType === "monthly_treatment");
-  const completedRequests = requests.filter((request) =>
-    ["completed", "monthly_completed"].includes(request.status)
+  const openRequests = requests.filter((r) => activeStatuses.includes(r.status));
+  const todaysRequests = requests.filter((r) => isToday(r.createdAt));
+  const emergencyRequests = requests.filter((r) => r.requestType === "emergency");
+  const monthlyRequests = requests.filter((r) => r.serviceType === "monthly_treatment");
+  const completedRequests = requests.filter((r) =>
+    ["completed", "monthly_completed"].includes(r.status)
   );
-  const pharmacyQueue = requests.filter((request) =>
-    ["prescribed", "monthly_ready_pharmacy"].includes(request.status)
+  const pharmacyQueue = requests.filter((r) =>
+    ["prescribed", "monthly_ready_pharmacy"].includes(r.status)
   );
-  const outsideCompany = requests.filter((request) =>
-    ["checked_out", "in_diagnosis", "prescribed", "dispensed"].includes(request.status)
+  const outsideCompany = requests.filter((r) =>
+    ["checked_out", "in_diagnosis", "prescribed", "dispensed"].includes(r.status)
   );
 
-  const allUsers = isAdmin ? profilesStore.getAll() : [];
+  const allUsers = profilesStore.getAll();
   const roleCounts = allUsers.reduce<Record<string, number>>((acc, u) => {
     acc[u.role] = (acc[u.role] || 0) + 1;
     return acc;
@@ -303,36 +284,167 @@ export function DashboardPage() {
     .slice(0, 6);
 
   const statusDistribution = Object.entries(
-    requests.reduce<Record<string, number>>((acc, request) => {
-      acc[request.status] = (acc[request.status] || 0) + 1;
+    requests.reduce<Record<string, number>>((acc, r) => {
+      acc[r.status] = (acc[r.status] || 0) + 1;
       return acc;
     }, {})
   ).sort((a, b) => b[1] - a[1]);
 
+  // ✅ فلترة الأزرار حسب الدور
   const availableActions = user
     ? dashboardActions.filter((action) =>
         canViewAction(action, user.role, user.permissions),
       )
     : [];
 
+  // ✅ تعريف البطاقات الإحصائية مع تحديد الأدوار
+  const statCards: StatCardConfig[] = [
+    {
+      label: "طلبات مفتوحة",
+      getValue: () => openRequests.length,
+      icon: FolderOpen,
+      color: "text-cyan-700",
+      bg: "bg-cyan-50",
+      link: "/reports",
+    },
+    {
+      label: "طلبات اليوم",
+      getValue: () => todaysRequests.length,
+      icon: CalendarCheck,
+      color: "text-blue-700",
+      bg: "bg-blue-50",
+      link: "/reports",
+    },
+    {
+      label: "حالات طارئة",
+      getValue: () => emergencyRequests.length,
+      icon: AlertTriangle,
+      color: "text-red-700",
+      bg: "bg-red-50",
+      link: "/doctor",
+      roles: ["super_admin", "manager", "office_manager", "doctor", "medical_admin", "security"],
+    },
+    {
+      label: "علاج شهري",
+      getValue: () => monthlyRequests.length,
+      icon: HeartPulse,
+      color: "text-indigo-700",
+      bg: "bg-indigo-50",
+      link: "/monthly-treatment",
+      roles: ["super_admin", "medical_admin", "pension_admin", "manager", "office_manager"],
+    },
+    {
+      label: "مستخدمون",
+      getValue: (_, users) => users.length,
+      icon: Users,
+      color: "text-orange-700",
+      bg: "bg-orange-50",
+      link: "/admin",
+      roles: ["super_admin"],
+    },
+    {
+      label: "مكتمل",
+      getValue: () => completedRequests.length,
+      icon: CheckCircle2,
+      color: "text-teal-700",
+      bg: "bg-teal-50",
+      link: "/reports",
+      roles: ["super_admin", "manager", "office_manager", "medical_admin"],
+    },
+    {
+      label: "قائمة الصيدلية",
+      getValue: () => pharmacyQueue.length,
+      icon: Pill,
+      color: "text-purple-700",
+      bg: "bg-purple-50",
+      link: "/pharmacy",
+      roles: ["super_admin", "pharmacy", "medical_admin"],
+    },
+    {
+      label: "خارج الشركة",
+      getValue: () => outsideCompany.length,
+      icon: Shield,
+      color: "text-green-700",
+      bg: "bg-green-50",
+      link: "/security",
+      roles: ["super_admin", "security"],
+    },
+  ];
+
+  // ✅ فلترة البطاقات الإحصائية حسب الدور
+  const visibleStatCards = user
+    ? statCards.filter((card) => !card.roles || card.roles.includes(user.role))
+    : [];
+
+  // ✅ تحديد التنبيهات التشغيلية حسب الدور
+  const operationalAlerts: { title: string; value: number; link: string; roles: UserRole[] }[] = [
+    {
+      title: "طلبات بانتظار موافقة المدير",
+      value: requests.filter((r) => r.status === "pending").length,
+      link: "/manager/approvals",
+      roles: ["super_admin", "manager", "office_manager"],
+    },
+    {
+      title: "طلبات جاهزة للكشف",
+      value: requests.filter((r) => r.status === "checked_out").length,
+      link: "/doctor",
+      roles: ["super_admin", "doctor"],
+    },
+    {
+      title: "طلبات جاهزة للصرف",
+      value: pharmacyQueue.length,
+      link: "/pharmacy",
+      roles: ["super_admin", "pharmacy"],
+    },
+    {
+      title: "علاج شهري بانتظار الطبيب",
+      value: requests.filter((r) => r.status === "pending_monthly_doctor").length,
+      link: "/monthly-treatment",
+      roles: ["super_admin", "medical_admin", "pension_admin", "doctor"],
+    },
+  ];
+
+  const visibleAlerts = user
+    ? operationalAlerts.filter((alert) => alert.roles.includes(user.role))
+    : [];
+
+  // ✅ هل يظهر قسم توزيع المستخدمين؟
+  const canViewUserDistribution = user && ["super_admin", "manager", "office_manager"].includes(user.role);
+
+  // ✅ هل يظهر قسم توزيع الحالات؟
+  const canViewStatusDistribution = user && !["employee"].includes(user.role);
+
+  // ✅ حساب أعمدة الشبكة ديناميكياً عشان ما يفضل زر لوحده
+  const actionsGridCols = availableActions.length <= 2
+    ? "grid-cols-1 sm:grid-cols-2"
+    : availableActions.length <= 4
+      ? "grid-cols-2 xl:grid-cols-4"
+      : "grid-cols-2 md:grid-cols-3 xl:grid-cols-4";
+
+  const statsGridCols = visibleStatCards.length <= 2
+    ? "grid-cols-1 sm:grid-cols-2"
+    : "grid-cols-2 xl:grid-cols-4";
+
   return (
     <PageLayout
       title="لوحة التحكم"
-      subtitle={isOperational ? "نظرة تشغيلية على الطلبات والمستخدمين والصلاحيات" : "طلباتك وإشعاراتك"}
+      subtitle="نظرة تشغيلية على الطلبات والمستخدمين والصلاحيات"
       icon={<BarChart3 className="h-5 w-5" />}
     >
       <div className="space-y-6">
+        {/* ✅ أزرار الإجراءات — شبكة ديناميكية */}
         {availableActions.length > 0 && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className={`grid gap-4 ${actionsGridCols}`}>
             {availableActions.map((action) => (
               <Link key={action.label} to={action.link}>
                 <Card className="h-full transition hover:shadow-md">
                   <CardContent className="p-5">
                     <div className="flex items-center justify-between gap-4">
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${action.bg}`}>
+                      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${action.bg}`}>
                         <action.icon className={`h-6 w-6 ${action.color}`} />
                       </div>
-                      <div className="text-left">
+                      {/* ✅ إصلاح: حذف text-left */}
+                      <div>
                         <p className={`text-2xl font-bold ${action.color}`}>{action.label}</p>
                       </div>
                     </div>
@@ -343,25 +455,26 @@ export function DashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          <StatCard label="طلبات مفتوحة" value={openRequests.length} icon={FolderOpen} color="text-cyan-700" bg="bg-cyan-50" link="/my-requests" />
-          <StatCard label="مكتمل" value={completedRequests.length} icon={CheckCircle2} color="text-teal-700" bg="bg-teal-50" link="/my-requests" />
-          {isOperational && (
-            <>
-              <StatCard label="طلبات اليوم" value={todaysRequests.length} icon={CalendarCheck} color="text-blue-700" bg="bg-blue-50" link="/reports" />
-              <StatCard label="حالات طارئة" value={emergencyRequests.length} icon={AlertTriangle} color="text-red-700" bg="bg-red-50" link="/doctor" />
-              <StatCard label="علاج شهري" value={monthlyRequests.length} icon={HeartPulse} color="text-indigo-700" bg="bg-indigo-50" link="/monthly-treatment" />
-              <StatCard label="قائمة الصيدلية" value={pharmacyQueue.length} icon={Pill} color="text-purple-700" bg="bg-purple-50" link="/pharmacy" />
-              <StatCard label="خارج الشركة" value={outsideCompany.length} icon={Shield} color="text-green-700" bg="bg-green-50" link="/security" />
-            </>
-          )}
-          {isAdmin && (
-            <StatCard label="مستخدمون" value={allUsers.length} icon={Users} color="text-orange-700" bg="bg-orange-50" link="/admin" />
-          )}
-        </div>
+        {/* ✅ البطاقات الإحصائية — مفلترة حسب الدور */}
+        {visibleStatCards.length > 0 && (
+          <div className={`grid gap-4 ${statsGridCols}`}>
+            {visibleStatCards.map((card) => (
+              <StatCard
+                key={card.label}
+                label={card.label}
+                value={card.getValue(requests, allUsers)}
+                icon={card.icon}
+                color={card.color}
+                bg={card.bg}
+                link={card.link}
+              />
+            ))}
+          </div>
+        )}
 
-        <div className={`grid grid-cols-1 gap-6 ${isAdmin ? "xl:grid-cols-3" : ""}`}>
-          <Card className={isAdmin ? "xl:col-span-2" : ""}>
+        {/* أحدث الطلبات + توزيع المستخدمين */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <Card className="xl:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-blue-700" />
@@ -379,7 +492,8 @@ export function DashboardPage() {
             </CardContent>
           </Card>
 
-          {isAdmin && (
+          {/* ✅ توزيع المستخدمين — فقط للإدارة */}
+          {canViewUserDistribution && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -409,8 +523,10 @@ export function DashboardPage() {
           )}
         </div>
 
-        {isOperational && (
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        {/* توزيع الحالات + التنبيهات التشغيلية */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          {/* ✅ توزيع الحالات — مخفي عن الموظف العادي */}
+          {canViewStatusDistribution && statusDistribution.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -429,7 +545,10 @@ export function DashboardPage() {
                 ))}
               </CardContent>
             </Card>
+          )}
 
+          {/* ✅ التنبيهات التشغيلية — مفلترة حسب الدور */}
+          {visibleAlerts.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -438,28 +557,7 @@ export function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {[
-                  {
-                    title: "طلبات بانتظار موافقة المدير",
-                    value: requests.filter((request) => request.status === "pending").length,
-                    link: "/manager/approvals",
-                  },
-                  {
-                    title: "طلبات جاهزة للكشف",
-                    value: requests.filter((request) => request.status === "checked_out").length,
-                    link: "/doctor",
-                  },
-                  {
-                    title: "طلبات جاهزة للصرف",
-                    value: pharmacyQueue.length,
-                    link: "/pharmacy",
-                  },
-                  {
-                    title: "علاج شهري بانتظار الطبيب",
-                    value: requests.filter((request) => request.status === "pending_monthly_doctor").length,
-                    link: "/monthly-treatment",
-                  },
-                ].map((item) => (
+                {visibleAlerts.map((item) => (
                   <Link
                     key={item.title}
                     to={item.link}
@@ -471,8 +569,8 @@ export function DashboardPage() {
                 ))}
               </CardContent>
             </Card>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </PageLayout>
   );

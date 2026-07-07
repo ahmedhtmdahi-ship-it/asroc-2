@@ -290,6 +290,7 @@ export function MedicalAdminPage() {
     );
   }, [emergencyRequests, emergencySearch]);
 
+
   const handleApproveReferral = (requestId: string) => {
     requestStore.updateFields(requestId, {
       referralData: {
