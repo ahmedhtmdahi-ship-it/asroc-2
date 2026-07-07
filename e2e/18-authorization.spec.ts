@@ -2,18 +2,33 @@ import { test, expect } from "@playwright/test";
 
 let cachedTokens: Record<string, string> = {};
 
+// Passwords may already be rotated to their new value by the auth suite when
+// the full suite runs. Map each seed password to the new one so getToken can
+// fall back whether this file runs standalone or after 01-auth.
+const NEW_PASSWORD: Record<string, string> = {
+  admin: "Admin@2025!",
+  "خالد 50": "Employee@2025!",
+};
+
 async function getToken(
   request: any,
   username: string,
   password: string,
 ): Promise<string> {
   if (cachedTokens[username]) return cachedTokens[username];
-  const res = await request.post("http://localhost:4000/auth/login", {
-    data: { username, password },
-  });
-  const body = await res.json();
-  cachedTokens[username] = body.token;
-  return body.token;
+  const candidates = [password, NEW_PASSWORD[password]].filter(Boolean);
+  let body: any;
+  for (const candidate of candidates) {
+    const res = await request.post("http://localhost:4000/auth/login", {
+      data: { username, password: candidate },
+    });
+    if (res.ok()) {
+      body = await res.json();
+      break;
+    }
+  }
+  cachedTokens[username] = body?.token;
+  return body?.token;
 }
 
 test.describe("Authorization - Employee Restrictions", () => {
