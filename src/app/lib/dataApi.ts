@@ -48,6 +48,11 @@ export interface UpdateUserPayload {
   isActive?: boolean;
 }
 
+export function setUserActiveApi(id: string, isActive: boolean): Promise<ApiUser> {
+  return updateUserApi(id, { isActive });
+}
+
+// تحديث عام لمستخدم (الدور/الصلاحيات/التفعيل) — PATCH /users/:id
 export function updateUserApi(id: string, payload: UpdateUserPayload): Promise<ApiUser> {
   return apiFetch<ApiUser>(`/users/${id}`, {
     method: "PATCH",
