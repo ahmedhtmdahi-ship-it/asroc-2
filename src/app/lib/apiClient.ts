@@ -35,15 +35,6 @@ export async function apiFetch<T>(
   const token = getToken();
   const url = `${BASE_URL}${path}`;
 
-  // --- debug auth (helps diagnose 401) ---
-  // eslint-disable-next-line no-console
-  console.debug("[apiFetch]", {
-    url,
-    tokenPresent: Boolean(token),
-    tokenPrefix: token ? token.slice(0, 10) : null,
-  });
-  // ----------------------------------------
-
   const res = await fetch(url, {
     ...options,
     headers: {
