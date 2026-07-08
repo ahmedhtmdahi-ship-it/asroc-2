@@ -1,18 +1,21 @@
-import { listSecurityLogsApi } from "@/app/lib/dataApi";
+import { listSecurityLogsApi, type ApiSecurityLog } from "@/app/lib/dataApi";
+import { ReactiveStore } from "./reactiveStore";
 
-class SecurityStore {
-  private records: any[] = [];
+class SecurityStore extends ReactiveStore {
+  private records: ApiSecurityLog[] = [];
 
-  private setRecords(records: any[]) {
+  private setRecords(records: ApiSecurityLog[]) {
     this.records = records;
+    this.emit();
   }
 
-  getAll() {
+  getAll(): ApiSecurityLog[] {
     return this.records;
   }
 
-  add(record: any) {
-    this.records.push(record);
+  add(record: ApiSecurityLog) {
+    this.records = [...this.records, record];
+    this.emit();
     return record;
   }
 
@@ -27,6 +30,7 @@ class SecurityStore {
 
   clear() {
     this.records = [];
+    this.emit();
   }
 }
 

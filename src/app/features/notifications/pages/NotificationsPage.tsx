@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { notificationStore } from "@/app/store/notificationStore";
+import { useStore } from "@/app/store/reactiveStore";
 import { useAuth } from "@/app/features/auth/AuthContext";
 
 function iconForTitle(title: string) {
@@ -40,11 +41,14 @@ export function NotificationsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [active, setActive] = useState("all");
-  const [, forceRender] = useState(0);
 
+  // اشتراك تفاعلي — أي تعليم كمقروء أو مزامنة بيعيد الرسم تلقائيًا.
+  const allNotifications = useStore(notificationStore, (s) => s.getAll());
   const notifications = user
-    ? notificationStore.getForUser(user.id)
-    : notificationStore.getAll();
+    ? allNotifications.filter(
+        (n) => n.userId === user.id || n.userId === "broadcast",
+      )
+    : allNotifications;
 
   const filtered =
     active === "unread"
@@ -55,12 +59,10 @@ export function NotificationsPage() {
 
   const handleMarkAllRead = () => {
     notificationStore.markAllAsRead(user?.id);
-    forceRender((v) => v + 1);
   };
 
   const handleMarkRead = (id: string) => {
     notificationStore.markAsRead(id);
-    forceRender((v) => v + 1);
   };
 
   return (

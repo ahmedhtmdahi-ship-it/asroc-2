@@ -25,6 +25,7 @@ import {
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { medicineStore } from "@/app/store/medicineStore";
+import { useStore } from "@/app/store/reactiveStore";
 import type { Medicine } from "@/app/types/medicine";
 
 type MedicineForm = {
@@ -115,7 +116,7 @@ function StatCard({
 }
 
 export function MedicineInventoryManager({ compact = false }: { compact?: boolean }) {
-  const [medicines, setMedicines] = useState<Medicine[]>(() => medicineStore.getAll());
+  const medicines = useStore(medicineStore, (s) => s.getAll());
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Medicine | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -153,8 +154,6 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
 
     return list.slice(0, compact ? 80 : 250);
   }, [compact, medicines, search]);
-
-  const refresh = () => setMedicines([...medicineStore.getAll()]);
 
   const openAddDialog = () => {
     setEditing(null);
@@ -194,7 +193,6 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
         toast.success("تم إضافة الدواء");
       }
 
-      refresh();
       setDialogOpen(false);
     } catch (error) {
       toast.error(
@@ -210,7 +208,6 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
         toast.error("فشل حذف الدواء");
         return;
       }
-      refresh();
       toast.success("تم حذف الدواء بنجاح");
     } catch (error) {
       toast.error(
@@ -222,7 +219,6 @@ export function MedicineInventoryManager({ compact = false }: { compact?: boolea
   const handleReset = async () => {
     try {
       await medicineStore.resetToSeed();
-      refresh();
       toast.success("تم تحديث كتالوج الأدوية من السيرفر");
     } catch (error) {
       toast.error(

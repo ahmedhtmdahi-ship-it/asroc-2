@@ -27,6 +27,7 @@ import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { profilesStore } from "@/app/store/profilesStore";
 import { requestStore } from "@/app/store/requestStore";
+import { useStore } from "@/app/store/reactiveStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 import { toast } from "sonner";
@@ -130,7 +131,9 @@ function CreateEmergencyDialog({ open, onClose }: { open: boolean; onClose: () =
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const allEmployees = profilesStore.getAll().filter((u) => u.role === "employee");
+  const allEmployees = useStore(profilesStore, (s) => s.getAll()).filter(
+    (u) => u.role === "employee",
+  );
   const filtered = allEmployees.filter((e) => {
     const term = search.trim().toLowerCase();
     return !term || e.name.toLowerCase().includes(term) || e.financialNumber?.toLowerCase().includes(term);

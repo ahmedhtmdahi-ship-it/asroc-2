@@ -10,6 +10,7 @@
 import type { MedicalRequest } from "@/app/types/request";
 import type { RequestStatus } from "@/app/types/workflow";
 import { requestStore } from "../store/requestStore";
+import { useStore } from "../store/reactiveStore";
 import { managersStore } from "../store/managersStore";
 import { departmentsStore } from "../store/departmentsStore";
 import { medicineStore } from "../store/medicineStore";
@@ -49,13 +50,14 @@ const WorkflowContext = createContext<WorkflowContextValue | undefined>(
 export function WorkflowProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
-  const [requests, setRequests] = useState<MedicalRequest[]>(
-    requestStore.getAll()
-  );
+  // اشتراك تفاعلي في الـ store — أي تغيير في الطلبات (تحديث متفائل، دمج رد
+  // السيرفر، أو rollback) بيعيد الرسم تلقائيًا بدون أي reload يدوي.
+  const requests = useStore(requestStore, (s) => s.getAll());
   const [syncing, setSyncing] = useState(false);
 
+  // تحديث يدوي = إعادة سحب من السيرفر (زرار "تحديث"). القراءة نفسها تفاعلية أصلاً.
   const refreshRequests = () => {
-    setRequests([...requestStore.getAll()]);
+    void requestStore.syncFromApi();
   };
 
   useEffect(() => {
@@ -70,15 +72,12 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       profilesStore.syncFromApi(),
       notificationStore.syncFromApi(user.id),
     ])
-      .then(() => refreshRequests())
       .catch(() => {})
       .finally(() => setSyncing(false));
   }, [user?.id]);
 
   const createRequest = (request: MedicalRequest) => {
-    const created = requestStore.create(request);
-    refreshRequests();
-    return created;
+    return requestStore.create(request);
   };
 
   const moveRequest = (
@@ -88,7 +87,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   ) => {
     if (!user) return null;
 
-    const updated = workflowStore.moveStatus(
+    return workflowStore.moveStatus(
       {
         requestId,
         userId: user.id,
@@ -98,9 +97,6 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       },
       nextStatus
     );
-
-    refreshRequests();
-    return updated;
   };
 
   const value = useMemo<WorkflowContextValue>(

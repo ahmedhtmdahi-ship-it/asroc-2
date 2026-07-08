@@ -22,6 +22,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { profilesStore } from "@/app/store/profilesStore";
+import { useStore } from "@/app/store/reactiveStore";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
@@ -273,7 +274,7 @@ export function DashboardPage() {
     ["checked_out", "in_diagnosis", "prescribed", "dispensed"].includes(r.status)
   );
 
-  const allUsers = profilesStore.getAll();
+  const allUsers = useStore(profilesStore, (s) => s.getAll());
   const roleCounts = allUsers.reduce<Record<string, number>>((acc, u) => {
     acc[u.role] = (acc[u.role] || 0) + 1;
     return acc;

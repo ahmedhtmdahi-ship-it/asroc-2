@@ -19,6 +19,7 @@ import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { securityStore } from "@/app/store/securityStore";
+import { useStore } from "@/app/store/reactiveStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 import { toast } from "sonner";
@@ -261,7 +262,7 @@ function LateEmployeesTab() {
 }
 
 function SecurityLogsTab() {
-  const logs = securityStore.getAll().slice().reverse();
+  const logs = useStore(securityStore, (s) => s.getAll()).slice().reverse();
 
   if (logs.length === 0) {
     return <EmptyState text="لا توجد حركات أمن مسجلة حتى الآن." />;
@@ -346,7 +347,7 @@ export function SecurityPage() {
   const approvedRequests = requests.filter((request) => request.status === "approved");
   const outsideRequests = requests.filter((request) => outsideStatuses.includes(request.status));
   const returnReady = requests.filter((request) => request.status === "dispensed");
-  const securityLogs = securityStore.getAll();
+  const securityLogs = useStore(securityStore, (s) => s.getAll());
 
   const now = Date.now();
   const lateCount = outsideRequests.filter((r) => {

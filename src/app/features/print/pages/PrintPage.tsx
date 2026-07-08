@@ -9,6 +9,7 @@ import { Input } from "@/app/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { profilesStore } from "@/app/store/profilesStore";
+import { useStore } from "@/app/store/reactiveStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 
@@ -321,6 +322,7 @@ function SignatureBlock({ first, second }: { first: string; second: string }) {
 
 export function PrintPage() {
   const { requests } = useWorkflow();
+  useStore(profilesStore, (s) => s.getAll()); // اشتراك تفاعلي لأسماء الأطباء
   const [selectedId, setSelectedId] = useState(requests[0]?.id || "");
 
   const selectedRequest = useMemo(() => {

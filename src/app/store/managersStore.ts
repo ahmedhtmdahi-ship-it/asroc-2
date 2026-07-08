@@ -1,4 +1,5 @@
 import { lookupUsersApi } from "@/app/lib/dataApi";
+import { ReactiveStore } from "./reactiveStore";
 
 interface ManagerRecord {
   id: string;
@@ -16,7 +17,7 @@ interface ManagerRecord {
   isActive: boolean;
 }
 
-class ManagersStore {
+class ManagersStore extends ReactiveStore {
   private managers: ManagerRecord[] = [];
 
   getAll(): ManagerRecord[] {
@@ -47,6 +48,7 @@ class ManagersStore {
         managedDepartments: [u.department ?? ""],
         isActive: u.isActive,
       }));
+      this.emit();
     } catch {
       // keep current in-memory data if sync fails
     }

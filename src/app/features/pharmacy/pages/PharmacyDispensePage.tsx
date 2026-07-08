@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { medicineStore } from "@/app/store/medicineStore";
+import { useStore } from "@/app/store/reactiveStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { PrescriptionMedication } from "@/app/types/request";
 
@@ -153,6 +154,7 @@ export default function PharmacyDispensePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { requests, dispenseRequest, dispenseMonthlyTreatment } = useWorkflow();
+  useStore(medicineStore, (s) => s.getAll()); // اشتراك تفاعلي في قائمة الأدوية
   const [confirmedReview, setConfirmedReview] = useState(false);
   const [unavailableMeds, setUnavailableMeds] = useState<Set<string>>(new Set());
 

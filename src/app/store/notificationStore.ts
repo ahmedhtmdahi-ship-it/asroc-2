@@ -1,4 +1,5 @@
 import { listNotificationsApi, markNotificationsReadApi } from "@/app/lib/dataApi";
+import { ReactiveStore } from "./reactiveStore";
 
 export interface AppNotification {
   id: string;
@@ -8,16 +9,17 @@ export interface AppNotification {
   requestId?: string;
   unread: boolean;
   createdAt: string;
-  icon?: any;
+  icon?: string;
   color?: string;
   bg?: string;
 }
 
-class NotificationStore {
+class NotificationStore extends ReactiveStore {
   private notifications: AppNotification[] = [];
 
   private setNotifications(notifications: AppNotification[]) {
     this.notifications = notifications;
+    this.emit();
   }
 
   getAll(): AppNotification[] {
@@ -36,25 +38,29 @@ class NotificationStore {
       unread: true,
       ...raw,
     };
-    this.notifications.unshift(notification);
-    if (this.notifications.length > 200) this.notifications = this.notifications.slice(0, 200);
+    this.notifications = [notification, ...this.notifications].slice(0, 200);
+    this.emit();
     return notification;
   }
 
   markAsRead(id: string) {
-    const n = this.notifications.find((item) => item.id === id);
-    if (!n) return null;
-    n.unread = false;
+    const exists = this.notifications.some((item) => item.id === id);
+    if (!exists) return null;
+    this.notifications = this.notifications.map((item) =>
+      item.id === id ? { ...item, unread: false } : item,
+    );
+    this.emit();
     markNotificationsReadApi([id]).catch(() => {});
-    return n;
+    return this.notifications.find((item) => item.id === id) ?? null;
   }
 
   markAllAsRead(userId?: string) {
-    this.notifications.forEach((n) => {
-      if (!userId || n.userId === userId || n.userId === "broadcast") {
-        n.unread = false;
-      }
-    });
+    this.notifications = this.notifications.map((n) =>
+      !userId || n.userId === userId || n.userId === "broadcast"
+        ? { ...n, unread: false }
+        : n,
+    );
+    this.emit();
     markNotificationsReadApi().catch(() => {});
   }
 
@@ -82,6 +88,7 @@ class NotificationStore {
 
   clear() {
     this.notifications = [];
+    this.emit();
   }
 }
 

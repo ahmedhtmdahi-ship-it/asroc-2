@@ -1,8 +1,9 @@
 import { lookupUsersApi } from "@/app/lib/dataApi";
 import { apiUserToUser } from "@/app/lib/authApi";
 import type { User } from "@/app/types/user";
+import { ReactiveStore } from "./reactiveStore";
 
-class ProfilesStore {
+class ProfilesStore extends ReactiveStore {
   private profiles: User[] = [];
 
   getAll(): User[] {
@@ -35,6 +36,7 @@ class ProfilesStore {
         permissions: [],
         isActive: u.isActive,
       }));
+      this.emit();
     } catch {
       // keep empty — callers handle missing data gracefully
     }

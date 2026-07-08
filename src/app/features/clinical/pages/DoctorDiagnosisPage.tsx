@@ -30,6 +30,7 @@ import { toast } from "sonner";
 
 import { medicineStore } from "@/app/store/medicineStore";
 import { requestStore } from "@/app/store/requestStore";
+import { useStore } from "@/app/store/reactiveStore";
 import type { PrescriptionMedication } from "@/app/types/request";
 
 type Medication = {
@@ -46,6 +47,7 @@ export function DoctorDiagnosisPage() {
   const navigate = useNavigate();
   const { requests, refreshRequests } = useWorkflow();
   const request = requests.find((item) => item.id === params.id);
+  const medicines = useStore(medicineStore, (s) => s.getAll());
 
   const [complaint, setComplaint] = useState(request?.reason || "");
   const [diagnosis, setDiagnosis] = useState("");
@@ -413,7 +415,7 @@ export function DoctorDiagnosisPage() {
                         <Select
                           value={med.medicationId}
                           onValueChange={(value) => {
-                            const selected = medicineStore.getAll().find(
+                            const selected = medicines.find(
                               (m) => m.id === value
                             );
                             updateMedication(index, "medicationId", value);
@@ -426,7 +428,7 @@ export function DoctorDiagnosisPage() {
                             <SelectValue placeholder="اختر الدواء" />
                           </SelectTrigger>
                           <SelectContent>
-                            {medicineStore.getAll()
+                            {medicines
                               .filter((m) => m.isActive)
                               .map((m) => (
                                 <SelectItem key={m.id} value={m.id}>
