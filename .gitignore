@@ -6,6 +6,14 @@ dist
 *.log
 .DS_Store
 
+# generated / scratch artifacts (kept out of version control)
+structure.txt
+tree.txt
+src-tree.txt
+api-tree.txt
+*.tsbuildinfo
+api/prisma/*.db
+
 # Playwright
 /test-results/
 /playwright-report/
