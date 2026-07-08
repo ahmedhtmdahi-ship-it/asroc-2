@@ -5,6 +5,7 @@ import {
   updateMedicineApi,
 } from "@/app/lib/dataApi";
 import type { Medicine, MedicineInput } from "@/app/types/medicine";
+import { ReactiveStore } from "./reactiveStore";
 
 function normalizeMedicine(medicine: Medicine): Medicine {
   return {
@@ -18,7 +19,7 @@ function normalizeMedicine(medicine: Medicine): Medicine {
   };
 }
 
-class MedicineStore {
+class MedicineStore extends ReactiveStore {
   private medicines: Medicine[] = [];
 
   getAll() {
@@ -33,6 +34,7 @@ class MedicineStore {
     const created = await createMedicineApi(input);
     const medicine = normalizeMedicine(created);
     this.medicines = [medicine, ...this.medicines];
+    this.emit();
     return medicine;
   }
 
@@ -42,6 +44,7 @@ class MedicineStore {
     const index = this.medicines.findIndex((medicine) => medicine.id === id);
     if (index === -1) {
       this.medicines = [normalized, ...this.medicines];
+      this.emit();
       return normalized;
     }
 
@@ -50,6 +53,7 @@ class MedicineStore {
       normalized,
       ...this.medicines.slice(index + 1),
     ];
+    this.emit();
     return normalized;
   }
 
@@ -57,6 +61,7 @@ class MedicineStore {
     const response = await deleteMedicineApi(id);
     if (!response.ok) return false;
     this.medicines = this.medicines.filter((medicine) => medicine.id !== id);
+    this.emit();
     return true;
   }
 
@@ -70,6 +75,7 @@ class MedicineStore {
       if (!data || data.length === 0) return;
 
       this.medicines = data.map(normalizeMedicine);
+      this.emit();
     } catch {
       // keep current in-memory data if sync fails
     }

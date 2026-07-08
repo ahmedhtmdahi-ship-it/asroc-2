@@ -1,4 +1,5 @@
 import { lookupUsersApi } from "@/app/lib/dataApi";
+import { ReactiveStore } from "./reactiveStore";
 
 export interface Department {
   id: string;
@@ -7,7 +8,7 @@ export interface Department {
   managerName?: string;
 }
 
-class DepartmentsStore {
+class DepartmentsStore extends ReactiveStore {
   private departments: Department[] = [];
 
   getAll(): Department[] {
@@ -64,6 +65,7 @@ class DepartmentsStore {
           });
         }
       }
+      this.emit();
     } catch {
       // keep current in-memory data if sync fails
     }

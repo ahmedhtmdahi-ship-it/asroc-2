@@ -14,6 +14,7 @@ import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
 import { medicineStore } from "@/app/store/medicineStore";
+import { useStore } from "@/app/store/reactiveStore";
 
 function StatCard({
   value,
@@ -57,7 +58,7 @@ export function PharmacyPage() {
       request.status === "prescribed" ||
       request.status === "monthly_ready_pharmacy"
   );
-  const medicines = medicineStore.getAll();
+  const medicines = useStore(medicineStore, (s) => s.getAll());
   const unavailable = medicines.filter(
     (medicine) => typeof medicine.currentStock === "number" && medicine.currentStock <= 0
   );

@@ -6,26 +6,42 @@ import {
 } from "@/app/lib/requestsApi";
 import type { MedicalRequest } from "@/app/types/request";
 import type { RequestStatus } from "@/app/types/workflow";
+import { ReactiveStore } from "./reactiveStore";
 
 /**
  * تخزين طلبات مؤقت في الذاكرة ومزامنة البيانات من/إلى الباك.
  *
+ * كل تعديل على الحالة بيستبدل مرجع المصفوفة (immutable) وبينادي emit()، فالواجهة
+ * بتتحدّث تلقائيًا عن طريق useStore — من غير أي window.location.reload().
+ *
  * لكل تعديل نسختان:
- *  - نسخة متزامنة (fire-and-forget): تحديث متفائل + تنبيه/إعادة تحميل عند الفشل — للنداءات البسيطة.
- *  - نسخة async (transitionAsync/patchAsync): بترجّع Promise عشان الصفحات تعمل await وتسلسل
- *    النداءات المترابطة (زي الكشف ثم الروشتة) وتتعامل مع الخطأ بنفسها من غير reload.
+ *  - نسخة متزامنة (fire-and-forget): تحديث متفائل + تنبيه عند الفشل (والـ rollback
+ *    بيعمل re-render لوحده) — للنداءات البسيطة.
+ *  - نسخة async (transitionAsync/patchAsync): بترجّع Promise عشان الصفحات تعمل await
+ *    وتسلسل النداءات المترابطة (زي الكشف ثم الروشتة) وتتعامل مع الخطأ بنفسها.
  */
-class RequestStore {
+class RequestStore extends ReactiveStore {
   private requests: MedicalRequest[] = [];
 
   private setRequests(requests: MedicalRequest[]) {
     this.requests = requests;
+    this.emit();
+  }
+
+  /** تطبيق تعديل جزئي على طلب بشكل immutable مع إشعار الواجهة. */
+  private applyLocal(id: string, partial: Partial<MedicalRequest>) {
+    let updated: MedicalRequest | undefined;
+    this.requests = this.requests.map((r) => {
+      if (r.id !== id) return r;
+      updated = { ...r, ...partial };
+      return updated;
+    });
+    if (updated) this.emit();
+    return updated;
   }
 
   private mergeRequest(id: string, partial: Partial<MedicalRequest>) {
-    const existing = this.getById(id);
-    if (!existing) return;
-    Object.assign(existing, partial);
+    return this.applyLocal(id, partial);
   }
 
   getAll() {
@@ -37,7 +53,8 @@ class RequestStore {
   }
 
   create(request: MedicalRequest) {
-    this.requests.push(request);
+    this.requests = [...this.requests, request];
+    this.emit();
 
     const payload = { ...request } as Record<string, unknown>;
     delete payload.status;
@@ -62,6 +79,7 @@ class RequestStore {
       .catch((e) => {
         console.warn("[api] create request:", e?.message);
         this.requests = this.requests.filter((r) => r.id !== request.id);
+        this.emit();
         window.alert("حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مرة أخرى.");
       });
 
@@ -78,15 +96,14 @@ class RequestStore {
     if (!request) return null;
 
     const oldStatus = request.status;
-    request.status = status;
+    this.applyLocal(id, { status }); // تحديث متفائل
 
     try {
       const updated = await transitionRequestApi(id, status, note);
       this.mergeRequest(id, updated);
       return this.getById(id) ?? null;
     } catch (e) {
-      const req = this.getById(id);
-      if (req) req.status = oldStatus;
+      this.applyLocal(id, { status: oldStatus }); // rollback → re-render تلقائي
       throw e;
     }
   }
@@ -106,15 +123,14 @@ class RequestStore {
       ] as never;
     }
 
-    Object.assign(request, fields);
+    this.applyLocal(id, fields); // تحديث متفائل
 
     try {
       const updated = await patchRequestApi(id, fields);
       this.mergeRequest(id, updated);
       return this.getById(id) ?? null;
     } catch (e) {
-      const req = this.getById(id);
-      if (req) Object.assign(req, oldFields);
+      this.applyLocal(id, oldFields); // rollback → re-render تلقائي
       throw e;
     }
   }
@@ -126,7 +142,6 @@ class RequestStore {
     this.transitionAsync(id, status, note).catch((e) => {
       console.warn("[api] transition:", e?.message);
       window.alert("حدث خطأ أثناء تغيير الحالة. تمت استعادة الحالة السابقة.");
-      window.location.reload(); // إعادة تحميل بسيطة لتحديث الواجهة المتزامنة
     });
 
     return request;
@@ -139,7 +154,6 @@ class RequestStore {
     this.patchAsync(id, fields).catch((e) => {
       console.warn("[api] update fields:", e?.message);
       window.alert("حدث خطأ أثناء التحديث. تمت استعادة البيانات القديمة.");
-      window.location.reload();
     });
 
     return request;
@@ -156,6 +170,7 @@ class RequestStore {
 
   clear() {
     this.requests = [];
+    this.emit();
   }
 }
 

@@ -1,18 +1,21 @@
-import { listAuditLogsApi } from "@/app/lib/dataApi";
+import { listAuditLogsApi, type ApiAuditLog } from "@/app/lib/dataApi";
+import { ReactiveStore } from "./reactiveStore";
 
-class AuditStore {
-  private logs: any[] = [];
+class AuditStore extends ReactiveStore {
+  private logs: ApiAuditLog[] = [];
 
-  private setLogs(logs: any[]) {
+  private setLogs(logs: ApiAuditLog[]) {
     this.logs = logs;
+    this.emit();
   }
 
-  getAll() {
+  getAll(): ApiAuditLog[] {
     return this.logs;
   }
 
-  add(log: any) {
-    this.logs.push(log);
+  add(log: ApiAuditLog) {
+    this.logs = [...this.logs, log];
+    this.emit();
     return log;
   }
 
@@ -27,6 +30,7 @@ class AuditStore {
 
   clear() {
     this.logs = [];
+    this.emit();
   }
 }
 
