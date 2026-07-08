@@ -13,47 +13,73 @@ import {
   listRequests,
   transitionRequest,
   updateRequest,
+  type ListFilter,
 } from "./requests.service.js";
 import { statusPermission } from "./requests.workflow.js";
 import type { Permission, UserRole } from "@asroc/shared/roles.js";
+import type { FastifyRequest } from "fastify";
 
-// ✅ نوع صريح بدل any
+// ✅ نوع صريح بدل any — هوية + صلاحيات + إدارة المستخدم
 interface RequestUser {
   sub: string;
   name: string;
   role: UserRole;
   permissions: Permission[];
+  department: string | null;
 }
 
-function hasAnyPermission(user: RequestUser, perms: Permission[]) {
-  if (user.permissions.includes("all")) return true;
-  return perms.some((perm) => user.permissions.includes(perm));
+/**
+ * هوية المستخدم لاتخاذ قرار الصلاحية.
+ * - الهوية (sub/name) من التوكن.
+ * - الدور/الصلاحيات/الإدارة من نسخة الداتابيز الحيّة (req.authenticatedUser) —
+ *   عشان تغيير الدور/الإدارة يسري فورًا من غير انتظار إعادة تسجيل الدخول.
+ */
+function resolveUser(req: FastifyRequest): RequestUser {
+  const token = req.user as { sub: string; name: string };
+  const account = req.authenticatedUser;
+  return {
+    sub: token.sub,
+    name: token.name,
+    role: account?.role ?? (req.user.role as UserRole),
+    permissions: account?.permissions ?? (req.user.permissions as Permission[]),
+    department: account?.department ?? null,
+  };
 }
 
-// ✅ الصلاحيات اللي فعلاً بتخليك تشوف كل الطلبات
-const VIEW_ALL_PERMISSIONS: Permission[] = [
-  "approve_request",
-  "reject_request",
-  "postpone_request",
-  "security_check_out",
-  "security_check_in",
-  "diagnose_patient",
-  "dispense_prescription",
-  "manage_inventory",
-  "manage_pharmacy",
-  "manage_monthly_treatment",
-  "manage_pensioners",
-  "manage_contracts",
-  "manage_referrals",
-  "approve_referral",
-  "dispense_regular_treatment",
-  "dispense_monthly_treatment",
-  "manage_system",
+// ─── فصل الإدارات ────────────────────────────────────────────────────────
+// الأدوار اللي بتشوف كل الإدارات (خدمات بتخدم كل المؤسسة): السوبر أدمن + الطبية
+// + الأدوار التشغيلية (أمن/صيدلية/طبيب/معاشات). المدير مقيّد بإدارته، والموظف بطلباته.
+const CROSS_DEPARTMENT_ROLES: UserRole[] = [
+  "super_admin",
+  "medical_admin",
+  "security",
+  "pharmacy",
+  "doctor",
+  "pension_admin",
 ];
 
-function canViewAllRequests(user: RequestUser): boolean {
-  if (user.role === "super_admin") return true;
-  return hasAnyPermission(user, VIEW_ALL_PERMISSIONS);
+const DEPARTMENT_SCOPED_ROLES: UserRole[] = ["manager", "office_manager"];
+
+function isFullViewer(user: RequestUser): boolean {
+  if (user.permissions.includes("all")) return true;
+  return CROSS_DEPARTMENT_ROLES.includes(user.role);
+}
+
+function isDepartmentManager(user: RequestUser): boolean {
+  return DEPARTMENT_SCOPED_ROLES.includes(user.role);
+}
+
+/** هل يحق للمستخدم الوصول لطلب بعينه (قراءة/كتابة)؟ */
+function canReachRequest(
+  user: RequestUser,
+  request: { employeeId: string; department: string },
+): boolean {
+  if (isFullViewer(user)) return true;
+  if (request.employeeId === user.sub) return true; // طلبه هو
+  if (isDepartmentManager(user) && !!user.department && request.department === user.department) {
+    return true; // المدير في نفس إدارته فقط
+  }
+  return false;
 }
 
 function canModifyRequest(user: RequestUser, request: any, fields: Record<string, unknown>): boolean {
@@ -95,36 +121,56 @@ function canModifyRequest(user: RequestUser, request: any, fields: Record<string
 export async function requestRoutes(app: FastifyInstance) {
   const auth = { preHandler: [app.authenticate] };
 
-  // GET /requests
+  // GET /requests — الرؤية مقيّدة حسب الدور (فصل الإدارات):
+  //  • super_admin / الطبية / الأدوار الخدمية → كل الإدارات
+  //  • المدير (manager/office_manager) → إدارته فقط
+  //  • الموظف → طلباته فقط
   app.get("/", auth, async (req, reply) => {
     const query = listQuerySchema.parse(req.query);
-    const user = req.user as RequestUser;
+    const user = resolveUser(req);
 
-    if (!canViewAllRequests(user)) {
-      if (!user.permissions.includes("view_own_requests")) {
-        return reply.code(403).send({ error: "Forbidden", message: "صلاحية غير كافية لعرض الطلبات" });
-      }
+    const filter: ListFilter = {};
+    if (query.status) filter.status = query.status;
 
-      if (query.employeeId && query.employeeId !== user.sub) {
-        return reply.code(403).send({ error: "Forbidden", message: "غير مسموح بعرض طلبات موظف آخر" });
-      }
-
-      query.employeeId = user.sub;
+    if (isFullViewer(user)) {
+      if (query.employeeId) filter.employeeId = query.employeeId;
+      return listRequests(filter);
     }
 
-    return listRequests(query);
+    if (isDepartmentManager(user)) {
+      // Fail-closed: مدير من غير إدارة محددة ما يشوفش أي حاجة.
+      if (!user.department) {
+        return reply
+          .code(403)
+          .send({ error: "Forbidden", message: "لم يتم تحديد إدارة لهذا المدير" });
+      }
+      // تقييد على مستوى السيرفر — العميل لا يقدر يتخطّاه.
+      filter.department = user.department;
+      if (query.employeeId) filter.employeeId = query.employeeId;
+      return listRequests(filter);
+    }
+
+    if (user.permissions.includes("view_own_requests")) {
+      if (query.employeeId && query.employeeId !== user.sub) {
+        return reply
+          .code(403)
+          .send({ error: "Forbidden", message: "غير مسموح بعرض طلبات موظف آخر" });
+      }
+      filter.employeeId = user.sub;
+      return listRequests(filter);
+    }
+
+    return reply
+      .code(403)
+      .send({ error: "Forbidden", message: "صلاحية غير كافية لعرض الطلبات" });
   });
 
-  // GET /requests/:id
+  // GET /requests/:id — نفس قيد الإدارة على الطلب المفرد.
   app.get<{ Params: { id: string } }>("/:id", auth, async (req, reply) => {
     const request = await getRequest(req.params.id);
-    const user = req.user as RequestUser;
+    const user = resolveUser(req);
 
-    if (!request) {
-      return reply.code(404).send({ error: "Not Found", message: "الطلب غير موجود" });
-    }
-
-    if (request.employeeId !== user.sub && !canViewAllRequests(user)) {
+    if (!canReachRequest(user, request)) {
       return reply.code(403).send({ error: "Forbidden", message: "غير مسموح بعرض هذا الطلب" });
     }
 
@@ -133,7 +179,7 @@ export async function requestRoutes(app: FastifyInstance) {
 
   // POST /requests
   app.post("/", auth, async (req, reply) => {
-    const user = req.user as RequestUser;
+    const user = resolveUser(req);
     const canCreateOnBehalf =
       user.permissions.includes("all") || user.permissions.includes("manage_system");
     const canCreate = canCreateOnBehalf || user.permissions.includes("create_request");
@@ -159,11 +205,12 @@ export async function requestRoutes(app: FastifyInstance) {
   // PATCH /requests/:id
   app.patch<{ Params: { id: string } }>("/:id", auth, async (req, reply) => {
     const body = updateRequestSchema.parse(req.body);
-    const user = req.user as RequestUser;
+    const user = resolveUser(req);
     const request = await getRequest(req.params.id);
 
-    if (!request) {
-      return reply.code(404).send({ error: "Not Found", message: "الطلب غير موجود" });
+    // قيد الإدارة أولاً: المدير لا يعدّل طلبًا خارج إدارته.
+    if (!canReachRequest(user, request)) {
+      return reply.code(403).send({ error: "Forbidden", message: "غير مسموح بتعديل هذا الطلب" });
     }
 
     if (!canModifyRequest(user, request, body)) {
@@ -180,13 +227,10 @@ export async function requestRoutes(app: FastifyInstance) {
   // POST /requests/:id/transition
   app.post<{ Params: { id: string } }>("/:id/transition", auth, async (req, reply) => {
     const { status, note } = transitionSchema.parse(req.body);
-    const user = req.user as RequestUser;
+    const user = resolveUser(req);
 
-    // ✅ تحقق إن الطلب موجود
+    // ✅ تحقق إن الطلب موجود (getRequest بترمي 404 لو مش موجود)
     const request = await getRequest(req.params.id);
-    if (!request) {
-      return reply.code(404).send({ error: "Not Found", message: "الطلب غير موجود" });
-    }
 
     // ✅ تحقق الصلاحية
     const perm = statusPermission[status];
@@ -206,6 +250,14 @@ export async function requestRoutes(app: FastifyInstance) {
       return reply.code(403).send({
         error: "Forbidden",
         message: "صلاحية غير كافية لهذا الإجراء",
+      });
+    }
+
+    // قيد الإدارة: المدير يعتمد/يرفض طلبات إدارته فقط (الأدوار الخدمية والموظف على طلبه).
+    if (!canReachRequest(user, request)) {
+      return reply.code(403).send({
+        error: "Forbidden",
+        message: "غير مسموح بتنفيذ إجراء على طلب خارج نطاقك",
       });
     }
 
