@@ -15,12 +15,16 @@ import { prisma } from "../src/db/prisma.js";
 
 const app = buildApp();
 
+const DEPT_A = "قسم اختبار";
+const DEPT_B = "قسم تاني";
+
 const ids = {
   emp1: "TEST-EMP-1",
   emp2: "TEST-EMP-2",
-  mgr: "TEST-MGR-1",
-  r1: "TEST-REQ-1",
-  r2: "TEST-REQ-2",
+  mgr: "TEST-MGR-1", // مدير قسم A
+  mgr2: "TEST-MGR-2", // مدير قسم B
+  r1: "TEST-REQ-1", // طلب في قسم A
+  r2: "TEST-REQ-2", // طلب في قسم B
 };
 
 async function makeUser(
@@ -28,6 +32,7 @@ async function makeUser(
   role: string,
   permissions: string[],
   password: string,
+  department: string | null = null,
 ) {
   const passwordHash = await bcrypt.hash(password, 4);
   await prisma.user.upsert({
@@ -39,13 +44,20 @@ async function makeUser(
       name: id,
       role: role as never,
       permissions: JSON.stringify(permissions),
+      department,
       isActive: true,
     },
-    update: { passwordHash, role: role as never, permissions: JSON.stringify(permissions), isActive: true },
+    update: {
+      passwordHash,
+      role: role as never,
+      permissions: JSON.stringify(permissions),
+      department,
+      isActive: true,
+    },
   });
 }
 
-async function makeRequest(id: string, employeeId: string) {
+async function makeRequest(id: string, employeeId: string, department = DEPT_A) {
   await prisma.medicalRequest.upsert({
     where: { id },
     create: {
@@ -53,11 +65,11 @@ async function makeRequest(id: string, employeeId: string) {
       employeeId,
       employeeName: employeeId,
       financialNumber: "0000",
-      department: "قسم اختبار",
+      department,
       reason: "سبب اختبار",
       status: "pending",
     },
-    update: { status: "pending" },
+    update: { status: "pending", department },
   });
 }
 
@@ -76,11 +88,12 @@ function auth(token: string) {
 
 before(async () => {
   await app.ready();
-  await makeUser(ids.emp1, "employee", ["create_request", "view_own_requests"], "Emp1Pass!!");
-  await makeUser(ids.emp2, "employee", ["create_request", "view_own_requests"], "Emp2Pass!!");
-  await makeUser(ids.mgr, "manager", ["approve_request", "reject_request"], "MgrPass!!!");
-  await makeRequest(ids.r1, ids.emp1);
-  await makeRequest(ids.r2, ids.emp2);
+  await makeUser(ids.emp1, "employee", ["create_request", "view_own_requests"], "Emp1Pass!!", DEPT_A);
+  await makeUser(ids.emp2, "employee", ["create_request", "view_own_requests"], "Emp2Pass!!", DEPT_B);
+  await makeUser(ids.mgr, "manager", ["approve_request", "reject_request"], "MgrPass!!!", DEPT_A);
+  await makeUser(ids.mgr2, "manager", ["approve_request", "reject_request"], "Mgr2Pass!!", DEPT_B);
+  await makeRequest(ids.r1, ids.emp1, DEPT_A);
+  await makeRequest(ids.r2, ids.emp2, DEPT_B);
 });
 
 after(async () => {
@@ -88,7 +101,7 @@ after(async () => {
   await prisma.notification.deleteMany({ where: { requestId: { in: [ids.r1, ids.r2] } } });
   await prisma.auditLog.deleteMany({ where: { entityId: { in: [ids.r1, ids.r2] } } });
   await prisma.medicalRequest.deleteMany({ where: { id: { in: [ids.r1, ids.r2] } } });
-  await prisma.user.deleteMany({ where: { id: { in: [ids.emp1, ids.emp2, ids.mgr] } } });
+  await prisma.user.deleteMany({ where: { id: { in: [ids.emp1, ids.emp2, ids.mgr, ids.mgr2] } } });
   await prisma.$disconnect();
   await app.close();
 });
@@ -116,6 +129,34 @@ test("IDOR: الموظف يشوف طلباته بس، ومش قادر يفتح �
 
   const other = await app.inject({ method: "GET", url: `/requests/${ids.r2}`, headers: auth(token) });
   assert.equal(other.statusCode, 403, "فتح طلب موظف تاني ممنوع");
+});
+
+test("فصل الإدارات: المدير يشوف طلبات إدارته فقط", async () => {
+  const mgrToken = (await login(ids.mgr, "MgrPass!!!")).json().token;
+
+  const list = await app.inject({ method: "GET", url: "/requests", headers: auth(mgrToken) });
+  assert.equal(list.statusCode, 200);
+  const rows = list.json() as Array<{ id: string; department: string }>;
+
+  assert.ok(rows.some((r) => r.id === ids.r1), "المدير يشوف طلب إدارته");
+  assert.ok(!rows.some((r) => r.id === ids.r2), "المدير ما يشوفش طلب إدارة تانية");
+  assert.ok(rows.every((r) => r.department === DEPT_A), "كل الطلبات المرجّعة من إدارة المدير");
+});
+
+test("عزل الإدارات: مدير إدارة تانية ممنوع يشوف/يعتمد طلب برّه إدارته", async () => {
+  const mgr2Token = (await login(ids.mgr2, "Mgr2Pass!!")).json().token;
+
+  // r1 في قسم A، ومدير2 في قسم B → ممنوع تمامًا (قراءة وكتابة)
+  const view = await app.inject({ method: "GET", url: `/requests/${ids.r1}`, headers: auth(mgr2Token) });
+  assert.equal(view.statusCode, 403, "مدير إدارة تانية ممنوع يشوف الطلب");
+
+  const approve = await app.inject({
+    method: "POST",
+    url: `/requests/${ids.r1}/transition`,
+    headers: auth(mgr2Token),
+    payload: { status: "approved", note: "محاولة اعتماد برّه الإدارة" },
+  });
+  assert.equal(approve.statusCode, 403, "مدير إدارة تانية ممنوع يعتمد الطلب");
 });
 
 test("الصلاحيات: الموظف ما يقدرش يوافق، المدير يقدر", async () => {

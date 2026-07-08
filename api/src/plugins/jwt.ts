@@ -14,6 +14,7 @@ declare module "fastify" {
       id: string;
       role: UserRole;
       permissions: Permission[];
+      department: string | null;
       isActive: boolean;
     };
   }
@@ -44,6 +45,7 @@ export function setupAuth(app: FastifyInstance) {
           id: true,
           role: true,
           permissions: true,
+          department: true,
           isActive: true,
         },
       });
@@ -59,6 +61,7 @@ export function setupAuth(app: FastifyInstance) {
         id: account.id,
         role: account.role as UserRole,
         permissions: JSON.parse(account.permissions) as Permission[],
+        department: account.department,
         isActive: account.isActive,
       };
     },
