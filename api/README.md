@@ -57,22 +57,37 @@ pnpm dev                             # API على http://localhost:4000 (reload 
 | `pnpm prisma:studio` | واجهة لتصفّح قاعدة البيانات |
 | `pnpm db:seed` | زرع البيانات الأولية (من `prisma/seed-data/*.json`) |
 
-## البنية
+## البنية (Structure)
+
+فكّر في الـ backend كأنه “مصانع” صغيرة:
+- **modules/** لكل ميزة (Auth / Requests / Users / …)
+- كل module عادةً فيها:
+  - **route**: استقبال HTTP requests
+  - **service**: قواعد العمل والمنطق
+  - **schema**: تعريف/تحقق شكل البيانات
 
 ```
 api/
 ├── prisma/
-│   ├── schema.prisma     ← كل الجداول في مكان واحد
-│   └── seed.ts           ← (المرحلة الجاية) زرع الـ 1750 مستخدم
+│   ├── schema.prisma     ← شكل الجداول (DB Contract)
+│   └── seed.ts           ← سكربت زراعة بيانات أولية (idempotent)
 └── src/
-    ├── server.ts         ← نقطة الدخول
-    ├── app.ts            ← بناء التطبيق وتسجيل الـ modules
-    ├── env.ts            ← التحقق من متغيّرات البيئة
-    ├── db/prisma.ts      ← اتصال قاعدة البيانات (singleton)
-    ├── middleware/       ← معالجة الأخطاء، حراسة الـ auth (لاحقًا)
-    └── modules/          ← كل feature لوحده (route + service + schema)
+    ├── server.ts         ← نقطة الدخول (تشغيل Fastify)
+    ├── app.ts            ← تسجيل الـ modules على السيرفر
+    ├── env.ts            ← التأكد من متغيرات البيئة (زي JWT_SECRET)
+    ├── db/prisma.ts      ← اتصال Prisma بقاعدة SQLite (singleton)
+    ├── middleware/       ← middleware لمعالجة الأخطاء + حماية الطلبات
+    └── modules/          ← كل ميزة لوحدها (route + service + schema)
         └── health/
 ```
+
+---
+
+## أين تتم “قواعد الأمان”؟
+- حماية الـ API عمومًا تحصل قبل تنفيذ المنطق داخل الـ routes عبر middleware/auth.
+- توجد أدوار وصلاحيات (Permissions) مرتبطة بـ **JWT**.
+- أي endpoint حساس لازم يكون محمي بـ `authenticate` + `requirePermission()` (حسب الميزة).
+
 
 ## خريطة المراحل
 

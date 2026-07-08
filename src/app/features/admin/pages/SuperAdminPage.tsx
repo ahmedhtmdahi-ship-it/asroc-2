@@ -30,18 +30,19 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/app/components/ui/dialog";
-import { Checkbox } from "@/app/components/ui/checkbox";
-import { Label } from "@/app/components/ui/label";
-import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
-import { useAuth } from "@/app/features/auth/AuthContext";
 import {
   listUsersApi,
   updateUserApi,
   createUserApi,
+  setUserActiveApi,
   listAuditLogsApi,
   countAuditLogsApi,
   type ApiUser,
 } from "@/app/lib/dataApi";
+import { Checkbox } from "@/app/components/ui/checkbox";
+import { Label } from "@/app/components/ui/label";
+import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
+import { useAuth } from "@/app/features/auth/AuthContext";
 import { USER_ROLES } from "@asroc/shared/roles.js";
 import { ApiError } from "@/app/lib/apiClient";
 import type { Permission, User, UserRole } from "@/app/types/user";
@@ -316,6 +317,31 @@ function UsersTab() {
     }
   }
 
+  async function handleToggleActive(user: User) {
+  if (user.id === currentUser?.id) {
+    alert("لا يمكنك تعطيل حسابك");
+    return;
+  }
+
+  const confirmText = user.isActive
+    ? `هل تريد تعطيل المستخدم "${user.name}"؟`
+    : `هل تريد تفعيل المستخدم "${user.name}"؟`;
+
+  if (!confirm(confirmText)) return;
+
+  try {
+    const updated = await setUserActiveApi(user.id, !user.isActive);
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === user.id ? apiUserToUser(updated) : u
+      )
+    );
+  } catch (err) {
+    alert("حدث خطأ أثناء تحديث حالة المستخدم");
+  }
+}
+
   async function handleSavePermissions(userId: string, newPermissions: string[]) {
     // ✅ حماية: منع تغيير صلاحيات المستخدم نفسه
     if (userId === currentUser?.id) {
@@ -464,6 +490,7 @@ function UsersTab() {
                   <th className="p-3 text-right">الإدارة</th>
                   <th className="p-3 text-right">الوظيفة</th>
                   <th className="p-3 text-right">طبيعة العمل</th>
+                  <th className="p-3 text-right">الحالة</th>
                   <th className="p-3 text-right">إجراءات</th>
                 </tr>
               </thead>
@@ -495,6 +522,17 @@ function UsersTab() {
                     <td className="p-3 text-slate-600">{user.jobTitle || "غير محدد"}</td>
                     <td className="p-3 text-slate-600">{user.workType || "غير محدد"}</td>
                     <td className="p-3">
+                     <Badge
+                       className={
+                         user.isActive
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                       }
+                       >
+                     {user.isActive ? "نشط" : "معطل"}
+                     </Badge>
+                       </td>
+                    <td className="p-3">
                       <div className="flex items-center gap-2">
                         <Button
                           size="sm"
@@ -504,11 +542,11 @@ function UsersTab() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-8 w-8 p-0"
-                          // ✅ حماية: منع فتح إعدادات الصلاحيات للمستخدم نفسه
                           disabled={user.id === currentUser?.id}
                           onClick={() => {
                             setEditingUser(user);
@@ -516,6 +554,15 @@ function UsersTab() {
                           }}
                         >
                           <Settings className="h-4 w-4" />
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant={user.isActive ? "destructive" : "outline"}
+                          disabled={user.id === currentUser?.id}
+                          onClick={() => handleToggleActive(user)}
+                        >
+                          {user.isActive ? "تعطيل" : "تفعيل"}
                         </Button>
                       </div>
                     </td>
