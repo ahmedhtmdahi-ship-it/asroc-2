@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./roles.js": "./src/roles.ts",
-    "./workflow.js": "./src/workflow.ts"
+    "./workflow.js": "./src/workflow.ts",
+    "./policy.js": "./src/policy.ts"
   }
 }

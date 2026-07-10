@@ -1,41 +1,28 @@
 import { profilesStore } from "@/app/store/profilesStore";
 
-function normalizeArabicText(value?: string) {
-  return (value || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/[أإآا]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ة/g, "ه")
-    .toLowerCase();
-}
-
-const monthlyTreatmentDoctorKeywords = ["روبير", "روبرت", "robert", "rober"];
-
+/**
+ * إيجاد طبيب العلاج الشهري.
+ *
+ * كان البحث بيتم بمطابقة اسم شخص بعينه ("روبير") — يعني لو الطبيب اتغيّر
+ * يلزم deploy جديد، ومع بيانات الـ seed الحالية مفيش أي تطابق أصلًا.
+ *
+ * البحث الآن بالصلاحية/الدور (من الأدق للأعم):
+ *  1) طبيب معه صلاحية recommend_monthly_treatment
+ *  2) أي مستخدم معه الصلاحية دي
+ *  3) أي طبيب نشط (fallback أخير عشان الفلو ما يقفش)
+ */
 export function findMonthlyTreatmentDoctor() {
-  const users = profilesStore.getAll();
+  const users = profilesStore.getAll().filter((u) => u.isActive !== false);
 
   return (
-    users.find((user) => {
-      const name = normalizeArabicText(user.name);
-      const jobTitle = normalizeArabicText(user.jobTitle);
-      const department = normalizeArabicText(user.department || user.workPlace);
-
-      const isDoctor =
-        user.role === "doctor" ||
-        user.permissions?.includes("recommend_monthly_treatment") ||
-        jobTitle.includes("طبيب") ||
-        jobTitle.includes("دكتور");
-
-      const isMonthlyTreatmentDoctor = monthlyTreatmentDoctorKeywords.some(
-        (keyword) =>
-          name.includes(normalizeArabicText(keyword)) ||
-          jobTitle.includes(normalizeArabicText(keyword)) ||
-          department.includes(normalizeArabicText(keyword))
-      );
-
-      return isDoctor && isMonthlyTreatmentDoctor;
-    }) || null
+    users.find(
+      (u) =>
+        u.role === "doctor" &&
+        u.permissions?.includes("recommend_monthly_treatment"),
+    ) ??
+    users.find((u) => u.permissions?.includes("recommend_monthly_treatment")) ??
+    users.find((u) => u.role === "doctor") ??
+    null
   );
 }
 

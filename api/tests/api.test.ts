@@ -8,10 +8,12 @@
  */
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
+import { rm } from "node:fs/promises";
 import bcrypt from "bcryptjs";
 
 import { buildApp } from "../src/app.js";
 import { prisma } from "../src/db/prisma.js";
+import { env } from "../src/env.js";
 
 const app = buildApp();
 
@@ -21,6 +23,8 @@ const DEPT_B = "قسم تاني";
 const ids = {
   emp1: "TEST-EMP-1",
   emp2: "TEST-EMP-2",
+  emp3: "TEST-EMP-3", // لاختبارات قواعد إنشاء الطلب والمرفقات
+  admin: "TEST-SUPER-1",
   mgr: "TEST-MGR-1", // مدير قسم A
   mgr2: "TEST-MGR-2", // مدير قسم B
   r1: "TEST-REQ-1", // طلب في قسم A
@@ -90,6 +94,8 @@ before(async () => {
   await app.ready();
   await makeUser(ids.emp1, "employee", ["create_request", "view_own_requests"], "Emp1Pass!!", DEPT_A);
   await makeUser(ids.emp2, "employee", ["create_request", "view_own_requests"], "Emp2Pass!!", DEPT_B);
+  await makeUser(ids.emp3, "employee", ["create_request", "view_own_requests"], "Emp3Pass!!", DEPT_A);
+  await makeUser(ids.admin, "super_admin", ["all"], "AdminPass!!", null);
   await makeUser(ids.mgr, "manager", ["approve_request", "reject_request"], "MgrPass!!!", DEPT_A);
   await makeUser(ids.mgr2, "manager", ["approve_request", "reject_request"], "Mgr2Pass!!", DEPT_B);
   await makeRequest(ids.r1, ids.emp1, DEPT_A);
@@ -97,11 +103,24 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.requestTimelineEvent.deleteMany({ where: { requestId: { in: [ids.r1, ids.r2] } } });
-  await prisma.notification.deleteMany({ where: { requestId: { in: [ids.r1, ids.r2] } } });
-  await prisma.auditLog.deleteMany({ where: { entityId: { in: [ids.r1, ids.r2] } } });
-  await prisma.medicalRequest.deleteMany({ where: { id: { in: [ids.r1, ids.r2] } } });
-  await prisma.user.deleteMany({ where: { id: { in: [ids.emp1, ids.emp2, ids.mgr, ids.mgr2] } } });
+  const testUsers = [ids.emp1, ids.emp2, ids.emp3, ids.admin, ids.mgr, ids.mgr2];
+  // طلبات emp3 اتعملت عبر الـ API بـ ids مولّدة — بنمسحها بالموظف مش بالـ id.
+  const emp3Requests = await prisma.medicalRequest.findMany({
+    where: { employeeId: ids.emp3 },
+    select: { id: true },
+  });
+  const requestIds = [ids.r1, ids.r2, ...emp3Requests.map((r) => r.id)];
+
+  await prisma.requestTimelineEvent.deleteMany({ where: { requestId: { in: requestIds } } });
+  await prisma.notification.deleteMany({ where: { requestId: { in: requestIds } } });
+  await prisma.auditLog.deleteMany({
+    where: { OR: [{ entityId: { in: requestIds } }, { userId: { in: testUsers } }] },
+  });
+  await prisma.medicalRequest.deleteMany({ where: { id: { in: requestIds } } });
+  await prisma.user.deleteMany({
+    where: { OR: [{ id: { in: testUsers } }, { username: "weak-pass-user" }] },
+  });
+  await rm(env.UPLOADS_DIR, { recursive: true, force: true });
   await prisma.$disconnect();
   await app.close();
 });
@@ -214,4 +233,248 @@ test("kill switch: تعطيل الحساب يبطّل التوكن فورًا", 
 
   const afterDeactivate = await app.inject({ method: "GET", url: "/auth/me", headers: auth(token) });
   assert.equal(afterDeactivate.statusCode, 401, "التوكن يتبطّل فور تعطيل الحساب");
+});
+
+test("regular employee cannot get PII from lookup endpoint", async () => {
+  const loginRes = await login(ids.emp1, "Emp1Pass!!");
+  assert.equal(loginRes.statusCode, 200);
+
+  const token = loginRes.json().token;
+
+  const res = await app.inject({
+    method: "GET",
+    url: "/users/lookup",
+    headers: auth(token),
+  });
+
+  assert.equal(res.statusCode, 200);
+
+  const users = res.json() as Array<Record<string, unknown>>;
+
+  assert.ok(Array.isArray(users));
+
+  for (const user of users) {
+    assert.equal("nationalId" in user, false);
+    assert.equal("phone" in user, false);
+    assert.equal("workPlace" in user, false);
+    assert.equal("workType" in user, false);
+  }
+});
+
+// ─── إنشاء الطلبات: الـ id من السيرفر وقواعد العمل على السيرفر ───────────
+
+function createPayload(overrides: Record<string, unknown> = {}) {
+  return {
+    employeeId: ids.emp3,
+    employeeName: ids.emp3,
+    financialNumber: "0003",
+    department: DEPT_A,
+    reason: "سبب اختبار قواعد الإنشاء",
+    serviceType: "checkup",
+    requestType: "normal",
+    ...overrides,
+  };
+}
+
+let emp3RequestId = ""; // بيتظبط في أول اختبار وبيستخدم في اختبارات المرفقات
+
+test("إنشاء طلب: السيرفر يولّد الـ id ويتجاهل أي id من العميل", async () => {
+  const token = (await login(ids.emp3, "Emp3Pass!!")).json().token;
+
+  const res = await app.inject({
+    method: "POST",
+    url: "/requests",
+    headers: auth(token),
+    payload: { ...createPayload(), id: "HACKED-ID-123" },
+  });
+  assert.equal(res.statusCode, 201);
+  const created = res.json();
+  assert.notEqual(created.id, "HACKED-ID-123", "الـ id المزروع من العميل بيتتجاهل");
+  assert.ok(created.id.length >= 32, "الـ id uuid مولّد على السيرفر");
+  assert.equal(created.status, "pending", "الحالة بيحددها السيرفر");
+  emp3RequestId = created.id;
+});
+
+test("قاعدة عمل: ممنوع طلب جديد وفيه طلب مفتوح (409)", async () => {
+  const token = (await login(ids.emp3, "Emp3Pass!!")).json().token;
+
+  const res = await app.inject({
+    method: "POST",
+    url: "/requests",
+    headers: auth(token),
+    payload: createPayload(),
+  });
+  assert.equal(res.statusCode, 409, "الطلب المفتوح بيمنع إنشاء طلب جديد");
+});
+
+// ─── المرفقات: رفع حقيقي بفحص نوع الملف الفعلي وقيود الوصول ─────────────
+
+function multipartPayload(filename: string, contentType: string, content: Buffer) {
+  const boundary = "----asroc-test-boundary";
+  return {
+    payload: Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\n` +
+          `content-disposition: form-data; name="file"; filename="${filename}"\r\n` +
+          `content-type: ${contentType}\r\n\r\n`,
+      ),
+      content,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]),
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  };
+}
+
+const PNG_BYTES = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01,
+]);
+
+test("مرفقات: رفع PNG صالح ينجح وتنزيله يرجع نفس المحتوى", async () => {
+  const token = (await login(ids.emp3, "Emp3Pass!!")).json().token;
+  const { payload, contentType } = multipartPayload("روشتة.png", "image/png", PNG_BYTES);
+
+  const uploaded = await app.inject({
+    method: "POST",
+    url: `/requests/${emp3RequestId}/attachments`,
+    headers: { ...auth(token), "content-type": contentType },
+    payload,
+  });
+  assert.equal(uploaded.statusCode, 201);
+  const attachment = uploaded.json();
+  assert.equal(attachment.fileType, "image/png", "النوع من الـ magic bytes مش من الامتداد");
+  assert.equal(attachment.fileSize, PNG_BYTES.length);
+
+  const download = await app.inject({
+    method: "GET",
+    url: `/requests/${emp3RequestId}/attachments/${attachment.id}`,
+    headers: auth(token),
+  });
+  assert.equal(download.statusCode, 200);
+  assert.ok(download.rawPayload.equals(PNG_BYTES), "المحتوى المنزّل مطابق للمرفوع");
+});
+
+test("مرفقات: ملف بامتداد png ومحتوى مش صورة بيترفض (400)", async () => {
+  const token = (await login(ids.emp3, "Emp3Pass!!")).json().token;
+  const fakeImage = Buffer.from("MZ this is actually an executable, not an image");
+  const { payload, contentType } = multipartPayload("virus.png", "image/png", fakeImage);
+
+  const res = await app.inject({
+    method: "POST",
+    url: `/requests/${emp3RequestId}/attachments`,
+    headers: { ...auth(token), "content-type": contentType },
+    payload,
+  });
+  assert.equal(res.statusCode, 400, "الفحص بالـ magic bytes بيرفض المحتوى المزيف");
+});
+
+test("مرفقات: مدير إدارة تانية ممنوع يرفع على الطلب (403)", async () => {
+  const token = (await login(ids.mgr2, "Mgr2Pass!!")).json().token;
+  const { payload, contentType } = multipartPayload("scan.png", "image/png", PNG_BYTES);
+
+  const res = await app.inject({
+    method: "POST",
+    url: `/requests/${emp3RequestId}/attachments`,
+    headers: { ...auth(token), "content-type": contentType },
+    payload,
+  });
+  assert.equal(res.statusCode, 403, "قيود فصل الإدارات سارية على المرفقات");
+});
+
+test("قاعدة عمل: حد الكشوفات الشهرية بيتطبق على السيرفر (400)", async () => {
+  // نقفل طلب emp3 المفتوح ونزرع 3 كشوفات مكتملة الشهر ده مباشرةً في الداتابيز.
+  await prisma.medicalRequest.update({
+    where: { id: emp3RequestId },
+    data: { status: "cancelled" },
+  });
+  for (let i = 1; i <= 3; i++) {
+    await prisma.medicalRequest.create({
+      data: {
+        employeeId: ids.emp3,
+        employeeName: ids.emp3,
+        financialNumber: "0003",
+        department: DEPT_A,
+        reason: `كشف مكتمل ${i}`,
+        serviceType: "checkup",
+        requestType: "normal",
+        status: "completed",
+      },
+    });
+  }
+
+  const token = (await login(ids.emp3, "Emp3Pass!!")).json().token;
+  const res = await app.inject({
+    method: "POST",
+    url: "/requests",
+    headers: auth(token),
+    payload: createPayload(),
+  });
+  assert.equal(res.statusCode, 400, "3 كشوفات مكتملة بتستهلك الحد الشهري");
+
+  // الطوارئ مستثناة من الحد — لكن بتتحسب طلب مفتوح، فبننضف بعدها.
+  const emergency = await app.inject({
+    method: "POST",
+    url: "/requests",
+    headers: auth(token),
+    payload: createPayload({ requestType: "emergency" }),
+  });
+  assert.equal(emergency.statusCode, 201, "الطوارئ مش محسوبة على الحد الشهري");
+});
+
+// ─── سياسة الباسورد (من packages/shared/policy) ─────────────────────────
+
+test("سياسة الباسورد: إنشاء مستخدم بباسورد ضعيف يفشل (400)", async () => {
+  const token = (await login(ids.admin, "AdminPass!!")).json().token;
+
+  const weak = await app.inject({
+    method: "POST",
+    url: "/users",
+    headers: auth(token),
+    payload: { username: "weak-pass-user", password: "1234", name: "ضعيف", role: "employee" },
+  });
+  assert.equal(weak.statusCode, 400, "أقل من 8 أحرف مرفوض");
+
+  const noDigit = await app.inject({
+    method: "POST",
+    url: "/users",
+    headers: auth(token),
+    payload: { username: "weak-pass-user", password: "abcdefgh", name: "ضعيف", role: "employee" },
+  });
+  assert.equal(noDigit.statusCode, 400, "من غير رقم مرفوض");
+});
+
+test("سياسة الباسورد: تغيير الباسورد لواحد ضعيف يفشل (400)", async () => {
+  const token = (await login(ids.emp3, "Emp3Pass!!")).json().token;
+  const res = await app.inject({
+    method: "POST",
+    url: "/auth/change-password",
+    headers: auth(token),
+    payload: { currentPassword: "Emp3Pass!!", newPassword: "abc" },
+  });
+  assert.equal(res.statusCode, 400);
+});
+
+// ─── الأقسام (A7) ────────────────────────────────────────────────────────
+
+test("الأقسام: /departments بيرجع القسم باسمه الحقيقي ومعاه اسم المدير", async () => {
+  await prisma.department.upsert({
+    where: { name: DEPT_A },
+    create: { name: DEPT_A, managerFinancialNumber: "MGR-FIN-1" },
+    update: { managerFinancialNumber: "MGR-FIN-1" },
+  });
+  await prisma.user.update({
+    where: { id: ids.mgr },
+    data: { financialNumber: "MGR-FIN-1" },
+  });
+
+  const token = (await login(ids.emp3, "Emp3Pass!!")).json().token;
+  const res = await app.inject({ method: "GET", url: "/departments", headers: auth(token) });
+  assert.equal(res.statusCode, 200);
+
+  const rows = res.json() as Array<{ name: string; managerName: string | null }>;
+  const dept = rows.find((d) => d.name === DEPT_A);
+  assert.ok(dept, "القسم موجود بالاسم الحقيقي (مش اسم المدير)");
+  assert.equal(dept!.managerName, ids.mgr, "اسم المدير بيتكمّل من جدول المستخدمين");
+
+  await prisma.department.deleteMany({ where: { name: DEPT_A } });
 });

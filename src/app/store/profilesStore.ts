@@ -27,13 +27,13 @@ class ProfilesStore extends ReactiveStore {
         financialNumber: u.financialNumber,
         name: u.name,
         jobTitle: u.jobTitle,
-        workPlace: u.workPlace,
+        workPlace: null, // مش بيرجع من /users/lookup (تقليل البيانات المعروضة)
         department: u.department,
         nationalId: null,
         phone: null,
-        workType: u.workType,
+        workType: null,
         role: u.role,
-        permissions: [],
+        permissions: u.permissions,
         isActive: u.isActive,
       }));
       this.emit();

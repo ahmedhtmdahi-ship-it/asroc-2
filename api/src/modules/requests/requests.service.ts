@@ -1,9 +1,11 @@
 import { prisma } from "../../db/prisma.js";
 import { badRequest, conflict, notFound } from "../../lib/httpError.js";
+import { MONTHLY_CHECKUP_LIMIT } from "@asroc/shared/policy.js";
 import {
   canMove,
   statusLabels,
   statusTimestampField,
+  closedRequestStatuses,
   isClosedStatus,
   type RequestStatus,
 } from "./requests.workflow.js";
@@ -60,7 +62,7 @@ export async function getRequest(id: string) {
 }
 
 export async function createRequest(input: CreateRequestInput, actor: Actor) {
-  const { id, ...rest } = input;
+  const rest = input;
 
   const status: RequestStatus =
     rest.serviceType === "monthly_treatment"
@@ -69,31 +71,67 @@ export async function createRequest(input: CreateRequestInput, actor: Actor) {
       ? "approved"
       : "pending";
 
-  const created = await prisma.medicalRequest.create({
-    data: {
-      ...(id ? { id } : {}),
-      ...rest,
-      status,
-      ...(status === "approved" ? { approvedAt: new Date() } : {}),
-      createdBy: actor.id,
-      timeline: {
-        create: [
-          {
-            status,
-            userId: actor.id,
-            userName: actor.name,
-            userRole: actor.role,
-            notes: rest.notes ?? null,
-          },
-        ],
+  // قواعد العمل بتتطبق هنا (مش في الواجهة بس) — الواجهة بتفحصها لتحسين التجربة،
+  // لكن السيرفر هو الحكم: أي نداء مباشر للـ API بيتحاسب بنفس القواعد.
+  const created = await prisma.$transaction(async (tx) => {
+    // 1) طلب مفتوح واحد فقط لكل موظف — أي نوع طلب بيتحجب لو فيه طلب لسه شغال.
+    const openCount = await tx.medicalRequest.count({
+      where: {
+        employeeId: rest.employeeId,
+        status: { notIn: closedRequestStatuses },
       },
-    },
-    include: {
-      medications: true,
-      timeline: { orderBy: { timestamp: "asc" } },
-      attachments: true,
-      referral: true,
-    },
+    });
+    if (openCount > 0) {
+      throw conflict("يوجد طلب مفتوح بالفعل لهذا الموظف — يجب إغلاقه أولًا");
+    }
+
+    // 2) حد الكشوفات العادية المكتملة في الشهر الميلادي الحالي.
+    if (rest.serviceType !== "monthly_treatment" && rest.requestType !== "emergency") {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const used = await tx.medicalRequest.count({
+        where: {
+          employeeId: rest.employeeId,
+          serviceType: "checkup",
+          requestType: "normal",
+          status: "completed",
+          createdAt: { gte: monthStart },
+        },
+      });
+      if (used >= MONTHLY_CHECKUP_LIMIT) {
+        throw badRequest(
+          `تم استهلاك الحد الشهري للكشوفات العادية (${MONTHLY_CHECKUP_LIMIT})`,
+        );
+      }
+    }
+
+    // الـ id بيتولّد على السيرفر (uuid) — العميل لا يرسل معرّفات.
+    return tx.medicalRequest.create({
+      data: {
+        ...rest,
+        status,
+        ...(status === "approved" ? { approvedAt: new Date() } : {}),
+        createdBy: actor.id,
+        timeline: {
+          create: [
+            {
+              status,
+              userId: actor.id,
+              userName: actor.name,
+              userRole: actor.role,
+              notes: rest.notes ?? null,
+            },
+          ],
+        },
+      },
+      include: {
+        medications: true,
+        timeline: { orderBy: { timestamp: "asc" } },
+        attachments: true,
+        referral: true,
+      },
+    });
   });
 
   // Best-effort audit (لا نُفشل العملية الأساسية بسبب drift في AuditLog schema/DB)

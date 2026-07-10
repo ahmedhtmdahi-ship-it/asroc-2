@@ -3,10 +3,8 @@ import { z } from "zod";
 import { REQUEST_STATUSES } from "./requests.workflow.js";
 
 export const createRequestSchema = z.object({
-  // نقبل id من العميل فقط لأجل العرض المتفائل.
-  // حالة الطلب ووقت الإنشاء تحددها السيرفر.
-  id: z.string().optional(),
-
+  // الـ id والحالة ووقت الإنشاء يولّدها السيرفر — العميل لا يرسل معرّفات.
+  // (العرض المتفائل في الواجهة بيستخدم id مؤقت بيتبدل لما رد السيرفر يوصل.)
   employeeId: z.string().min(1),
   employeeName: z.string().min(1),
   financialNumber: z.string().min(1),

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 
 import { prisma } from "../../db/prisma.js";
 import { requirePermission } from "../../middleware/requirePermission.js";
+import { newPasswordSchema } from "../auth/auth.schema.js";
 import { USER_ROLES, PERMISSIONS, type UserRole } from "@asroc/shared/roles.js";
 
 const BCRYPT_ROUNDS = 10;
@@ -32,7 +33,7 @@ const patchUserSchema = z.object({
 
 const createUserSchema = z.object({
   username:        z.string().min(1, "اسم المستخدم مطلوب"),
-  password:        z.string().min(4, "كلمة المرور يجب أن تكون 4 أحرف على الأقل"),
+  password:        newPasswordSchema,
   name:            z.string().min(1, "الاسم مطلوب"),
   role:            z.enum(USER_ROLES),
   permissions:     z.array(z.enum(PERMISSIONS)).default([]),
@@ -91,7 +92,9 @@ function formatUser(u: DbUser) {
 }
 
 export async function userRoutes(app: FastifyInstance) {
-  // GET /users/lookup
+  // GET /users/lookup — دليل مصغّر لأي مستخدم مسجّل (إيجاد المدير/طبيب العلاج الشهري).
+  // بيانات تعريف فقط — ممنوع رجوع nationalId أو phone من هنا (PII).
+  // البيانات الكاملة من GET /users المحمي بـ manage_system.
   app.get(
     "/lookup",
     { preHandler: [app.authenticate] },
@@ -106,15 +109,12 @@ export async function userRoutes(app: FastifyInstance) {
           department: true,
           financialNumber: true,
           jobTitle: true,
-          workPlace: true,
-          workType: true,
-          nationalId: true,
-          phone: true,
+          permissions: true,
           isActive: true,
         },
         orderBy: { name: "asc" },
       });
-      return users;
+      return users.map((u) => ({ ...u, permissions: parsePerms(u.permissions) }));
     },
   );
 
