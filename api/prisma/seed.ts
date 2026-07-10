@@ -9,7 +9,8 @@
  * البيانات مخزّنة كـ JSON جوه الـ backend (مش في الـ frontend) عشان تشتغل جوه صورة الـ Docker.
  * التشغيل:  cd api && pnpm db:seed
  */
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -30,6 +31,7 @@ const SEED_DIR = join(dirname(fileURLToPath(import.meta.url)), "seed-data");
 interface SeedUser {
   id: string;
   username: string;
+  /** موجود فقط في test-users.json (حسابات صناعية) — ملف الإنتاج بلا باسوردات نهائيًا. */
   password?: string;
   financialNumber?: string;
   name: string;
@@ -42,6 +44,7 @@ interface SeedUser {
   role: string;
   permissions?: string[];
   isActive?: boolean;
+  mustChangePassword?: boolean;
 }
 
 interface SeedDepartment {
@@ -70,14 +73,45 @@ const mockUsers = loadJson<SeedUser[]>("users.json");
 const mockDepartments = loadJson<SeedDepartment[]>("departments.json");
 const medicinesSeed = loadJson<SeedMedicine[]>("medicines.json");
 
-async function seedUsers() {
-  console.log(`\n👤 زرع ${mockUsers.length} مستخدم (مع bcrypt)...`);
-  let done = 0;
-  let missingPassword = 0;
+// حسابات الاختبار (باسوردات ثابتة معروفة) تُزرع فقط خارج الإنتاج.
+const testUsersPath = join(SEED_DIR, "test-users.json");
+const testUsers: SeedUser[] =
+  process.env.NODE_ENV !== "production" && existsSync(testUsersPath)
+    ? loadJson<SeedUser[]>("test-users.json")
+    : [];
 
-  for (const u of mockUsers) {
-    const plain = u.password?.trim() || u.financialNumber || u.username;
-    if (!u.password?.trim()) missingPassword++;
+// باسورد عشوائي 12 حرف يستوفي السياسة (حرف + رقم على الأقل).
+function randomPassword(): string {
+  for (;;) {
+    const candidate = randomBytes(9).toString("base64url").slice(0, 12);
+    if (/[a-zA-Z]/.test(candidate) && /[0-9]/.test(candidate)) return candidate;
+  }
+}
+
+async function seedUsers() {
+  const all = [...mockUsers, ...testUsers];
+  console.log(`\n👤 زرع ${all.length} مستخدم (مع bcrypt)...`);
+  let done = 0;
+
+  // الباسوردات المولّدة بتتكتب CSV خارج git (المجلد في .gitignore) —
+  // دي الوسيلة الوحيدة لتسليم باسورد أول دخول، ومفيش نص صريح في الريبو.
+  const generated: string[][] = [];
+
+  const adminEnvPassword = process.env.SEED_ADMIN_PASSWORD?.trim();
+  if (!adminEnvPassword && process.env.NODE_ENV === "production") {
+    console.error(
+      "❌ في الإنتاج لازم تحدد SEED_ADMIN_PASSWORD (باسورد حساب admin) قبل الزرع.",
+    );
+    process.exit(1);
+  }
+
+  for (const u of all) {
+    let plain = u.password?.trim();
+    if (u.username === "admin") plain = adminEnvPassword || plain;
+    if (!plain) {
+      plain = randomPassword();
+      generated.push([u.financialNumber ?? "", u.username, u.name, plain]);
+    }
 
     const passwordHash = await bcrypt.hash(plain, BCRYPT_ROUNDS);
 
@@ -96,8 +130,8 @@ async function seedUsers() {
       role: u.role as any,
       permissions: JSON.stringify(u.permissions ?? []),
       isActive: u.isActive ?? true,
-      // كل الحسابات المزروعة لازم تغيّر الباسورد أول دخول (أمان on-prem).
-      mustChangePassword: true,
+      // الافتراضي: تغيير الباسورد أول دخول (أمان on-prem). حسابات test مستثناة صراحةً.
+      mustChangePassword: u.mustChangePassword ?? true,
     };
 
     await prisma.user.upsert({
@@ -106,10 +140,25 @@ async function seedUsers() {
       update: data,
     });
 
-    if (++done % 200 === 0) console.log(`   ... ${done}/${mockUsers.length}`);
+    if (++done % 200 === 0) console.log(`   ... ${done}/${all.length}`);
   }
 
-  console.log(`✅ المستخدمون: ${done} (تم توليد باسورد احتياطي لـ ${missingPassword} بدون باسورد)`);
+  if (generated.length > 0) {
+    const outDir = join(SEED_DIR, "..", "seed-output");
+    mkdirSync(outDir, { recursive: true });
+    const csvPath = join(outDir, "seed-passwords.csv");
+    const csv = [["financialNumber", "username", "name", "password"], ...generated]
+      .map((row) => row.map((c) => `"${c.replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    writeFileSync(csvPath, "﻿" + csv, "utf8");
+    console.log(`🔑 اتولّد باسورد عشوائي لـ ${generated.length} مستخدم → ${csvPath}`);
+    console.log("   (الملف خارج git — وزّعه بأمان ثم امسحه. كل الحسابات مطالبة بتغييره أول دخول.)");
+    if (!adminEnvPassword) {
+      console.log("⚠️  SEED_ADMIN_PASSWORD مش متحدد — باسورد admin عشوائي وموجود في الـ CSV.");
+    }
+  }
+
+  console.log(`✅ المستخدمون: ${done} (منهم ${testUsers.length} حساب اختبار)`);
 }
 
 async function seedDepartments() {
@@ -121,10 +170,10 @@ async function seedDepartments() {
       managerFinancialNumber: d.managerFinancialNumber ?? null,
     };
     await prisma.department.upsert({
-      where: { id: d.id },
-      create: { id: d.id, ...data },
-      update: data,
-    });
+     where: { name: d.name },
+     create: { id: d.id, ...data },
+     update: data,
+   });
   }
   console.log(`✅ الأقسام: ${mockDepartments.length}`);
 }
@@ -155,16 +204,16 @@ async function seedMedicines() {
 async function main() {
   console.log("🌱 بدء زرع قاعدة البيانات...");
 
-  // حارس idempotency: لو فيه بيانات بالفعل، ما نعيدش الزرع (إلا بالإجبار).
+  // حارس idempotency على المستخدمين فقط — الأقسام والأدوية upsert آمنة دايمًا.
   const existingUsers = await prisma.user.count();
   if (existingUsers > 0 && process.env.SEED_FORCE !== "1") {
     console.log(
-      `⏭️  فيه ${existingUsers} مستخدم بالفعل — تخطّي الزرع. (استخدم SEED_FORCE=1 للإجبار)`,
+      `⏭️  فيه ${existingUsers} مستخدم بالفعل — تخطّي زرع المستخدمين فقط. (SEED_FORCE=1 للإجبار)`,
     );
-    return;
+  } else {
+    await seedUsers();
   }
 
-  await seedUsers();
   await seedDepartments();
   await seedMedicines();
   console.log("\n🎉 تم الزرع بنجاح.");

@@ -15,6 +15,10 @@ services:
       DATABASE_URL: "file:/data/prod.db"
       # لازم يتحدّد (السيرفر بيرفض القيمة الافتراضية). حُطّه في .env أو البيئة.
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (>=16 chars) in .env}
+      # باسورد admin عند الزرع الأول — الزرع في production بيرفض يشتغل من غيره.
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      # مرفقات الطلبات على نفس الـ volume الدائم (النسخ الاحتياطي بيشملها).
+      UPLOADS_DIR: /data/uploads
       PORT: 4000
       HOST: 0.0.0.0
     volumes:

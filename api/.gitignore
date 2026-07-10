@@ -6,3 +6,6 @@ prisma/dev.db
 prisma/dev.db-journal
 prisma/dev.db-shm
 prisma/dev.db-wal
+prisma/seed-output/
+prisma/test.db*
+uploads/

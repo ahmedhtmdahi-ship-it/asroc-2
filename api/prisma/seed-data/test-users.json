@@ -1,0 +1,160 @@
+[
+  {
+    "id": "TEST-DOCTOR",
+    "username": "test-doctor",
+    "financialNumber": "TEST-DOC",
+    "name": "طبيب اختبار",
+    "jobTitle": "طبيب عام",
+    "workPlace": "العيادة الطبية",
+    "department": "الخدمات الطبية",
+    "role": "doctor",
+    "permissions": [
+      "diagnose_patient",
+      "create_prescription",
+      "create_referral",
+      "create_sick_leave",
+      "view_medical_history"
+    ],
+    "isActive": true,
+    "password": "Test@1234",
+    "mustChangePassword": false
+  },
+  {
+    "id": "TEST-PHARMACY",
+    "username": "test-pharmacy",
+    "financialNumber": "TEST-PHARM",
+    "name": "صيدلي اختبار",
+    "jobTitle": "صيدلي",
+    "workPlace": "الصيدلية",
+    "department": "الخدمات الطبية",
+    "role": "pharmacy",
+    "permissions": [
+      "dispense_prescription",
+      "manage_inventory",
+      "dispense_regular_treatment",
+      "dispense_monthly_treatment"
+    ],
+    "isActive": true,
+    "password": "Test@1234",
+    "mustChangePassword": false
+  },
+  {
+    "id": "TEST-OFFICE-MGR",
+    "username": "test-office-mgr",
+    "financialNumber": "TEST-OMGR",
+    "name": "مدير مكتب اختبار",
+    "jobTitle": "مدير مكتب",
+    "workPlace": "مكتب المدير العام",
+    "department": "الإدارة",
+    "role": "office_manager",
+    "permissions": [
+      "approve_request",
+      "reject_request",
+      "postpone_request",
+      "view_reports",
+      "print_documents"
+    ],
+    "isActive": true,
+    "password": "Test@1234",
+    "mustChangePassword": false
+  },
+  {
+    "id": "TEST-PENSION",
+    "username": "test-pension",
+    "financialNumber": "TEST-PEN",
+    "name": "مشرف معاشات اختبار",
+    "jobTitle": "مشرف معاشات",
+    "workPlace": "شئون المعاشات",
+    "department": "الخدمات الطبية",
+    "role": "pension_admin",
+    "permissions": [
+      "manage_pensioners",
+      "manage_monthly_treatment",
+      "dispense_monthly_treatment",
+      "view_reports"
+    ],
+    "isActive": true,
+    "password": "Test@1234",
+    "mustChangePassword": false
+  },
+  {
+    "id": "TEST-EMPLOYEE",
+    "username": "test-employee",
+    "name": "موظف اختبار",
+    "jobTitle": "فني تشغيل",
+    "workPlace": "التقطير",
+    "department": "التقطير",
+    "workType": "ورادى",
+    "role": "employee",
+    "permissions": [
+      "create_request",
+      "view_own_requests",
+      "view_medical_history"
+    ],
+    "financialNumber": "TEST-EMPLOYEE",
+    "isActive": true,
+    "password": "Test@1234",
+    "mustChangePassword": false
+  },
+  {
+    "id": "TEST-MANAGER",
+    "username": "test-manager",
+    "name": "مدير اختبار",
+    "jobTitle": "مدير إدارة",
+    "workPlace": "التقطير",
+    "department": "التقطير",
+    "workType": "إداري",
+    "role": "manager",
+    "permissions": [
+      "approve_request",
+      "reject_request",
+      "postpone_request",
+      "view_reports",
+      "print_documents"
+    ],
+    "financialNumber": "TEST-MANAGER",
+    "isActive": true,
+    "password": "Test@1234",
+    "mustChangePassword": false
+  },
+  {
+    "id": "TEST-SECURITY",
+    "username": "test-security",
+    "name": "فرد أمن اختبار",
+    "jobTitle": "فرد أمن",
+    "workPlace": "البوابة",
+    "department": "الأمن",
+    "workType": "ورادى",
+    "role": "security",
+    "permissions": [
+      "security_check_out",
+      "security_check_in"
+    ],
+    "financialNumber": "TEST-SECURITY",
+    "isActive": true,
+    "password": "Test@1234",
+    "mustChangePassword": false
+  },
+  {
+    "id": "TEST-MEDICAL-ADMIN",
+    "username": "test-medical-admin",
+    "name": "إداري طبي اختبار",
+    "jobTitle": "إداري طبي",
+    "workPlace": "العيادة",
+    "department": "الخدمات الطبية",
+    "workType": "إداري",
+    "role": "medical_admin",
+    "permissions": [
+      "approve_referral",
+      "manage_monthly_treatment",
+      "manage_referrals",
+      "view_reports",
+      "print_documents",
+      "view_audit_log"
+    ],
+    "financialNumber": "TEST-MEDICAL-ADMIN",
+    "isActive": true,
+    "password": "Test@1234",
+    "mustChangePassword": false
+  }
+]
