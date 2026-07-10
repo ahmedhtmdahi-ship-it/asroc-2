@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { PageLayout } from "@/app/components/PageLayout";
+import { StatCard } from "@/app/components/StatCard";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
@@ -31,24 +32,6 @@ import { useStore } from "@/app/store/reactiveStore";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 import { toast } from "sonner";
-
-function StatCard({ item }: { item: any }) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${item.bg}`}>
-            <item.icon className={`h-7 w-7 ${item.color}`} />
-          </div>
-          <div className="text-left">
-            <p className={`text-3xl font-bold ${item.color}`}>{item.value}</p>
-            <p className="mt-1 text-sm text-slate-500">{item.label}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function RequestSummaryCard({ request }: { request: MedicalRequest }) {
   return (
@@ -350,7 +333,7 @@ export function MedicalAdminPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {stats.map((item) => <StatCard key={item.label} item={item} />)}
+          {stats.map((item) => <StatCard key={item.label} {...item} />)}
         </div>
 
         <Tabs defaultValue="emergency" dir="rtl">

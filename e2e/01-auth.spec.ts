@@ -71,8 +71,9 @@ test.describe("Authentication", () => {
     await page.fill(LOGIN.password, user.password);
     await page.click(LOGIN.submit);
 
+    // الموظف بيهبط على /employee (أو /change-password لو مطالب بالتغيير)
     await page.waitForURL(
-      /\/(change-password|dashboard)/,
+      /\/(change-password|employee)/,
     );
   });
 
@@ -112,7 +113,7 @@ test.describe("Change Password (forced)", () => {
   test("redirects seeded users to change-password on first login", async ({
     page,
   }) => {
-    const user = TEST_USERS.employee;
+    const user = TEST_USERS.force_change;
     await page.goto("/");
     await page.fill(LOGIN.username, user.username);
     await page.fill(LOGIN.password, user.password);
@@ -128,11 +129,11 @@ test.describe("Change Password (forced)", () => {
   });
 
   test("validates new password minimum length", async ({ page }) => {
-    await loginAs(page, "employee", { skipPasswordChange: true });
+    await loginAs(page, "force_change", { skipPasswordChange: true });
     // Should be on change-password page
     if (!page.url().includes("/change-password")) return;
 
-    await page.fill(CHANGE_PASSWORD.currentPassword, "خالد 50");
+    await page.fill(CHANGE_PASSWORD.currentPassword, TEST_USERS.force_change.password);
     await page.fill(CHANGE_PASSWORD.newPassword, "short");
     await page.fill(CHANGE_PASSWORD.confirmPassword, "short");
     await page.click(CHANGE_PASSWORD.submit);
@@ -143,10 +144,10 @@ test.describe("Change Password (forced)", () => {
   });
 
   test("validates password confirmation mismatch", async ({ page }) => {
-    await loginAs(page, "employee", { skipPasswordChange: true });
+    await loginAs(page, "force_change", { skipPasswordChange: true });
     if (!page.url().includes("/change-password")) return;
 
-    await page.fill(CHANGE_PASSWORD.currentPassword, "خالد 50");
+    await page.fill(CHANGE_PASSWORD.currentPassword, TEST_USERS.force_change.password);
     await page.fill(CHANGE_PASSWORD.newPassword, "NewPass@2025!");
     await page.fill(CHANGE_PASSWORD.confirmPassword, "DifferentPass@2025!");
     await page.click(CHANGE_PASSWORD.submit);
@@ -157,7 +158,7 @@ test.describe("Change Password (forced)", () => {
   });
 
   test("validates new password differs from current", async ({ page }) => {
-    await loginAs(page, "employee", { skipPasswordChange: true });
+    await loginAs(page, "force_change", { skipPasswordChange: true });
     if (!page.url().includes("/change-password")) return;
 
     const samePass = "SamePassword@2025!";
@@ -177,12 +178,13 @@ test.describe("Change Password (forced)", () => {
     // Use the loginAs helper which handles password change flow
     // This will change the password if mustChangePassword is true,
     // or login directly if already changed from a previous run
-    await loginAs(page, "security");
-    await expect(page).toHaveURL(/\/dashboard/);
+    await loginAs(page, "force_change_success");
+    // بعد التغيير بيهبط على صفحة دوره (موظف → /employee)
+    await expect(page).toHaveURL(/\/employee/);
   });
 
   test("can log out from change-password page", async ({ page }) => {
-    const user = TEST_USERS.manager;
+    const user = TEST_USERS.force_change;
     await page.goto("/");
     await page.fill(LOGIN.username, user.username);
     await page.fill(LOGIN.password, user.password);

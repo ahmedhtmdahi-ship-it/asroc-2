@@ -42,7 +42,11 @@ export function LoginPage() {
         return;
       }
 
-      navigate(getRedirectPathByRole(user.role));
+      // المطالب بتغيير الباسورد يروح مباشرة — ProtectedRoute بيفرضها برضه
+      // على أي صفحة محمية، ده بس بيوفّر الـ redirect الزيادة.
+      navigate(
+        user.mustChangePassword ? "/change-password" : getRedirectPathByRole(user.role),
+      );
     } finally {
       setIsLoading(false);
     }

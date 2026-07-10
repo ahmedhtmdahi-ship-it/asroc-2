@@ -16,10 +16,19 @@ cd "$(dirname "$0")"
 
 echo "▶ 1/3  إيقاف أي سيرفرات قديمة على 4000/5173…"
 for port in 4000 5173; do
-  pids=$(lsof -ti :"$port" 2>/dev/null || true)
-  if [ -n "$pids" ]; then
-    echo "   • قتل PIDs على المنفذ $port: $pids"
-    kill $pids 2>/dev/null || true
+  if command -v lsof >/dev/null 2>&1; then
+    pids=$(lsof -ti :"$port" 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+      echo "   • قتل PIDs على المنفذ $port: $pids"
+      kill $pids 2>/dev/null || true
+    fi
+  else
+    # Windows (Git Bash): مفيش lsof — بنستخدم netstat + taskkill.
+    pids=$(netstat -ano 2>/dev/null | awk -v p=":$port" '/LISTENING/ && $2 ~ p"$" {print $NF}' | sort -u)
+    for pid in $pids; do
+      echo "   • قتل PID على المنفذ $port: $pid"
+      taskkill //PID "$pid" //F >/dev/null 2>&1 || true
+    done
   fi
 done
 # مهلة صغيرة عشان المنافذ تتحرّر

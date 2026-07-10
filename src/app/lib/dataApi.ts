@@ -141,10 +141,9 @@ export interface ApiNotification {
   createdAt: string;
 }
 
-export function listNotificationsApi(userId: string, limit = 50): Promise<ApiNotification[]> {
-  return apiFetch<ApiNotification[]>(
-    `/notifications?userId=${encodeURIComponent(userId)}&limit=${limit}`
-  );
+// السيرفر بيحدد المستخدم من التوكن — مفيش داعي لباراميتر userId.
+export function listNotificationsApi(limit = 50): Promise<ApiNotification[]> {
+  return apiFetch<ApiNotification[]>(`/notifications?limit=${limit}`);
 }
 
 export function markNotificationsReadApi(ids?: string[]): Promise<{ ok: boolean }> {

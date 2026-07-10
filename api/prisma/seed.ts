@@ -69,7 +69,13 @@ function loadJson<T>(name: string): T {
   return JSON.parse(readFileSync(join(SEED_DIR, name), "utf8")) as T;
 }
 
-const mockUsers = loadJson<SeedUser[]>("users.json");
+// users.local.json = الداتا الحقيقية (خارج git — شوف api/.gitignore). لو موجودة
+// بتتفضّل على users.json الصناعي. دي وسيلة تسليم الداتا الفعلية للـ on-prem.
+const localUsersPath = join(SEED_DIR, "users.local.json");
+const useLocalUsers = existsSync(localUsersPath);
+const mockUsers = useLocalUsers
+  ? loadJson<SeedUser[]>("users.local.json")
+  : loadJson<SeedUser[]>("users.json");
 const mockDepartments = loadJson<SeedDepartment[]>("departments.json");
 const medicinesSeed = loadJson<SeedMedicine[]>("medicines.json");
 
@@ -90,7 +96,9 @@ function randomPassword(): string {
 
 async function seedUsers() {
   const all = [...mockUsers, ...testUsers];
-  console.log(`\n👤 زرع ${all.length} مستخدم (مع bcrypt)...`);
+  console.log(
+    `\n👤 زرع ${all.length} مستخدم (مع bcrypt) — المصدر: ${useLocalUsers ? "users.local.json (داتا حقيقية)" : "users.json (داتا صناعية)"}...`,
+  );
   let done = 0;
 
   // الباسوردات المولّدة بتتكتب CSV خارج git (المجلد في .gitignore) —

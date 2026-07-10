@@ -1,4 +1,4 @@
-﻿import {
+import {
   createContext,
   useContext,
   useEffect,
@@ -8,7 +8,7 @@
 } from "react";
 
 import type { MedicalRequest } from "@/app/types/request";
-import type { RequestStatus } from "@/app/types/workflow";
+import { canMove, type RequestStatus } from "@/app/types/workflow";
 import { requestStore } from "../store/requestStore";
 import { useStore } from "../store/reactiveStore";
 import { managersStore } from "../store/managersStore";
@@ -16,7 +16,6 @@ import { departmentsStore } from "../store/departmentsStore";
 import { medicineStore } from "../store/medicineStore";
 import { profilesStore } from "../store/profilesStore";
 import { notificationStore } from "../store/notificationStore";
-import { workflowStore } from "../store/workflowStore";
 import { useAuth } from "@/app/features/auth/AuthContext";
 
 interface WorkflowContextValue {
@@ -24,23 +23,11 @@ interface WorkflowContextValue {
   syncing: boolean;
   refreshRequests: () => void;
   createRequest: (request: MedicalRequest, attachments?: File[]) => MedicalRequest;
+  /**
+   * الانتقال الوحيد لكل الحالات — بدل 16 wrapper باسم لكل حالة.
+   * أسماء الحالات من RequestStatus المشترك (نفس أسماء السيرفر).
+   */
   moveRequest: (requestId: string, nextStatus: RequestStatus, note?: string) => MedicalRequest | null;
-  approveRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  rejectRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  postponeRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  cancelRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  checkOutRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  startDiagnosis: (requestId: string, note?: string) => MedicalRequest | null;
-  prescribeRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  dispenseRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  checkInRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  completeRequest: (requestId: string, note?: string) => MedicalRequest | null;
-  approveMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
-  rejectMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
-  modifyMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
-  sendMonthlyTreatmentToPharmacy: (requestId: string, note?: string) => MedicalRequest | null;
-  dispenseMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
-  completeMonthlyTreatment: (requestId: string, note?: string) => MedicalRequest | null;
 }
 
 const WorkflowContext = createContext<WorkflowContextValue | undefined>(
@@ -70,7 +57,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       departmentsStore.syncFromApi(),
       medicineStore.syncFromApi(),
       profilesStore.syncFromApi(),
-      notificationStore.syncFromApi(user.id),
+      notificationStore.syncFromApi(),
     ])
       .catch(() => {})
       .finally(() => setSyncing(false));
@@ -80,6 +67,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     return requestStore.create(request, attachments);
   };
 
+  // فحص الانتقال هنا UX مبكر فقط — القاعدة الحقيقية والصلاحيات على السيرفر.
   const moveRequest = (
     requestId: string,
     nextStatus: RequestStatus,
@@ -87,16 +75,16 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   ) => {
     if (!user) return null;
 
-    return workflowStore.moveStatus(
-      {
-        requestId,
-        userId: user.id,
-        userName: user.name,
-        role: user.role,
-        note,
-      },
-      nextStatus
-    );
+    const request = requestStore.getById(requestId);
+    if (!request) throw new Error("Request not found");
+
+    if (!canMove(request.status, nextStatus)) {
+      throw new Error(
+        `Invalid workflow transition: ${request.status} → ${nextStatus}`
+      );
+    }
+
+    return requestStore.updateStatus(requestId, nextStatus, note);
   };
 
   const value = useMemo<WorkflowContextValue>(
@@ -105,56 +93,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       syncing,
       refreshRequests,
       createRequest,
-
       moveRequest,
-
-      approveRequest: (requestId, note) =>
-        moveRequest(requestId, "approved", note),
-
-      rejectRequest: (requestId, note) =>
-        moveRequest(requestId, "rejected", note),
-
-      postponeRequest: (requestId, note) =>
-        moveRequest(requestId, "postponed", note),
-
-      cancelRequest: (requestId, note) =>
-        moveRequest(requestId, "cancelled", note),
-
-      checkOutRequest: (requestId, note) =>
-        moveRequest(requestId, "checked_out", note),
-
-      startDiagnosis: (requestId, note) =>
-        moveRequest(requestId, "in_diagnosis", note),
-
-      prescribeRequest: (requestId, note) =>
-        moveRequest(requestId, "prescribed", note),
-
-      dispenseRequest: (requestId, note) =>
-        moveRequest(requestId, "dispensed", note),
-
-      checkInRequest: (requestId, note) =>
-        moveRequest(requestId, "returned", note),
-
-      completeRequest: (requestId, note) =>
-        moveRequest(requestId, "completed", note),
-
-      approveMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_approved", note),
-
-      rejectMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_rejected", note),
-
-      modifyMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_modified", note),
-
-      sendMonthlyTreatmentToPharmacy: (requestId, note) =>
-        moveRequest(requestId, "monthly_ready_pharmacy", note),
-
-      dispenseMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_dispensed", note),
-
-      completeMonthlyTreatment: (requestId, note) =>
-        moveRequest(requestId, "monthly_completed", note),
     }),
     [requests, syncing, user]
   );

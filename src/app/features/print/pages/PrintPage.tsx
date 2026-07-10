@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { profilesStore } from "@/app/store/profilesStore";
 import { useStore } from "@/app/store/reactiveStore";
+import { formatDate } from "@/app/lib/format";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 
@@ -19,18 +20,6 @@ function requestKind(request: MedicalRequest) {
   }
 
   return request.requestType === "emergency" ? "كشف طوارئ" : "كشف عادي";
-}
-
-function formatDate(value?: string) {
-  if (!value) return "غير محدد";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "غير محدد";
-
-  return date.toLocaleDateString("ar-EG", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
 }
 
 function getDoctorName(request: MedicalRequest) {

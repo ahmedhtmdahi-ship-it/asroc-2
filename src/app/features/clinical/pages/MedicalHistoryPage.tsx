@@ -9,12 +9,14 @@ import {
 } from "lucide-react";
 
 import { PageLayout } from "@/app/components/PageLayout";
+import { StatCard } from "@/app/components/StatCard";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
+import { formatDate } from "@/app/lib/format";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 
@@ -24,17 +26,6 @@ function requestTypeLabel(request: MedicalRequest) {
   }
 
   return request.requestType === "emergency" ? "كشف طوارئ" : "كشف عادي";
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "غير محدد";
-
-  return date.toLocaleDateString("ar-EG", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
 }
 
 export function MedicalHistoryPage() {
@@ -210,13 +201,3 @@ export function MedicalHistoryPage() {
   );
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <p className="text-sm text-slate-500">{label}</p>
-        <p className={`mt-2 text-3xl font-bold ${color}`}>{value}</p>
-      </CardContent>
-    </Card>
-  );
-}

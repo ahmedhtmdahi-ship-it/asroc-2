@@ -25,6 +25,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
+import { formatDate } from "@/app/lib/format";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 import { toast } from "sonner";
@@ -41,22 +42,6 @@ function formatTime(value?: string) {
   return date.toLocaleTimeString("ar-EG", {
     hour: "2-digit",
     minute: "2-digit",
-  });
-}
-
-function formatDate(value?: string) {
-  if (!value) return "غير محدد";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "غير محدد";
-  }
-
-  return date.toLocaleDateString("ar-EG", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
   });
 }
 
@@ -77,13 +62,7 @@ export function DoctorPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const {
-    requests,
-    startDiagnosis,
-    approveMonthlyTreatment,
-    rejectMonthlyTreatment,
-    sendMonthlyTreatmentToPharmacy,
-  } = useWorkflow();
+  const { requests, moveRequest } = useWorkflow();
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -191,14 +170,15 @@ export function DoctorPage() {
   ];
 
   const handleStartDiagnosis = (requestId: string) => {
-    startDiagnosis(requestId);
+    moveRequest(requestId, "in_diagnosis");
     navigate(`/doctor/diagnosis/${requestId}`);
   };
 
   const handleApproveMonthlyTreatment = (requestId: string) => {
-    approveMonthlyTreatment(requestId, "تمت الموافقة على العلاج الشهري");
-    sendMonthlyTreatmentToPharmacy(
+    moveRequest(requestId, "monthly_approved", "تمت الموافقة على العلاج الشهري");
+    moveRequest(
       requestId,
+      "monthly_ready_pharmacy",
       "تم إرسال طلب العلاج الشهري إلى الصيدلية"
     );
 
@@ -208,7 +188,7 @@ export function DoctorPage() {
   };
 
   const handleRejectMonthlyTreatment = (requestId: string) => {
-    rejectMonthlyTreatment(requestId, "تم رفض طلب العلاج الشهري");
+    moveRequest(requestId, "monthly_rejected", "تم رفض طلب العلاج الشهري");
 
     toast.success("تم رفض طلب العلاج الشهري");
   };

@@ -25,7 +25,9 @@ import { profilesStore } from "@/app/store/profilesStore";
 import { useStore } from "@/app/store/reactiveStore";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
-import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
+import { requestStatusLabels, statusBadgeClasses, type RequestStatus } from "@/app/types/workflow";
+import { formatDateTime } from "@/app/lib/format";
+import { StatCard } from "@/app/components/StatCard";
 import type { MedicalRequest } from "@/app/types/request";
 import type { Permission, UserRole } from "@/app/types/user";
 
@@ -54,30 +56,11 @@ function isToday(value: string) {
   );
 }
 
-function formatDateTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "غير محدد";
-  return date.toLocaleString("ar-EG", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function requestKind(request: MedicalRequest) {
   if (request.serviceType === "monthly_treatment") {
     return request.monthlyTreatmentType === "renewal" ? "تجديد علاج شهري" : "علاج شهري جديد";
   }
   return request.requestType === "emergency" ? "كشف طوارئ" : "كشف عادي";
-}
-
-function statusBadgeClass(status: RequestStatus) {
-  if (["completed", "monthly_completed"].includes(status)) return "bg-green-100 text-green-700";
-  if (["rejected", "monthly_rejected", "cancelled"].includes(status)) return "bg-red-100 text-red-700";
-  if (["pending", "pending_monthly_doctor", "postponed"].includes(status)) return "bg-yellow-100 text-yellow-700";
-  if (["prescribed", "monthly_ready_pharmacy"].includes(status)) return "bg-purple-100 text-purple-700";
-  return "bg-blue-100 text-blue-700";
 }
 
 type DashboardAction = {
@@ -185,41 +168,6 @@ type StatCardConfig = {
   roles?: UserRole[];
 };
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-  bg,
-  link,
-}: {
-  label: string;
-  value: string | number;
-  icon: LucideIcon;
-  color: string;
-  bg: string;
-  link: string;
-}) {
-  return (
-    <Link to={link}>
-      <Card className="h-full transition hover:shadow-md">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between gap-4">
-            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${bg}`}>
-              <Icon className={`h-6 w-6 ${color}`} />
-            </div>
-            {/* ✅ إصلاح: text-left → محذوف (RTL يتعامل معه تلقائياً) */}
-            <div>
-              <p className={`text-3xl font-bold ${color}`}>{value}</p>
-              <p className="mt-1 text-sm text-slate-500">{label}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-}
-
 function RequestsTable({ requests }: { requests: MedicalRequest[] }) {
   return (
     <div className="overflow-hidden rounded-2xl border">
@@ -243,7 +191,7 @@ function RequestsTable({ requests }: { requests: MedicalRequest[] }) {
               </td>
               <td className="p-3">{requestKind(request)}</td>
               <td className="p-3">
-                <Badge className={statusBadgeClass(request.status)}>
+                <Badge className={statusBadgeClasses[request.status]}>
                   {requestStatusLabels[request.status]}
                 </Badge>
               </td>
@@ -538,7 +486,7 @@ export function DashboardPage() {
               <CardContent className="space-y-3">
                 {statusDistribution.map(([status, count]) => (
                   <div key={status} className="flex items-center justify-between rounded-xl border bg-white p-3">
-                    <Badge className={statusBadgeClass(status as RequestStatus)}>
+                    <Badge className={statusBadgeClasses[status as RequestStatus]}>
                       {requestStatusLabels[status as RequestStatus]}
                     </Badge>
                     <span className="font-bold text-slate-900">{count}</span>

@@ -110,6 +110,29 @@ export const statusLabels: Record<RequestStatus, string> = {
   monthly_completed: "مكتمل",
 };
 
+// كلاسات Tailwind لشارة كل حالة — نسخة واحدة بدل 3 دوال متفرقة في الصفحات.
+// (ملف tailwind.css فيه @source بيغطي packages/shared عشان الكلاسات دي تتولد.)
+export const statusBadgeClasses: Record<RequestStatus, string> = {
+  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  pending_monthly_doctor: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  approved: "bg-blue-100 text-blue-800 border-blue-200",
+  monthly_approved: "bg-blue-100 text-blue-800 border-blue-200",
+  monthly_ready_pharmacy: "bg-blue-100 text-blue-800 border-blue-200",
+  checked_out: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  in_diagnosis: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  prescribed: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  dispensed: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  returned: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  monthly_modified: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  monthly_dispensed: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  completed: "bg-green-100 text-green-800 border-green-200",
+  monthly_completed: "bg-green-100 text-green-800 border-green-200",
+  rejected: "bg-red-100 text-red-800 border-red-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+  monthly_rejected: "bg-red-100 text-red-800 border-red-200",
+  postponed: "bg-orange-100 text-orange-800 border-orange-200",
+};
+
 export const closedRequestStatuses: RequestStatus[] = [
   "completed",
   "rejected",

@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
 import { env } from "../env.js";
 import { prisma } from "../db/prisma.js";
+import { parsePermissions } from "../lib/permissions.js";
 import type { UserRole, Permission } from "@asroc/shared/roles.js";
 
 // ✅ توسيع نوع الـ Request عشان نوفر البيانات للـ middleware
@@ -60,7 +61,7 @@ export function setupAuth(app: FastifyInstance) {
       req.authenticatedUser = {
         id: account.id,
         role: account.role as UserRole,
-        permissions: JSON.parse(account.permissions) as Permission[],
+        permissions: parsePermissions(account.permissions),
         department: account.department,
         isActive: account.isActive,
       };

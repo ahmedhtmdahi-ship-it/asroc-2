@@ -14,15 +14,7 @@ import {
   loginRequest,
   meRequest,
 } from "@/app/lib/authApi";
-import { PERMISSIONS } from "@asroc/shared/roles.js";
 import type { User, UserRole, Permission } from "@/app/types/user";
-
-function parsePermissions(raw: unknown): Permission[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(
-    (item): item is Permission => typeof item === "string" && PERMISSIONS.includes(item as Permission),
-  );
-}
 
 interface AuthContextValue {
   user: User | null;
@@ -35,24 +27,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-export function profileRowToUser(row: Record<string, unknown>): User {
-  return {
-    id: row.id as string,
-    username: row.username as string,
-    financialNumber: (row.financial_number as string) ?? undefined,
-    name: row.name as string,
-    jobTitle: (row.job_title as string) ?? undefined,
-    workPlace: (row.work_place as string) ?? undefined,
-    department: (row.department as string) ?? undefined,
-    nationalId: (row.national_id as string) ?? undefined,
-    phone: (row.phone as string) ?? undefined,
-    workType: (row.work_type as string) ?? undefined,
-    role: row.role as UserRole,
-    permissions: parsePermissions(row.permissions),
-    isActive: (row.is_active as boolean) ?? true,
-  };
-}
 
 export function getRedirectPathByRole(role: UserRole): string {
   const map: Record<UserRole, string> = {

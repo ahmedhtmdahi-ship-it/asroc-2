@@ -2,14 +2,11 @@ import type { FastifyInstance } from "fastify";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "../../db/prisma.js";
+import { parsePermissions } from "../../lib/permissions.js";
 import { changePasswordSchema, loginSchema } from "./auth.schema.js";
 import { verifyCredentials } from "./auth.service.js";
 
 const BCRYPT_ROUNDS = 10;
-
-function parsePermissions(raw: string): string[] {
-  try { return JSON.parse(raw); } catch { return []; }
-}
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /auth/login — يتحقق ويرجّع JWT + بيانات المستخدم (بدون الـ hash)

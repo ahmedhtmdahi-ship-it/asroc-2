@@ -1,17 +1,18 @@
 import { test, expect } from "@playwright/test";
+import { TEST_USERS } from "./helpers/auth";
 
 let cachedAdminToken: string | null = null;
 
-// admin's password may still be the seed default ("admin") or already rotated
-// to the new password by the auth suite — try both so this file passes whether
-// it runs standalone or after 01-auth.
-const ADMIN_PASSWORDS = ["admin", "Admin@2025!"];
+// حساب super_admin للاختبارات (test-admin من test-users.json) — بنجرّب الباسورد
+// الأساسي والجديد عشان الملف يعدي سواء اتشغّل لوحده أو بعد 01-auth.
+const ADMIN = TEST_USERS.super_admin;
+const ADMIN_PASSWORDS = [ADMIN.password, ADMIN.newPassword];
 
 async function loginAdmin(request: any): Promise<any> {
   let lastRes: any;
   for (const password of ADMIN_PASSWORDS) {
     const res = await request.post("http://localhost:4000/auth/login", {
-      data: { username: "admin", password },
+      data: { username: ADMIN.username, password },
     });
     if (res.ok()) return res;
     lastRes = res;
@@ -51,7 +52,7 @@ test.describe("API Auth Endpoints", () => {
     const body = await response.json();
     expect(body.token).toBeTruthy();
     expect(body.user).toBeTruthy();
-    expect(body.user.name).toBe("مدير النظام");
+    expect(body.user.name).toBe(ADMIN.name);
     cachedAdminToken = body.token;
   });
 
@@ -74,7 +75,7 @@ test.describe("API Auth Endpoints", () => {
     });
     expect(meRes.ok()).toBeTruthy();
     const body = await meRes.json();
-    expect(body.user.name).toBe("مدير النظام");
+    expect(body.user.name).toBe(ADMIN.name);
   });
 });
 
@@ -94,10 +95,10 @@ test.describe("API CRUD Endpoints (admin token)", () => {
     const res = await request.post("http://localhost:4000/requests", {
       headers: { Authorization: `Bearer ${token}` },
       data: {
-        employeeId: "USER-50",
-        employeeName: "خالد عيد فرغلى محمد",
-        financialNumber: "50",
-        department: "الشئون الهندسية",
+        employeeId: "TEST-EMPLOYEE",
+        employeeName: TEST_USERS.employee.name,
+        financialNumber: "TEST-EMPLOYEE",
+        department: "التقطير",
         reason: "اختبار API - صداع",
         serviceType: "checkup",
         requestType: "normal",

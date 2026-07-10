@@ -153,7 +153,7 @@ function MedicationRow({
 export default function PharmacyDispensePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { requests, dispenseRequest, dispenseMonthlyTreatment } = useWorkflow();
+  const { requests, moveRequest } = useWorkflow();
   useStore(medicineStore, (s) => s.getAll()); // اشتراك تفاعلي في قائمة الأدوية
   const [confirmedReview, setConfirmedReview] = useState(false);
   const [unavailableMeds, setUnavailableMeds] = useState<Set<string>>(new Set());
@@ -196,9 +196,9 @@ export default function PharmacyDispensePage() {
     }
 
     if (isMonthly) {
-      dispenseMonthlyTreatment(request.id, "تم صرف العلاج الشهري من الصيدلية");
+      moveRequest(request.id, "monthly_dispensed", "تم صرف العلاج الشهري من الصيدلية");
     } else {
-      dispenseRequest(request.id, "تم صرف الروشتة من الصيدلية الداخلية");
+      moveRequest(request.id, "dispensed", "تم صرف الروشتة من الصيدلية الداخلية");
     }
 
     toast.success("تم الصرف بنجاح", {

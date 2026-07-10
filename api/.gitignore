@@ -7,5 +7,7 @@ prisma/dev.db-journal
 prisma/dev.db-shm
 prisma/dev.db-wal
 prisma/seed-output/
+# الداتا الحقيقية (PII) — محلي فقط، ممنوع تدخل git. الـ seed بيفضّلها على users.json لو موجودة.
+prisma/seed-data/users.local.json
 prisma/test.db*
 uploads/

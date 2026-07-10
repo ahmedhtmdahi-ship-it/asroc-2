@@ -15,32 +15,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { notificationStore } from "@/app/store/notificationStore";
-import { requestStatusLabels, type RequestStatus } from "@/app/types/workflow";
+import { requestStatusLabels, statusBadgeClasses } from "@/app/types/workflow";
+import { formatDate } from "@/app/lib/format";
 import type { MedicalRequest } from "@/app/types/request";
-
-function statusBadgeClass(status: RequestStatus) {
-  if (["completed", "monthly_completed"].includes(status)) return "bg-green-100 text-green-700";
-  if (["rejected", "monthly_rejected", "cancelled"].includes(status)) return "bg-red-100 text-red-700";
-  if (["pending", "pending_monthly_doctor", "postponed"].includes(status)) return "bg-yellow-100 text-yellow-700";
-  return "bg-blue-100 text-blue-700";
-}
 
 function requestTypeLabel(request: MedicalRequest) {
   if (request.serviceType === "monthly_treatment") {
     return request.monthlyTreatmentType === "renewal" ? "تجديد علاج شهري" : "علاج شهري جديد";
   }
   return request.requestType === "emergency" ? "كشف طوارئ" : "كشف عادي";
-}
-
-function formatDate(value?: string) {
-  if (!value) return "غير محدد";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "غير محدد";
-  return date.toLocaleDateString("ar-EG", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
 }
 
 function KpiCard({
@@ -239,7 +222,7 @@ export function EmployeeDashboardPage() {
                   {/* ✅ حذف text-left */}
                   <div className="shrink-0">
                     <p className="text-sm text-slate-500">{formatDate(request.createdAt)}</p>
-                    <Badge className={statusBadgeClass(request.status)}>
+                    <Badge className={statusBadgeClasses[request.status]}>
                       {requestStatusLabels[request.status]}
                     </Badge>
                   </div>

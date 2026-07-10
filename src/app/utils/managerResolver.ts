@@ -1,15 +1,6 @@
 import { departmentsStore } from "@/app/store/departmentsStore";
 import { managersStore } from "@/app/store/managersStore";
 
-export function normalizeArabicText(value?: string) {
-  return (value || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/[أإآا]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ة/g, "ه");
-}
-
 export function findDepartmentByName(departmentName?: string) {
   if (!departmentName) return null;
   return departmentsStore.getByName(departmentName) ?? null;

@@ -102,8 +102,9 @@ export function RequestDetailsPage() {
   const { id } = useParams();
   const { requests, refreshRequests } = useWorkflow();
   const { user } = useAuth();
-  // employees use /employee/my-requests, all other roles use /my-requests
-  const myRequestsLink = user?.role === "employee" ? "/employee/my-requests" : "/my-requests";
+  // All roles use /my-requests
+  const myRequestsLink = "/my-requests";
+
 
   const request = requests.find((item) => item.id === id);
 

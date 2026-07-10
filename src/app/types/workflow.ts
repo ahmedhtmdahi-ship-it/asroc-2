@@ -8,6 +8,7 @@ export {
   statusFlow,
   canMove,
   statusLabels as requestStatusLabels,
+  statusBadgeClasses,
   closedRequestStatuses,
   activeCheckupStatuses,
   activeMonthlyTreatmentStatuses,

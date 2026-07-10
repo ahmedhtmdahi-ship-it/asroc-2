@@ -77,19 +77,15 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 }
 
 export function ManagerApprovalsPage() {
-  const {
-    requests: allRequests,
-    approveRequest,
-    rejectRequest,
-    postponeRequest,
-  } = useWorkflow();
+  const { requests: allRequests, moveRequest } = useWorkflow();
   const { user } = useAuth();
 
   // Managers only see their own department — super_admin and medical_admin see all
   const requests = useMemo(() => {
     if (!user) return allRequests;
     if (user.role === "super_admin" || user.role === "medical_admin") return allRequests;
-    if (!user.department) return allRequests;
+    if (!user.department) return [];
+
     return allRequests.filter((r) => r.department === user.department);
   }, [allRequests, user]);
 
@@ -120,8 +116,10 @@ export function ManagerApprovalsPage() {
       value: requests.filter(
         (request) =>
           request.status === "approved" &&
-          new Date(request.createdAt).toDateString() === todayKey
+          request.approvedAt &&
+          new Date(request.approvedAt).toDateString() === todayKey
       ).length,
+
       icon: CheckCircle2,
       color: "text-teal-700",
       bg: "bg-teal-50",
@@ -168,7 +166,7 @@ export function ManagerApprovalsPage() {
     if (!selectedRequest || !actionType) return;
 
     if (actionType === "approve") {
-      approveRequest(selectedRequest.id);
+      moveRequest(selectedRequest.id, "approved");
 
       toast.success("تمت الموافقة على الطلب", {
         description: `${selectedRequest.id} تم إرساله إلى الأمن لتسجيل الخروج.`,
@@ -176,7 +174,7 @@ export function ManagerApprovalsPage() {
     }
 
     if (actionType === "reject") {
-      rejectRequest(selectedRequest.id);
+      moveRequest(selectedRequest.id, "rejected");
 
       toast.error("تم رفض الطلب", {
         description: "سيتم إخطار الموظف وإرجاع الرصيد الشهري.",
@@ -184,7 +182,7 @@ export function ManagerApprovalsPage() {
     }
 
     if (actionType === "postpone") {
-      postponeRequest(selectedRequest.id);
+      moveRequest(selectedRequest.id, "postponed");
 
       toast.info("تم تأجيل الطلب", {
         description: "يمكن للموظف إعادة تقديم الطلب لاحقًا.",

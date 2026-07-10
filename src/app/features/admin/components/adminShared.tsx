@@ -2,40 +2,11 @@ import { useEffect, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 import { Button } from "@/app/components/ui/button";
-import { Card, CardContent } from "@/app/components/ui/card";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import type { Permission, User } from "@/app/types/user";
 import { permissionLabel, permissionLabels } from "../lib/adminMappers";
 
-export function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-  bg,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-  bg: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${bg}`}>
-            <Icon className={`h-5 w-5 ${color}`} />
-          </div>
-          <div>
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-            <p className="mt-1 text-xs text-slate-500">{label}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+// StatCard الموحّد موجود في @/app/components/StatCard
 
 export function LoadingState() {
   return (

@@ -58,8 +58,15 @@ export async function apiFetch<T>(
       // مفيش body JSON — نسيب الرسالة الافتراضية
     }
     // توكن غير صالح → نمسحه عشان المستخدم يعمل login تاني
-    if (res.status === 401) clearToken();
+    if (res.status === 401) {
+      clearToken();
+      // Avoid redirect loop: لو الطلب نفسه هو login route، سيعرض رسالة «بيانات غلط» طبيعي
+      if (!path.includes("/auth/login")) {
+        window.location.assign("/");
+      }
+    }
     throw new ApiError(res.status, message);
+
   }
 
   if (res.status === 204) return undefined as T;

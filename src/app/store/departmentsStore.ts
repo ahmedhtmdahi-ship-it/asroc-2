@@ -1,4 +1,5 @@
 import { apiFetch } from "@/app/lib/apiClient";
+import { normalizeArabicText } from "@/app/lib/arabic";
 import { ReactiveStore } from "./reactiveStore";
 
 export interface Department {
@@ -31,8 +32,8 @@ class DepartmentsStore extends ReactiveStore {
   }
 
   getByName(name: string): Department | undefined {
-    const normalized = normalizeArabic(name);
-    return this.departments.find((d) => normalizeArabic(d.name) === normalized);
+    const normalized = normalizeArabicText(name);
+    return this.departments.find((d) => normalizeArabicText(d.name) === normalized);
   }
 
   getManagerFinancialNumber(departmentName?: string): string | undefined {
@@ -56,15 +57,6 @@ class DepartmentsStore extends ReactiveStore {
       // keep current in-memory data if sync fails
     }
   }
-}
-
-function normalizeArabic(value?: string) {
-  return (value || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/[أإآا]/g, "ا")
-    .replace(/ى/g, "ي")
-    .replace(/ة/g, "ه");
 }
 
 export const departmentsStore = new DepartmentsStore();

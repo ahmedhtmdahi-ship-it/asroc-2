@@ -7,6 +7,7 @@ import {
   Pill,
 } from "lucide-react";
 import { PageLayout } from "@/app/components/PageLayout";
+import { StatCard } from "@/app/components/StatCard";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
@@ -15,39 +16,6 @@ import { requestStatusLabels } from "@/app/types/workflow";
 import { MedicineInventoryManager } from "@/app/features/pharmacy/components/MedicineInventoryManager";
 import { medicineStore } from "@/app/store/medicineStore";
 import { useStore } from "@/app/store/reactiveStore";
-
-function StatCard({
-  value,
-  label,
-  icon: Icon,
-  color,
-  bg,
-}: {
-  value: string;
-  label: string;
-  icon: any;
-  color: string;
-  bg: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div
-            className={`w-14 h-14 rounded-full ${bg} flex items-center justify-center`}
-          >
-            <Icon className={`w-7 h-7 ${color}`} />
-          </div>
-
-          <div className="text-left">
-            <p className={`text-3xl font-bold ${color}`}>{value}</p>
-            <p className="text-sm text-slate-500 mt-1">{label}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function PharmacyPage() {
   const navigate = useNavigate();

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { StatCard } from "@/app/components/StatCard";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
@@ -83,36 +84,6 @@ function stockStatus(medicine: Medicine) {
   }
 
   return { label: "متوفر", className: "bg-teal-100 text-teal-700" };
-}
-
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  color,
-  bg,
-}: {
-  label: string;
-  value: number;
-  icon: any;
-  color: string;
-  bg: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${bg}`}>
-            <Icon className={`h-5 w-5 ${color}`} />
-          </div>
-          <div className="text-left">
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-            <p className="mt-1 text-xs text-slate-500">{label}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 export function MedicineInventoryManager({ compact = false }: { compact?: boolean }) {

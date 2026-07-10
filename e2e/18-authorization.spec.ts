@@ -1,13 +1,15 @@
 import { test, expect } from "@playwright/test";
+import { TEST_USERS } from "./helpers/auth";
 
 let cachedTokens: Record<string, string> = {};
 
-// Passwords may already be rotated to their new value by the auth suite when
-// the full suite runs. Map each seed password to the new one so getToken can
-// fall back whether this file runs standalone or after 01-auth.
+// حسابات الاختبار من test-users.json. الباسورد ممكن يكون اتغيّر للجديد لو
+// 01-auth اتشغّل قبلنا في نفس الحزمة — بنجرّب الاتنين.
+const EMP = TEST_USERS.employee;
+const ADMIN = TEST_USERS.super_admin;
 const NEW_PASSWORD: Record<string, string> = {
-  admin: "Admin@2025!",
-  "خالد 50": "Employee@2025!",
+  [ADMIN.username]: ADMIN.newPassword,
+  [EMP.username]: EMP.newPassword,
 };
 
 async function getToken(
@@ -16,7 +18,7 @@ async function getToken(
   password: string,
 ): Promise<string> {
   if (cachedTokens[username]) return cachedTokens[username];
-  const candidates = [password, NEW_PASSWORD[password]].filter(Boolean);
+  const candidates = [password, NEW_PASSWORD[username]].filter(Boolean);
   let body: any;
   for (const candidate of candidates) {
     const res = await request.post("http://localhost:4000/auth/login", {
@@ -33,7 +35,7 @@ async function getToken(
 
 test.describe("Authorization - Employee Restrictions", () => {
   test("employee cannot list all users", async ({ request }) => {
-    const token = await getToken(request, "50", "خالد 50");
+    const token = await getToken(request, EMP.username, EMP.password);
     const res = await request.get("http://localhost:4000/users", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -41,7 +43,7 @@ test.describe("Authorization - Employee Restrictions", () => {
   });
 
   test("employee can access user lookup", async ({ request }) => {
-    const token = await getToken(request, "50", "خالد 50");
+    const token = await getToken(request, EMP.username, EMP.password);
     const res = await request.get("http://localhost:4000/users/lookup", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -49,19 +51,19 @@ test.describe("Authorization - Employee Restrictions", () => {
   });
 
   test("employee can only see own requests", async ({ request }) => {
-    const token = await getToken(request, "50", "خالد 50");
+    const token = await getToken(request, EMP.username, EMP.password);
     const res = await request.get("http://localhost:4000/requests", {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     for (const req of body) {
-      expect(req.employee_id || req.employeeId).toBe("USER-50");
+      expect(req.employee_id || req.employeeId).toBe("TEST-EMPLOYEE");
     }
   });
 
   test("employee cannot create medicines", async ({ request }) => {
-    const token = await getToken(request, "50", "خالد 50");
+    const token = await getToken(request, EMP.username, EMP.password);
     const res = await request.post("http://localhost:4000/medicines", {
       headers: { Authorization: `Bearer ${token}` },
       data: { name: "Test", unit: "tablet" },
@@ -70,7 +72,7 @@ test.describe("Authorization - Employee Restrictions", () => {
   });
 
   test("employee cannot access audit logs", async ({ request }) => {
-    const token = await getToken(request, "50", "خالد 50");
+    const token = await getToken(request, EMP.username, EMP.password);
     const res = await request.get("http://localhost:4000/audit-logs", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -78,7 +80,7 @@ test.describe("Authorization - Employee Restrictions", () => {
   });
 
   test("employee cannot access security logs", async ({ request }) => {
-    const token = await getToken(request, "50", "خالد 50");
+    const token = await getToken(request, EMP.username, EMP.password);
     const res = await request.get("http://localhost:4000/security-logs", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -88,7 +90,7 @@ test.describe("Authorization - Employee Restrictions", () => {
 
 test.describe("Authorization - Admin Permissions", () => {
   test("admin can see all requests", async ({ request }) => {
-    const token = await getToken(request, "admin", "admin");
+    const token = await getToken(request, ADMIN.username, ADMIN.password);
     const res = await request.get("http://localhost:4000/requests", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -96,7 +98,7 @@ test.describe("Authorization - Admin Permissions", () => {
   });
 
   test("admin can create medicines", async ({ request }) => {
-    const token = await getToken(request, "admin", "admin");
+    const token = await getToken(request, ADMIN.username, ADMIN.password);
     const res = await request.post("http://localhost:4000/medicines", {
       headers: { Authorization: `Bearer ${token}` },
       data: {
@@ -110,7 +112,7 @@ test.describe("Authorization - Admin Permissions", () => {
   });
 
   test("admin can access audit logs", async ({ request }) => {
-    const token = await getToken(request, "admin", "admin");
+    const token = await getToken(request, ADMIN.username, ADMIN.password);
     const res = await request.get("http://localhost:4000/audit-logs", {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -120,22 +122,25 @@ test.describe("Authorization - Admin Permissions", () => {
 
 test.describe("Authorization - Transition Permissions", () => {
   test("employee cannot approve requests", async ({ request }) => {
-    const adminToken = await getToken(request, "admin", "admin");
+    const adminToken = await getToken(request, ADMIN.username, ADMIN.password);
+    // بنستخدم TEST-SECURITY (مش TEST-EMPLOYEE) عشان 17-api-health بيسيب طلب
+    // مفتوح للموظف ده وقاعدة «طلب مفتوح واحد» هترد 409.
     const createRes = await request.post("http://localhost:4000/requests", {
       headers: { Authorization: `Bearer ${adminToken}` },
       data: {
-        employeeId: "USER-50",
-        employeeName: "خالد عيد فرغلى محمد",
-        financialNumber: "50",
-        department: "الشئون الهندسية",
+        employeeId: "TEST-SECURITY",
+        employeeName: TEST_USERS.security.name,
+        financialNumber: "TEST-SECURITY",
+        department: "الأمن",
         reason: "اختبار الصلاحيات",
         serviceType: "checkup",
         requestType: "normal",
       },
     });
+    expect(createRes.status(), await createRes.text()).toBe(201);
     const { id: requestId } = await createRes.json();
 
-    const empToken = await getToken(request, "50", "خالد 50");
+    const empToken = await getToken(request, EMP.username, EMP.password);
     const res = await request.post(
       `http://localhost:4000/requests/${requestId}/transition`,
       {

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
-import { useAuth } from "@/app/features/auth/AuthContext";
+import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import { ApiError } from "@/app/lib/apiClient";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -42,7 +42,7 @@ export function ChangePasswordPage() {
     try {
       await changePassword(currentPassword, newPassword);
       toast.success("تم تغيير كلمة المرور بنجاح");
-      navigate("/dashboard", { replace: true });
+      navigate(getHomePathByRole(user?.role), { replace: true });
     } catch (err) {
       const message =
         err instanceof ApiError

@@ -23,7 +23,7 @@ export function SecurityCheckInOutPage() {
 
   const {
     requests,
-    checkOutRequest,
+    moveRequest,
     refreshRequests,
   } = useWorkflow();
 
@@ -54,7 +54,7 @@ export function SecurityCheckInOutPage() {
   );
 
   const handleCheckOut = (requestId: string, employeeName: string) => {
-    checkOutRequest(requestId);
+    moveRequest(requestId, "checked_out");
     toast.success(`تم تسجيل خروج ${employeeName}`);
   };
 

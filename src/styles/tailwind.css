@@ -1,4 +1,6 @@
 @import 'tailwindcss' source(none);
 @source '../**/*.{js,ts,jsx,tsx}';
+/* statusBadgeClasses وأمثالها بتعيش في الحزمة المشتركة — لازم تتعمل لها scan */
+@source '../../packages/shared/src/**/*.ts';
 
 @import 'tw-animate-css';

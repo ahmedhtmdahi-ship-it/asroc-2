@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 import {
   createRequestApi,
   listRequestsApi,
@@ -102,7 +104,7 @@ class RequestStore extends ReactiveStore {
             }
           }
           if (failed.length > 0) {
-            window.alert(
+            toast.warning(
               `الطلب اتسجل، لكن فشل رفع: ${failed.join("، ")} — أعد المحاولة من صفحة التفاصيل.`,
             );
           }
@@ -112,7 +114,7 @@ class RequestStore extends ReactiveStore {
         console.warn("[api] create request:", e?.message);
         this.requests = this.requests.filter((r) => r.id !== tempId);
         this.emit();
-        window.alert(
+        toast.error(
           e instanceof Error && e.message
             ? `تعذر حفظ الطلب: ${e.message}`
             : "حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مرة أخرى.",
@@ -177,7 +179,7 @@ class RequestStore extends ReactiveStore {
 
     this.transitionAsync(id, status, note).catch((e) => {
       console.warn("[api] transition:", e?.message);
-      window.alert("حدث خطأ أثناء تغيير الحالة. تمت استعادة الحالة السابقة.");
+      toast.error("حدث خطأ أثناء تغيير الحالة. تمت استعادة الحالة السابقة.");
     });
 
     return request;
@@ -189,7 +191,7 @@ class RequestStore extends ReactiveStore {
 
     this.patchAsync(id, fields).catch((e) => {
       console.warn("[api] update fields:", e?.message);
-      window.alert("حدث خطأ أثناء التحديث. تمت استعادة البيانات القديمة.");
+      toast.error("حدث خطأ أثناء التحديث. تمت استعادة البيانات القديمة.");
     });
 
     return request;

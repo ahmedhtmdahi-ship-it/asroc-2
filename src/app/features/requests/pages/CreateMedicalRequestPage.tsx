@@ -12,7 +12,8 @@ import type {
   RequestType,
   ServiceType,
 } from "@/app/types/request";
-import { isClosedStatus, requestStatusLabels } from "@/app/types/workflow";
+import { isClosedStatus, requestStatusLabels, statusBadgeClasses } from "@/app/types/workflow";
+import { formatDate } from "@/app/lib/format";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -59,22 +60,6 @@ const monthlyTreatmentWorkflowSteps = [
   ["6", "مكتمل", "إغلاق طلب العلاج الشهري"],
 ];
 
-function formatDate(value?: string) {
-  if (!value) return "غير محدد";
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "غير محدد";
-  }
-
-  return new Intl.DateTimeFormat("ar-EG", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
 function getServiceLabel(request: MedicalRequest) {
   if (request.serviceType === "monthly_treatment") {
     return request.monthlyTreatmentType === "renewal"
@@ -87,43 +72,6 @@ function getServiceLabel(request: MedicalRequest) {
   }
 
   return "كشف عادي";
-}
-
-function getStatusBadge(status: MedicalRequest["status"]) {
-  switch (status) {
-    case "pending":
-    case "pending_monthly_doctor":
-      return "bg-yellow-100 text-yellow-800 border-yellow-200";
-
-    case "approved":
-    case "monthly_approved":
-    case "monthly_ready_pharmacy":
-      return "bg-blue-100 text-blue-800 border-blue-200";
-
-    case "checked_out":
-    case "in_diagnosis":
-    case "prescribed":
-    case "dispensed":
-    case "returned":
-    case "monthly_modified":
-    case "monthly_dispensed":
-      return "bg-cyan-100 text-cyan-800 border-cyan-200";
-
-    case "completed":
-    case "monthly_completed":
-      return "bg-green-100 text-green-800 border-green-200";
-
-    case "rejected":
-    case "cancelled":
-    case "monthly_rejected":
-      return "bg-red-100 text-red-800 border-red-200";
-
-    case "postponed":
-      return "bg-orange-100 text-orange-800 border-orange-200";
-
-    default:
-      return "bg-slate-100 text-slate-700 border-slate-200";
-  }
 }
 
 export function EmployeeRequestsPage() {
@@ -144,7 +92,8 @@ export function EmployeeRequestsPage() {
   const isUniversalRoute = location.pathname === "/request/new";
   const backLink = isUniversalRoute ? getHomePathByRole(user?.role) : "/employee";
   // Link to view submitted requests — non-employees go to /employee/my-requests too (shared page)
-  const myRequestsLink = "/employee/my-requests";
+  const myRequestsLink = "/my-requests";
+
 
   const employeeDepartment = user?.department || user?.workPlace || "غير محدد";
   const resolvedManager = findManagerByDepartment(employeeDepartment);
@@ -649,7 +598,8 @@ export function EmployeeRequestsPage() {
                   <Label className="text-base font-bold">
                     سبب الطلب <span className="text-red-600">*</span>
                   </Label>
-                  <Textarea
+<Textarea
+                    data-testid="request-reason"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder={
@@ -758,6 +708,7 @@ export function EmployeeRequestsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <Button
                     type="submit"
+                    data-testid="request-submit"
                     className="h-12 bg-teal-600 hover:bg-teal-700 text-base font-bold"
                   >
                     <Send className="w-4 h-4 ml-2" />
@@ -821,9 +772,7 @@ export function EmployeeRequestsPage() {
                           <td className="p-3">{formatDate(request.createdAt)}</td>
                           <td className="p-3">
                             <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusBadge(
-                                request.status
-                              )}`}
+                              className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${statusBadgeClasses[request.status]}`}
                             >
                               {requestStatusLabels[request.status]}
                             </span>

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { PageLayout } from "@/app/components/PageLayout";
+import { StatCard } from "@/app/components/StatCard";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
@@ -19,38 +20,9 @@ import { Input } from "@/app/components/ui/input";
 import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels } from "@/app/types/workflow";
 
-function StatCard({
-  value,
-  label,
-  icon: Icon,
-  color,
-  bg,
-}: {
-  value: string;
-  label: string;
-  icon: any;
-  color: string;
-  bg: string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${bg}`}>
-            <Icon className={`h-6 w-6 ${color}`} />
-          </div>
-          <div className="text-left">
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
-            <p className="mt-1 text-xs text-slate-500">{label}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export function ReportsPage() {
-  const [selectedMonth, setSelectedMonth] = useState("2026-06");
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+
   const [searchTerm, setSearchTerm] = useState("");
   const { requests } = useWorkflow();
 

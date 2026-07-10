@@ -8,78 +8,116 @@ export interface TestUser {
   name: string;
 }
 
+// كل الحسابات هنا من api/prisma/seed-data/test-users.json (تُزرع خارج الإنتاج فقط).
+// ملف users.json الحقيقي بقى بلا باسوردات نهائيًا بعد تنظيف الـ PII —
+// الباسوردات الحقيقية عشوائية وبتتكتب في api/prisma/seed-output/seed-passwords.csv.
 export const TEST_USERS: Record<string, TestUser> = {
   super_admin: {
-    username: "admin",
-    password: "admin",
+    username: "test-admin",
+    password: "Test@1234",
     newPassword: "Admin@2025!",
     role: "super_admin",
-    name: "مدير النظام",
+    name: "مدير نظام اختبار",
   },
   employee: {
-    username: "50",
-    password: "خالد 50",
+    username: "test-employee",
+    password: "Test@1234",
     newPassword: "Employee@2025!",
     role: "employee",
-    name: "خالد عيد فرغلى محمد",
+    name: "موظف اختبار",
   },
-  // مدير قسم "التقطير" — نفس قسم الموظف خالد (USER-50) عشان فلو الموافقة
-  // يكون واقعيًا (المدير يوافق على طلب موظف من قسمه فعلًا).
+  // مدير قسم "التقطير" — نفس قسم test-employee عشان فلو الموافقة
+  // يكون واقعيًا (المدير يشوف طلبات قسمه فقط — فصل الإدارات).
   manager: {
-    username: "995",
-    password: "فارس 995",
+    username: "test-manager",
+    password: "Test@1234",
     newPassword: "Manager@2025!",
     role: "manager",
-    name: "فارس عبدالله عبدالحميد محمد",
+    name: "مدير اختبار",
   },
   security: {
-    username: "597",
-    password: "صابر 597",
+    username: "test-security",
+    password: "Test@1234",
     newPassword: "Security@2025!",
     role: "security",
-    name: "صابر محمود محمد حسين",
+    name: "فرد أمن اختبار",
   },
   medical_admin: {
-    username: "796",
-    password: "عبدالهادى 796",
+    username: "test-medical-admin",
+    password: "Test@1234",
     newPassword: "MedAdmin@2025!",
     role: "medical_admin",
-    name: "عبدالهادى كامل زيد سليمان",
+    name: "إداري طبي اختبار",
   },
   doctor: {
     username: "test-doctor",
-    password: "TestDoc123",
+    password: "Test@1234",
     newPassword: "Doctor@2025!",
     role: "doctor",
     name: "طبيب اختبار",
   },
   pharmacy: {
     username: "test-pharmacy",
-    password: "TestPharm123",
+    password: "Test@1234",
     newPassword: "Pharmacy@2025!",
     role: "pharmacy",
     name: "صيدلي اختبار",
   },
   office_manager: {
     username: "test-office-mgr",
-    password: "TestOffice123",
+    password: "Test@1234",
     newPassword: "OfficeMgr@2025!",
     role: "office_manager",
     name: "مدير مكتب اختبار",
   },
   pension_admin: {
     username: "test-pension",
-    password: "TestPension123",
+    password: "Test@1234",
     newPassword: "Pension@2025!",
     role: "pension_admin",
     name: "مشرف معاشات اختبار",
   },
+  // حسابات mustChangePassword=true مخصوصة لتيستات فلو تغيير الباسورد الإجباري.
+  // force_change مبيتغيّرش باسورده أبدًا (تيستات الـ validation)، force_change_success بيتغيّر.
+  force_change: {
+    username: "test-force-change",
+    password: "Test@1234",
+    newPassword: "ForceChange@2025!",
+    role: "employee",
+    name: "موظف تغيير باسورد",
+  },
+  force_change_success: {
+    username: "test-force-success",
+    password: "Test@1234",
+    newPassword: "ForceSuccess@2025!",
+    role: "employee",
+    name: "موظف تغيير باسورد ناجح",
+  },
 };
+
+// صفحة الهبوط بعد الدخول حسب الدور — مطابقة لـ getRedirectPathByRole في AuthContext.
+export const HOME_PATH: Record<string, string> = {
+  super_admin: "/dashboard",
+  manager: "/dashboard",
+  office_manager: "/dashboard",
+  employee: "/employee",
+  doctor: "/doctor",
+  pharmacy: "/pharmacy",
+  security: "/security",
+  medical_admin: "/medical-admin",
+  pension_admin: "/pension-admin",
+  force_change: "/employee",
+  force_change_success: "/employee",
+};
+
+// أي صفحة هبوط صالحة بعد الدخول (أو change-password للمطالبين بتغييره).
+const POST_LOGIN_URL =
+  /\/(change-password|dashboard|employee|doctor|pharmacy|security|medical-admin|pension-admin)/;
 
 /**
  * Log in with username and password. Handles the mustChangePassword redirect:
  * if the user is forced to change password, it fills the change-password form
- * and sets a new password, then navigates to the dashboard.
+ * and sets a new password, then lands on the role's home page.
  */
 export async function loginAs(
   page: Page,
@@ -97,7 +135,7 @@ export async function loginAs(
   await page.click('button[type="submit"]');
 
   const errorOrNav = await Promise.race([
-    page.waitForURL(/\/(change-password|dashboard)/).then(() => "navigated" as const),
+    page.waitForURL(POST_LOGIN_URL).then(() => "navigated" as const),
     page.getByText("اسم المستخدم أو كلمة المرور غير صحيحة").waitFor({ timeout: 5000 }).then(() => "error" as const).catch(() => null),
   ]);
 
@@ -106,17 +144,7 @@ export async function loginAs(
     await page.fill("#username", user.username);
     await page.fill("#password", user.newPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL(/\/(change-password|dashboard)/);
-  }
-
-  // Login navigates to /dashboard first; ProtectedRoute may then redirect
-  // to /change-password if mustChangePassword is set. Wait for that redirect.
-  if (page.url().includes("/dashboard")) {
-    try {
-      await page.waitForURL("**/change-password", { timeout: 2000 });
-    } catch {
-      // No redirect — user doesn't need to change password
-    }
+    await page.waitForURL(POST_LOGIN_URL);
   }
 
   if (page.url().includes("/change-password") && !opts.skipPasswordChange) {
@@ -124,7 +152,7 @@ export async function loginAs(
     await page.fill("#newPassword", user.newPassword);
     await page.fill("#confirmPassword", user.newPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL("**/dashboard", { timeout: 15000 });
+    await page.waitForURL(`**${HOME_PATH[role] ?? "/dashboard"}`, { timeout: 15000 });
   }
 }
 
@@ -143,7 +171,7 @@ export async function loginWithNewPassword(
   await page.fill("#username", user.username);
   await page.fill("#password", user.newPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/dashboard");
+  await page.waitForURL(`**${HOME_PATH[role] ?? "/dashboard"}`);
 }
 
 /**

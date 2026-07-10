@@ -21,6 +21,14 @@
 - ✅ **Tests**: 18/18 passing — منهم 7 جداد بيغطوا A3/A4/A5/A7/A8
 - ⏳ **باقي**: زرع تجريبي نهائي، commits، وتشغيل `scripts/purge-pii-history.sh` (مسح التاريخ — **محتاج موافقة صريحة قبل الـ force push**)
 
+**المسار B (11 يوليو — في الشجرة، لسه من غير commit):**
+- ✅ **B1–B3**: اللينكات المكسورة + شهر التقارير + مؤشرات المدير
+- ✅ **B4**: 401 في `apiClient` بيمسح التوكن ويرجّع لصفحة الدخول (ما عدا `/auth/login`) · كل `window.alert/confirm` اتبدلوا بـ toast (sonner) + `AlertDialog` للتأكيدات · الـ catch الفاضي بتاع تغيير الدور بقى `toast.error`
+- ✅ **B5**: `SuperAdminPage` نزل من 1,168 لـ **192 سطر** — بيستورد التابات من `admin/components/` والـ mappers من `admin/lib/` · `UsersTab` اتفصل في `components/UsersTab.tsx` وبياخد `users` من الأم (fetch واحد بدل اتنين، والتعديلات بترجع عبر `onUserUpdated/onUserCreated`) · قايمة الأدوار اليدوية اتبدلت بـ `USER_ROLES.map`
+- ✅ **B6**: `lib/format.ts` (formatDate/formatDateTime — اتشالت من 7 صفحات) · `components/StatCard.tsx` مُعمم (اتشالت 10 نسخ inline) · `statusBadgeClasses` في `shared/workflow.ts` (+ `@source` جديد في tailwind.css عشان الحزمة المشتركة) بدل 3 دوال · `lib/arabic.ts` نسخة واحدة بـ `toLowerCase()` · `api/src/lib/permissions.ts` بدل 3 نسخ ومنهم `jwt.ts` اللي كان من غير try/catch
+- ✅ **B7**: `workflowStore.ts` اتحذف (الـ moveStatus اندمجت جوه `WorkflowContext`) · الـ 16 wrapper اتشالوا والصفحات الستة بتنادي `moveRequest(id, "status", note)` مباشرة · `profileRowToUser` وscripts بتوع Supabase (`seed-users.ts/.mjs`) اتحذفوا · باراميتر `userId` اتشال من `listNotificationsApi` ومن `notificationStore.syncFromApi`
+- ✅ **تحقق**: `pnpm typecheck` + `api typecheck` + 18/18 tests + `pnpm build` كلهم عدّوا
+
 ⚠️ **مهمة داتا للمستخدم**: 18 من 35 قسم في `departments.json` من غير `managerFinancialNumber` — موظفينهم مش هيلاقوا مدير. كمّل الأرقام في الملف.
 
 ---

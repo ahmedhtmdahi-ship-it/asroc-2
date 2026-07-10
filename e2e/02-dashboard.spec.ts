@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginAs, TEST_USERS } from "./helpers/auth";
+import { HOME_PATH, loginAs, TEST_USERS } from "./helpers/auth";
 
 test.describe("Dashboard - Employee View", () => {
   test.beforeEach(async ({ page }) => {
@@ -7,7 +7,7 @@ test.describe("Dashboard - Employee View", () => {
   });
 
   test("shows dashboard after login", async ({ page }) => {
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(new RegExp(HOME_PATH.employee));
   });
 
   test("displays user greeting with name", async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe("Dashboard - Security View", () => {
   });
 
   test("shows dashboard for security", async ({ page }) => {
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(new RegExp(HOME_PATH.security));
   });
 
   test("displays security user name", async ({ page }) => {
@@ -80,7 +80,7 @@ test.describe("Dashboard - Medical Admin View", () => {
   });
 
   test("shows dashboard for medical admin", async ({ page }) => {
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(new RegExp(HOME_PATH.medical_admin));
   });
 });
 
@@ -90,7 +90,7 @@ test.describe("Dashboard - Doctor View", () => {
   });
 
   test("shows dashboard for doctor", async ({ page }) => {
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(new RegExp(HOME_PATH.doctor));
   });
 });
 
@@ -100,7 +100,7 @@ test.describe("Dashboard - Pharmacy View", () => {
   });
 
   test("shows dashboard for pharmacy", async ({ page }) => {
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(new RegExp(HOME_PATH.pharmacy));
   });
 });
 
@@ -110,7 +110,7 @@ test.describe("Dashboard - Pension Admin View", () => {
   });
 
   test("shows dashboard for pension admin", async ({ page }) => {
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(new RegExp(HOME_PATH.pension_admin));
   });
 });
 

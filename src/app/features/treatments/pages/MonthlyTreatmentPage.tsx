@@ -13,11 +13,13 @@ import {
   Users,
 } from "lucide-react";
 import { PageLayout } from "@/app/components/PageLayout";
+import { StatCard } from "@/app/components/StatCard";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { formatDate } from "@/app/lib/format";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
 import { toast } from "sonner";
@@ -28,24 +30,6 @@ const activeMonthlyStatuses = [
   "monthly_ready_pharmacy",
   "monthly_dispensed",
 ];
-
-function StatCard({ label, value, icon: Icon, color, bg }: any) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div className={`w-14 h-14 rounded-2xl ${bg} flex items-center justify-center`}>
-            <Icon className={`w-7 h-7 ${color}`} />
-          </div>
-          <div className="text-left">
-            <p className={`text-3xl font-bold ${color}`}>{value}</p>
-            <p className="text-sm text-slate-500 mt-1">{label}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function matchesSearch(request: MedicalRequest, searchTerm: string) {
   const term = searchTerm.trim().toLowerCase();
@@ -60,28 +44,8 @@ function matchesSearch(request: MedicalRequest, searchTerm: string) {
   );
 }
 
-function formatDate(value?: string) {
-  if (!value) return "غير محدد";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "غير محدد";
-
-  return date.toLocaleDateString("ar-EG", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
-
 export function MonthlyTreatmentPage() {
-  const {
-    requests,
-    approveMonthlyTreatment,
-    sendMonthlyTreatmentToPharmacy,
-    rejectMonthlyTreatment,
-    dispenseMonthlyTreatment,
-    completeMonthlyTreatment,
-  } = useWorkflow();
+  const { requests, moveRequest } = useWorkflow();
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -113,25 +77,25 @@ export function MonthlyTreatmentPage() {
   );
 
   const handleApprove = (requestId: string) => {
-    approveMonthlyTreatment(requestId, "تمت الموافقة على العلاج الشهري");
-    sendMonthlyTreatmentToPharmacy(requestId, "تم إرسال العلاج الشهري للصيدلية");
+    moveRequest(requestId, "monthly_approved", "تمت الموافقة على العلاج الشهري");
+    moveRequest(requestId, "monthly_ready_pharmacy", "تم إرسال العلاج الشهري للصيدلية");
     toast.success("تم إرسال العلاج الشهري إلى الصيدلية");
   };
 
   const handleReject = (requestId: string) => {
-    rejectMonthlyTreatment(requestId, "تم رفض طلب العلاج الشهري");
+    moveRequest(requestId, "monthly_rejected", "تم رفض طلب العلاج الشهري");
     toast.success("تم رفض طلب العلاج الشهري");
   };
 
   const handleDispense = (request: MedicalRequest) => {
     if (request.status === "monthly_ready_pharmacy") {
-      dispenseMonthlyTreatment(request.id, "تم صرف العلاج الشهري");
+      moveRequest(request.id, "monthly_dispensed", "تم صرف العلاج الشهري");
       toast.success(`تم صرف العلاج الشهري لـ ${request.employeeName}`);
       return;
     }
 
     if (request.status === "monthly_dispensed") {
-      completeMonthlyTreatment(request.id, "تم اكتمال دورة العلاج الشهري");
+      moveRequest(request.id, "monthly_completed", "تم اكتمال دورة العلاج الشهري");
       toast.success("تم إغلاق دورة العلاج الشهري");
       return;
     }

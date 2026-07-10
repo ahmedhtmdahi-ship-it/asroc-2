@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 
 import { prisma } from "../../db/prisma.js";
+import { parsePermissions } from "../../lib/permissions.js";
 import { requirePermission } from "../../middleware/requirePermission.js";
 import { newPasswordSchema } from "../auth/auth.schema.js";
 import { USER_ROLES, PERMISSIONS, type UserRole } from "@asroc/shared/roles.js";
@@ -46,10 +47,6 @@ const createUserSchema = z.object({
   workType:        z.string().optional(),
 });
 
-function parsePerms(raw: string): string[] {
-  try { return JSON.parse(raw); } catch { return []; }
-}
-
 // ✅ نوع صريح بدل any
 interface DbUser {
   id: string;
@@ -77,7 +74,7 @@ function formatUser(u: DbUser) {
     username:        u.username,
     name:            u.name,
     role:            u.role,
-    permissions:     parsePerms(u.permissions),
+    permissions:     parsePermissions(u.permissions),
     isActive:        u.isActive,
     financialNumber: u.financialNumber,
     jobTitle:        u.jobTitle,
@@ -114,7 +111,7 @@ export async function userRoutes(app: FastifyInstance) {
         },
         orderBy: { name: "asc" },
       });
-      return users.map((u) => ({ ...u, permissions: parsePerms(u.permissions) }));
+      return users.map((u) => ({ ...u, permissions: parsePermissions(u.permissions) }));
     },
   );
 

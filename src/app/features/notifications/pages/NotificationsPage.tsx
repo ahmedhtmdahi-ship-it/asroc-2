@@ -186,7 +186,8 @@ export function NotificationsPage() {
                           variant="ghost"
                           onClick={() => {
                             handleMarkRead(item.id);
-                            navigate(`/employee/my-requests`);
+                            navigate(`/my-requests`);
+
                           }}
                         >
                           <FileText className="w-4 h-4 ml-2" />

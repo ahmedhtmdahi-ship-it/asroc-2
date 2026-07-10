@@ -98,14 +98,14 @@ function RequestCard({
 
 function ApprovedRequestsTab() {
   const [search, setSearch] = useState("");
-  const { requests, checkOutRequest } = useWorkflow();
+  const { requests, moveRequest } = useWorkflow();
 
   const filtered = requests
     .filter((request) => request.status === "approved" && matchesSearch(request, search))
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   const handleCheckOut = (requestId: string) => {
-    checkOutRequest(requestId, "تم تسجيل خروج الموظف من بوابة الأمن");
+    moveRequest(requestId, "checked_out", "تم تسجيل خروج الموظف من بوابة الأمن");
     toast.success("تم تسجيل الخروج");
   };
 
@@ -130,14 +130,14 @@ function ApprovedRequestsTab() {
 
 function CheckInTab() {
   const [search, setSearch] = useState("");
-  const { requests, checkInRequest } = useWorkflow();
+  const { requests, moveRequest } = useWorkflow();
 
   const filtered = requests
     .filter((request) => request.status === "dispensed" && matchesSearch(request, search))
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   const handleCheckIn = (requestId: string) => {
-    checkInRequest(requestId, "تم تسجيل عودة الموظف من بوابة الأمن");
+    moveRequest(requestId, "returned", "تم تسجيل عودة الموظف من بوابة الأمن");
     toast.success("تم تسجيل العودة");
   };
 

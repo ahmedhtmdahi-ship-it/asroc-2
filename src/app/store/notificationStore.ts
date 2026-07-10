@@ -64,9 +64,9 @@ class NotificationStore extends ReactiveStore {
     markNotificationsReadApi().catch(() => {});
   }
 
-  async syncFromApi(userId: string): Promise<void> {
+  async syncFromApi(): Promise<void> {
     try {
-      const data = await listNotificationsApi(userId, 100);
+      const data = await listNotificationsApi(100);
       this.setNotifications(
         data.map((n) => ({
           id:        n.id,

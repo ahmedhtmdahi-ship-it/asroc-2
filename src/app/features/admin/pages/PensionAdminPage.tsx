@@ -11,21 +11,13 @@ import {
   Users,
 } from "lucide-react";
 
+import { toast } from "sonner";
+
 import { PageLayout } from "@/app/components/PageLayout";
+import { StatCard } from "@/app/components/StatCard";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
-
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <Card>
-      <CardContent className="p-4 text-center">
-        <div className={`mb-1 text-2xl font-bold ${color}`}>{value}</div>
-        <div className="text-sm text-slate-600">{label}</div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function EmptyDataPanel({
   title,
@@ -39,7 +31,7 @@ function EmptyDataPanel({
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    alert(`تم اختيار الملف: ${file.name}`);
+    toast.info(`تم اختيار الملف: ${file.name}`);
     e.target.value = "";
   }
 
