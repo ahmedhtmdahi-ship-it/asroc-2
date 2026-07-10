@@ -1,4 +1,4 @@
-import { lookupUsersApi } from "@/app/lib/dataApi";
+import { apiFetch } from "@/app/lib/apiClient";
 import { ReactiveStore } from "./reactiveStore";
 
 export interface Department {
@@ -8,6 +8,21 @@ export interface Department {
   managerName?: string;
 }
 
+interface ApiDepartment {
+  id: string;
+  name: string;
+  managerId: string | null;
+  managerFinancialNumber: string | null;
+  managerName: string | null;
+}
+
+/**
+ * الأقسام من GET /departments (جدول departments في الداتابيز).
+ *
+ * قبل كده كانت القائمة بتتبني من حقل department بتاع المديرين، وبسبب bug
+ * (اسم القسم كان بيتسجل باسم المدير) كان إيجاد «المدير المسؤول» بيفشل دايمًا
+ * وطلب الكشف العادي مقفول. المصدر الآن جدول حقيقي والاسم اسم القسم فعلًا.
+ */
 class DepartmentsStore extends ReactiveStore {
   private departments: Department[] = [];
 
@@ -27,44 +42,15 @@ class DepartmentsStore extends ReactiveStore {
 
   async syncFromApi(): Promise<void> {
     try {
-      // كل المديرين — حقل القسم بتاعهم هو القسم الذي يديرونه
-      const data = (await lookupUsersApi(["manager", "office_manager"])) .filter(
-        (u) => u.isActive,
-      );
-
+      const data = await apiFetch<ApiDepartment[]>("/departments");
       if (!data || data.length === 0) return;
 
-      // بناء خريطة قسم → مدير من بيانات السيرفر
-      const managerMap = new Map<string, { financialNumber: string; name: string }>();
-      for (const row of data) {
-        if (row.department) {
-          managerMap.set(normalizeArabic(row.department), {
-            financialNumber: row.financialNumber ?? "",
-            name: row.name,
-          });
-        }
-      }
-
-      // Update manager assignments — keep existing department list intact
-      this.departments = this.departments.map((dept) => {
-        const mgr = managerMap.get(normalizeArabic(dept.name));
-        return mgr
-          ? { ...dept, managerFinancialNumber: mgr.financialNumber, managerName: mgr.name }
-          : dept;
-      });
-
-      // Also add any departments that appear in profiles but aren't in the current list
-      for (const [normalizedName, mgr] of managerMap) {
-        const exists = this.departments.some((d) => normalizeArabic(d.name) === normalizedName);
-        if (!exists) {
-          this.departments.push({
-            id: `DYN-${mgr.financialNumber}`,
-            name: mgr.name,
-            managerFinancialNumber: mgr.financialNumber,
-            managerName: mgr.name,
-          });
-        }
-      }
+      this.departments = data.map((d) => ({
+        id: d.id,
+        name: d.name,
+        managerFinancialNumber: d.managerFinancialNumber ?? undefined,
+        managerName: d.managerName ?? undefined,
+      }));
       this.emit();
     } catch {
       // keep current in-memory data if sync fails

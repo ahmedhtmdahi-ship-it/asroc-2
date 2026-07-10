@@ -23,7 +23,7 @@ interface WorkflowContextValue {
   requests: MedicalRequest[];
   syncing: boolean;
   refreshRequests: () => void;
-  createRequest: (request: MedicalRequest) => MedicalRequest;
+  createRequest: (request: MedicalRequest, attachments?: File[]) => MedicalRequest;
   moveRequest: (requestId: string, nextStatus: RequestStatus, note?: string) => MedicalRequest | null;
   approveRequest: (requestId: string, note?: string) => MedicalRequest | null;
   rejectRequest: (requestId: string, note?: string) => MedicalRequest | null;
@@ -76,8 +76,8 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       .finally(() => setSyncing(false));
   }, [user?.id]);
 
-  const createRequest = (request: MedicalRequest) => {
-    return requestStore.create(request);
+  const createRequest = (request: MedicalRequest, attachments?: File[]) => {
+    return requestStore.create(request, attachments);
   };
 
   const moveRequest = (

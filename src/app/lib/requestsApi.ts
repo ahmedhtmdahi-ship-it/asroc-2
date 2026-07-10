@@ -71,3 +71,52 @@ export async function patchRequestApi(
   });
   return normalizeRequest(row);
 }
+
+// ─── المرفقات ────────────────────────────────────────────────────────
+
+export interface RequestAttachmentRecord {
+  id: string;
+  requestId: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
+/** رفع ملف واحد لطلب — السيرفر بيتحقق من النوع الفعلي (PNG/JPG/PDF) والحجم (5MB). */
+export async function uploadRequestAttachmentApi(
+  requestId: string,
+  file: File,
+): Promise<RequestAttachmentRecord> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  return apiFetch<RequestAttachmentRecord>(
+    `/requests/${encodeURIComponent(requestId)}/attachments`,
+    { method: "POST", body: form },
+  );
+}
+
+/** رابط تنزيل مرفق — الواجهة بتفتح الرابط ومعاه التوكن عبر fetch (blob). */
+export async function downloadRequestAttachmentApi(
+  requestId: string,
+  attachmentId: string,
+  fileName: string,
+): Promise<void> {
+  const { getToken } = await import("./apiClient");
+  const base =
+    (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ??
+    "http://localhost:4000";
+  const res = await fetch(
+    `${base}/requests/${encodeURIComponent(requestId)}/attachments/${encodeURIComponent(attachmentId)}`,
+    { headers: { Authorization: `Bearer ${getToken() ?? ""}` } },
+  );
+  if (!res.ok) throw new Error(`فشل تنزيل المرفق (HTTP ${res.status})`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}

@@ -302,7 +302,8 @@ export function EmployeeRequestsPage() {
           : undefined,
     };
 
-    createRequest(request);
+    // المرفقات بتترفع فعليًا بعد حفظ الطلب (رفع حقيقي للسيرفر — مش مجرد state).
+    createRequest(request, attachments);
 
     toast.success("تم إرسال الطلب بنجاح", {
       description:

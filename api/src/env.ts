@@ -13,6 +13,8 @@ const EnvSchema = z.object({
     (val) => val !== "change-me-in-production-min-16-chars",
     { message: "يجب تغيير JWT_SECRET وعدم استخدام القيمة الافتراضية" }
   ),
+  // مجلد تخزين مرفقات الطلبات — في Docker حُدد /data/uploads (على نفس الـ volume).
+  UPLOADS_DIR: z.string().min(1).default("./uploads"),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

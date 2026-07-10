@@ -3,6 +3,7 @@ import {
   listRequestsApi,
   patchRequestApi,
   transitionRequestApi,
+  uploadRequestAttachmentApi,
 } from "@/app/lib/requestsApi";
 import type { MedicalRequest } from "@/app/types/request";
 import type { RequestStatus } from "@/app/types/workflow";
@@ -52,38 +53,73 @@ class RequestStore extends ReactiveStore {
     return this.requests.find((r) => r.id === id);
   }
 
-  create(request: MedicalRequest) {
-    this.requests = [...this.requests, request];
+  create(request: MedicalRequest, attachments: File[] = []) {
+    // الـ id الحقيقي بيولّده السيرفر (uuid) — هنا id مؤقت للعرض المتفائل فقط،
+    // بيتبدل بالطلب الكامل الراجع من السيرفر (أو بيتشال لو الحفظ فشل).
+    const tempId = `tmp-${crypto.randomUUID()}`;
+    const optimistic: MedicalRequest = { ...request, id: tempId };
+
+    this.requests = [...this.requests, optimistic];
     this.emit();
 
-    const payload = { ...request } as Record<string, unknown>;
-    delete payload.status;
-    delete payload.createdAt;
-    delete payload.createdBy;
-    delete payload.approvedAt;
-    delete payload.checkedOutAt;
-    delete payload.diagnosedAt;
-    delete payload.dispensedAt;
-    delete payload.returnedAt;
-    delete payload.completedAt;
-    delete payload.timeline;
-    delete payload.attachments;
-    delete payload.referralId;
-    delete payload.prescriptionId;
-
-    // الـ id بيتبعت للسيرفر فبيتحفظ بنفس القيمة (مفيش تعارض).
+    const payload = {
+   employeeId: request.employeeId,
+   employeeName: request.employeeName,
+   financialNumber: request.financialNumber,
+   department: request.department,
+   reason: request.reason,
+   serviceType: request.serviceType,
+   requestType: request.requestType,
+   monthlyTreatmentType: request.monthlyTreatmentType,
+   monthlyDoctorId: request.monthlyDoctorId,
+   monthlyDoctorName: request.monthlyDoctorName,
+   notes: request.notes,
+   symptoms: request.symptoms,
+   jobTitle: request.jobTitle,
+   workType: request.workType,
+   nationalId: request.nationalId,
+   phone: request.phone,
+   managerId: request.managerId,
+   managerName: request.managerName,
+   };
     createRequestApi(payload)
-      .then((created) => {
-        this.mergeRequest(request.id, created);
+      .then(async (created) => {
+        // استبدال كامل (مش merge) عشان الـ id المؤقت يتبدل بالحقيقي.
+        this.requests = this.requests.map((r) => (r.id === tempId ? created : r));
+        this.emit();
+
+        // رفع المرفقات بعد ما الـ id الحقيقي يوصل — فشل مرفق لا يُفشل الطلب.
+        if (attachments.length > 0) {
+          const failed: string[] = [];
+          for (const file of attachments) {
+            try {
+              const saved = await uploadRequestAttachmentApi(created.id, file);
+              this.applyLocal(created.id, {
+                attachments: [...(this.getById(created.id)?.attachments ?? []), saved],
+              } as Partial<MedicalRequest>);
+            } catch {
+              failed.push(file.name);
+            }
+          }
+          if (failed.length > 0) {
+            window.alert(
+              `الطلب اتسجل، لكن فشل رفع: ${failed.join("، ")} — أعد المحاولة من صفحة التفاصيل.`,
+            );
+          }
+        }
       })
       .catch((e) => {
         console.warn("[api] create request:", e?.message);
-        this.requests = this.requests.filter((r) => r.id !== request.id);
+        this.requests = this.requests.filter((r) => r.id !== tempId);
         this.emit();
-        window.alert("حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مرة أخرى.");
+        window.alert(
+          e instanceof Error && e.message
+            ? `تعذر حفظ الطلب: ${e.message}`
+            : "حدث خطأ أثناء حفظ الطلب. يرجى المحاولة مرة أخرى.",
+        );
       });
 
-    return request;
+    return optimistic;
   }
 
   /** نسخة async: تحديث الحالة مع await + رفض عند الفشل (بدون reload). */
