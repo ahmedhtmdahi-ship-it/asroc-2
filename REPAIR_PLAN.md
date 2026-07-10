@@ -6,7 +6,8 @@
 
 ## ⬅️ حالة التنفيذ (آخر تحديث: 10 يوليو 2026 — branch: fix/track-a-critical)
 
-**المسار A كله متنفذ في الـ working tree** — مش متعمل commit بعد:
+**المسار A كله متنفذ ومتعمل commit:**
+`42f16379` (seed/PII) → `521a6284` (API hardening) → `fc3a1adc` (departments+attachments) → `50e563c1` (hygiene)
 
 - ✅ **A1**: `users.json` وهمي بالكامل (1,755) عبر `scripts/generate-fake-seed.mjs` + `test-users.json` (8 حسابات، باسورد `Test@1234`، بتتزرع خارج production بس) + `seed.ts` بيولّد باسوردات عشوائية لـ CSV خارج git + `SEED_ADMIN_PASSWORD` إلزامي في production
 - ✅ **A2**: `/users/lookup` من غير nationalId/phone (+ بيرجع permissions) + أنواع الفرونت اتظبطت + `monthlyTreatmentResolver` بقى بالصلاحية بدل اسم «روبير»
