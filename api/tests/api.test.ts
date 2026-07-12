@@ -29,6 +29,14 @@ const ids = {
   mgr2: "TEST-MGR-2", // مدير قسم B
   r1: "TEST-REQ-1", // طلب في قسم A
   r2: "TEST-REQ-2", // طلب في قسم B
+  // فاعلو الـ workflow لاختبار المسار الكامل عبر الـ API (كل واحد بصلاحياته الحقيقية).
+  wsec: "TEST-WF-SEC", // أمن (خروج/عودة/إغلاق)
+  wdoc: "TEST-WF-DOC", // طبيب (تشخيص/روشتة)
+  wpharm: "TEST-WF-PHARM", // صيدلية (صرف)
+  wpension: "TEST-WF-PENSION", // معاشات (مسار العلاج الشهري كامل)
+  wemp: "TEST-WF-EMP", // موظف مسار الكشف الكامل
+  wempM: "TEST-WF-EMP-M", // موظف مسار الشهري
+  wempX: "TEST-WF-EMP-X", // موظف اختبار الإلغاء
 };
 
 async function makeUser(
@@ -98,18 +106,36 @@ before(async () => {
   await makeUser(ids.admin, "super_admin", ["all"], "AdminPass!!", null);
   await makeUser(ids.mgr, "manager", ["approve_request", "reject_request"], "MgrPass!!!", DEPT_A);
   await makeUser(ids.mgr2, "manager", ["approve_request", "reject_request"], "Mgr2Pass!!", DEPT_B);
+  // فاعلو الـ workflow — أدوار خدمية cross-department + موظفون للمسارات الكاملة.
+  await makeUser(ids.wsec, "security", ["security_check_out", "security_check_in"], "WfSecPass!!", null);
+  await makeUser(ids.wdoc, "doctor", ["diagnose_patient", "create_prescription"], "WfDocPass!!", null);
+  await makeUser(ids.wpharm, "pharmacy", ["dispense_prescription"], "WfPharmPass!!", null);
+  await makeUser(
+    ids.wpension,
+    "pension_admin",
+    ["recommend_monthly_treatment", "manage_monthly_treatment", "dispense_monthly_treatment"],
+    "WfPenPass!!",
+    null,
+  );
+  await makeUser(ids.wemp, "employee", ["create_request", "view_own_requests"], "WfEmpPass!!", DEPT_A);
+  await makeUser(ids.wempM, "employee", ["create_request", "view_own_requests"], "WfEmpMPass!!", DEPT_A);
+  await makeUser(ids.wempX, "employee", ["create_request", "view_own_requests"], "WfEmpXPass!!", DEPT_A);
   await makeRequest(ids.r1, ids.emp1, DEPT_A);
   await makeRequest(ids.r2, ids.emp2, DEPT_B);
 });
 
 after(async () => {
-  const testUsers = [ids.emp1, ids.emp2, ids.emp3, ids.admin, ids.mgr, ids.mgr2];
-  // طلبات emp3 اتعملت عبر الـ API بـ ids مولّدة — بنمسحها بالموظف مش بالـ id.
-  const emp3Requests = await prisma.medicalRequest.findMany({
-    where: { employeeId: ids.emp3 },
+  const testUsers = [
+    ids.emp1, ids.emp2, ids.emp3, ids.admin, ids.mgr, ids.mgr2,
+    ids.wsec, ids.wdoc, ids.wpharm, ids.wpension, ids.wemp, ids.wempM, ids.wempX,
+  ];
+  // الطلبات اللي اتعملت عبر الـ API بـ ids مولّدة — بنمسحها بالموظف مش بالـ id.
+  const apiEmployees = [ids.emp3, ids.wemp, ids.wempM, ids.wempX];
+  const apiRequests = await prisma.medicalRequest.findMany({
+    where: { employeeId: { in: apiEmployees } },
     select: { id: true },
   });
-  const requestIds = [ids.r1, ids.r2, ...emp3Requests.map((r) => r.id)];
+  const requestIds = [ids.r1, ids.r2, ...apiRequests.map((r) => r.id)];
 
   await prisma.requestTimelineEvent.deleteMany({ where: { requestId: { in: requestIds } } });
   await prisma.notification.deleteMany({ where: { requestId: { in: requestIds } } });
@@ -258,6 +284,8 @@ test("regular employee cannot get PII from lookup endpoint", async () => {
     assert.equal("phone" in user, false);
     assert.equal("workPlace" in user, false);
     assert.equal("workType" in user, false);
+    // مش المفروض يكشف خريطة صلاحيات باقي المستخدمين لأي مستخدم مسجّل.
+    assert.equal("permissions" in user, false);
   }
 });
 
@@ -382,7 +410,9 @@ test("مرفقات: مدير إدارة تانية ممنوع يرفع على ا
 });
 
 test("قاعدة عمل: حد الكشوفات الشهرية بيتطبق على السيرفر (400)", async () => {
-  // نقفل طلب emp3 المفتوح ونزرع 3 كشوفات مكتملة الشهر ده مباشرةً في الداتابيز.
+  // زرع حالة تاريخية مباشرةً: قفل الطلب المفتوح + 3 كشوفات مكتملة الشهر ده.
+  // ده إعداد بيانات (مش التفاف حول باگ) — مسارات completed/cancelled الحقيقية عبر الـ API
+  // مغطّاة في اختبارات "المسار الكامل" و"الإلغاء عبر الـ API" فوق.
   await prisma.medicalRequest.update({
     where: { id: emp3RequestId },
     data: { status: "cancelled" },
@@ -477,4 +507,121 @@ test("الأقسام: /departments بيرجع القسم باسمه الحقيق
   assert.equal(dept!.managerName, ids.mgr, "اسم المدير بيتكمّل من جدول المستخدمين");
 
   await prisma.department.deleteMany({ where: { name: DEPT_A } });
+});
+
+// ─── المسار الكامل عبر الـ API (بيكشف إن الطلب بيوصل completed فعلاً) ───────────
+// الاختبارات دي بتسقط قبل إصلاح statusPermission (الـ API كان بيرفض
+// completed/monthly_completed بـ 400 فالطلب بيعلق عند returned/monthly_dispensed)،
+// وبتنجح بعده. كل خطوة بالفاعل وصلاحيته الحقيقية — مش super_admin بيتخطّى كله.
+
+async function transition(token: string, id: string, status: string, note?: string) {
+  return app.inject({
+    method: "POST",
+    url: `/requests/${id}/transition`,
+    headers: auth(token),
+    payload: { status, note },
+  });
+}
+
+async function createRequestAs(
+  token: string,
+  employeeId: string,
+  financialNumber: string,
+  extra: Record<string, unknown>,
+) {
+  return app.inject({
+    method: "POST",
+    url: "/requests",
+    headers: auth(token),
+    payload: {
+      employeeId,
+      employeeName: employeeId,
+      financialNumber,
+      department: DEPT_A,
+      reason: "اختبار مسار كامل",
+      ...extra,
+    },
+  });
+}
+
+test("المسار الكامل للكشف: من pending حتى completed عبر الـ API", async () => {
+  const empToken = (await login(ids.wemp, "WfEmpPass!!")).json().token;
+  const created = await createRequestAs(empToken, ids.wemp, "0100", {
+    serviceType: "checkup",
+    requestType: "normal",
+  });
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.json().status, "pending");
+  const reqId = created.json().id;
+
+  const mgrToken = (await login(ids.mgr, "MgrPass!!!")).json().token;
+  const secToken = (await login(ids.wsec, "WfSecPass!!")).json().token;
+  const docToken = (await login(ids.wdoc, "WfDocPass!!")).json().token;
+  const pharmToken = (await login(ids.wpharm, "WfPharmPass!!")).json().token;
+
+  const steps: Array<[string, string]> = [
+    [mgrToken, "approved"],
+    [secToken, "checked_out"],
+    [docToken, "in_diagnosis"],
+    [docToken, "prescribed"],
+    [pharmToken, "dispensed"],
+    [secToken, "returned"],
+    [secToken, "completed"], // ← الخطوة اللي كانت مكسورة (400) قبل الإصلاح
+  ];
+  for (const [token, status] of steps) {
+    const res = await transition(token, reqId, status);
+    assert.equal(res.statusCode, 200, `الانتقال إلى ${status} لازم ينجح`);
+    assert.equal(res.json().status, status);
+  }
+
+  // بعد الإكمال الطلب بيتقفل → قاعدة "طلب مفتوح واحد" تتحرّر والموظف يقدر يعمل طلب جديد.
+  const again = await createRequestAs(empToken, ids.wemp, "0100", {
+    serviceType: "checkup",
+    requestType: "normal",
+  });
+  assert.equal(again.statusCode, 201, "بعد الإكمال يقدر يعمل طلب جديد (مش محبوس)");
+});
+
+test("المسار الكامل للعلاج الشهري: حتى monthly_completed عبر الـ API", async () => {
+  const empToken = (await login(ids.wempM, "WfEmpMPass!!")).json().token;
+  const created = await createRequestAs(empToken, ids.wempM, "0200", {
+    serviceType: "monthly_treatment",
+    monthlyTreatmentType: "new",
+  });
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.json().status, "pending_monthly_doctor");
+  const reqId = created.json().id;
+
+  const penToken = (await login(ids.wpension, "WfPenPass!!")).json().token;
+  const steps = [
+    "monthly_approved",
+    "monthly_ready_pharmacy",
+    "monthly_dispensed",
+    "monthly_completed", // ← الخطوة اللي كانت مكسورة (400) قبل الإصلاح
+  ];
+  for (const status of steps) {
+    const res = await transition(penToken, reqId, status);
+    assert.equal(res.statusCode, 200, `الانتقال إلى ${status} لازم ينجح`);
+    assert.equal(res.json().status, status);
+  }
+});
+
+test("الإلغاء عبر الـ API: صاحب الطلب يقدر، ودور خدمي cross-department ممنوع", async () => {
+  const empToken = (await login(ids.wempX, "WfEmpXPass!!")).json().token;
+  const created = await createRequestAs(empToken, ids.wempX, "0300", {
+    serviceType: "checkup",
+    requestType: "normal",
+  });
+  assert.equal(created.statusCode, 201);
+  const reqId = created.json().id;
+
+  // طبيب (cross-department، من غير approve/reject) ممنوع يلغي طلب موظف تاني.
+  const docToken = (await login(ids.wdoc, "WfDocPass!!")).json().token;
+  const denied = await transition(docToken, reqId, "cancelled");
+  assert.equal(denied.statusCode, 403, "دور خدمي مش صاحب الطلب ممنوع يلغي");
+
+  // صاحب الطلب يقدر يلغي طلبه.
+  const ok = await transition(empToken, reqId, "cancelled");
+  assert.equal(ok.statusCode, 200, "صاحب الطلب يقدر يلغي طلبه");
+  assert.equal(ok.json().status, "cancelled");
 });

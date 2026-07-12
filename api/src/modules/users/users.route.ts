@@ -97,6 +97,10 @@ export async function userRoutes(app: FastifyInstance) {
     { preHandler: [app.authenticate] },
     async (req) => {
       const { roles } = listUsersQuerySchema.parse(req.query);
+      // بيانات تعريف فقط لاختيار المدير/طبيب العلاج الشهري. عمدًا:
+      //  • مفيش permissions — كانت بتكشف خريطة صلاحيات المؤسسة كلها لأي مستخدم مسجّل.
+      //  • مفيش nationalId/phone (PII).
+      // financialNumber بيفضل لأنه مفتاح مطابقة المدير بالإدارة (managersStore/managerResolver).
       const users = await prisma.user.findMany({
         where: roles?.length ? { role: { in: roles } } : {},
         select: {
@@ -106,12 +110,11 @@ export async function userRoutes(app: FastifyInstance) {
           department: true,
           financialNumber: true,
           jobTitle: true,
-          permissions: true,
           isActive: true,
         },
         orderBy: { name: "asc" },
       });
-      return users.map((u) => ({ ...u, permissions: parsePermissions(u.permissions) }));
+      return users;
     },
   );
 

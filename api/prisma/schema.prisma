@@ -1,6 +1,6 @@
 // مخطط قاعدة البيانات — كل الجداول في مكان واحد.
-// أسماء الجداول والأعمدة snake_case في Postgres (عبر @map/@@map)،
-// بينما تفضل الأسماء camelCase في كود TypeScript.
+// القاعدة SQLite (provider تحت). أسماء الجداول والأعمدة snake_case في القاعدة
+// (عبر @map/@@map)، بينما تفضل الأسماء camelCase في كود TypeScript.
 
 generator client {
   provider = "prisma-client-js"

@@ -15,7 +15,7 @@ import {
   updateRequest,
   type ListFilter,
 } from "./requests.service.js";
-import { statusPermission } from "./requests.workflow.js";
+import { statusPermission, closedRequestStatuses } from "./requests.workflow.js";
 // helpers الهوية وفصل الإدارات — مشتركة مع route المرفقات.
 import {
   canReachRequest,
@@ -28,15 +28,8 @@ import {
 function canModifyRequest(user: RequestUser, request: any, fields: Record<string, unknown>): boolean {
   if (user.permissions.includes("all") || user.permissions.includes("manage_system")) return true;
 
-  const closedStatuses = [
-    "completed",
-    "rejected",
-    "cancelled",
-    "monthly_rejected",
-    "monthly_completed",
-  ];
-
-  if (closedStatuses.includes(request.status)) {
+  // مصدر واحد لقائمة الحالات المغلقة (بدل تكرارها هنا) — من packages/shared عبر workflow.
+  if ((closedRequestStatuses as string[]).includes(request.status)) {
     return false;
   }
 
@@ -175,25 +168,38 @@ export async function requestRoutes(app: FastifyInstance) {
     // ✅ تحقق إن الطلب موجود (getRequest بترمي 404 لو مش موجود)
     const request = await getRequest(req.params.id);
 
-    // ✅ تحقق الصلاحية
+    // تجاوز السوبر أدمن — بالدور أو بصلاحية "all" (نفس منطق middleware/requirePermission).
+    const isSuperAdmin =
+      user.role === "super_admin" || user.permissions.includes("all");
+
+    // الصلاحية المطلوبة لهذا التحويل. undefined = مفيش صلاحية إضافية مطلوبة
+    // (يكفي إن المستخدم يقدر يوصل للطلب) — زي ما هو موثّق في workflow.ts.
+    // الانتقال نفسه محروس بـ canMove داخل transitionRequest (بيرمي 400 لو غير صالح)
+    // وبـ transitionSchema (status مقيّد بالـ enum)، فمفيش انتقال حر.
     const perm = statusPermission[status];
 
-    if (!perm) {
-      // حالة مش معرّفة في الـ mapping — ممنوعة حتى لـ super_admin
-      return reply.code(400).send({
-        error: "Bad Request",
-        message: `حالة الانتقال "${status}" غير معرّفة أو غير مسموحة`,
-      });
-    }
-
-    if (
-      !user.permissions.includes("all") &&
-      !user.permissions.includes(perm)
-    ) {
+    if (perm && !isSuperAdmin && !user.permissions.includes(perm)) {
       return reply.code(403).send({
         error: "Forbidden",
         message: "صلاحية غير كافية لهذا الإجراء",
       });
+    }
+
+    // الإلغاء حالة خاصة: موديل الصلاحية الواحدة مش بيعبّر عن "المالك أو المدير".
+    // يُسمح فقط لصاحب الطلب أو لمن يملك صلاحية اعتماد/رفض/إدارة — عشان دور خدمي
+    // cross-department (طبيب/صيدلية/أمن) ما يقدرش يلغي طلب pending لموظف تاني.
+    if (status === "cancelled" && !isSuperAdmin) {
+      const isOwner = request.employeeId === user.sub;
+      const canCancelForOthers =
+        user.permissions.includes("approve_request") ||
+        user.permissions.includes("reject_request") ||
+        user.permissions.includes("manage_system");
+      if (!isOwner && !canCancelForOthers) {
+        return reply.code(403).send({
+          error: "Forbidden",
+          message: "غير مسموح بإلغاء هذا الطلب",
+        });
+      }
     }
 
     // قيد الإدارة: المدير يعتمد/يرفض طلبات إدارته فقط (الأدوار الخدمية والموظف على طلبه).

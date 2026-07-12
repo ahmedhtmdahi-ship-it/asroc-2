@@ -72,7 +72,10 @@ export const statusTimestampField: Partial<Record<RequestStatus, string>> = {
   monthly_completed: "completedAt",
 };
 
-// الصلاحية المطلوبة لتنفيذ كل تحويل (undefined = يكفي تسجيل الدخول).
+// الصلاحية المطلوبة لتنفيذ كل تحويل.
+// undefined = مفيش صلاحية إضافية مطلوبة؛ يكفي إن المستخدم يقدر يوصل للطلب
+// (canReachRequest) والانتقال صالح (canMove). الإلغاء (cancelled) له حارس خاص
+// في الـ route (صاحب الطلب أو مدير) لأنه مش قابل للتعبير بصلاحية واحدة.
 export const statusPermission: Partial<Record<RequestStatus, Permission>> = {
   approved: "approve_request",
   rejected: "reject_request",
@@ -82,11 +85,15 @@ export const statusPermission: Partial<Record<RequestStatus, Permission>> = {
   prescribed: "create_prescription",
   dispensed: "dispense_prescription",
   returned: "security_check_in",
+  // إغلاق الكشف بيحصل مع تسجيل عودة الموظف من الأمن (نفس فاعل returned).
+  completed: "security_check_in",
   monthly_approved: "recommend_monthly_treatment",
   monthly_rejected: "recommend_monthly_treatment",
   monthly_modified: "recommend_monthly_treatment",
   monthly_ready_pharmacy: "manage_monthly_treatment",
   monthly_dispensed: "dispense_monthly_treatment",
+  // إغلاق دورة العلاج الشهري بيحصل مع صرف الصيدلية (نفس فاعل monthly_dispensed).
+  monthly_completed: "dispense_monthly_treatment",
 };
 
 export const statusLabels: Record<RequestStatus, string> = {
