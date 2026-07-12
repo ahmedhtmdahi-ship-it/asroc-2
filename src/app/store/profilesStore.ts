@@ -33,7 +33,9 @@ class ProfilesStore extends ReactiveStore {
         phone: null,
         workType: null,
         role: u.role,
-        permissions: u.permissions,
+        // دليل المستخدمين مش بيحمل صلاحيات — صلاحيات المستخدم الحالي بتيجي من /auth/me.
+        // (السيرفر مابيرجّعش permissions من /users/lookup لتقليل كشف خريطة الصلاحيات.)
+        permissions: [],
         isActive: u.isActive,
       }));
       this.emit();
