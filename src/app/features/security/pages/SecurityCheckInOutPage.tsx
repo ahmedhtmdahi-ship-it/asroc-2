@@ -279,6 +279,7 @@ export function SecurityCheckInOutPage() {
                             <Button
                               size="sm"
                               variant="outline"
+                              data-testid={`checkin-complete-${request.id}`}
                               className="w-full border-green-300 text-green-700 hover:bg-green-50"
                               onClick={() =>
                                 handleCheckInAndComplete(
