@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { prisma } from "../../db/prisma.js";
-import { requirePermission } from "../../middleware/requirePermission.js";
+import { requireAnyPermission } from "../../middleware/requirePermission.js";
 
 const querySchema = z.object({
   requestId: z.string().optional(),
@@ -10,8 +10,16 @@ const querySchema = z.object({
 });
 
 export async function securityRoutes(app: FastifyInstance) {
-  // GET /security-logs
-  app.get("/", { preHandler: [app.authenticate, requirePermission("view_audit_log")] }, async (req) => {
+  // GET /security-logs — ضابط الأمن يشوف سجل حركته، والمدقّق (view_audit_log) كمان.
+  app.get(
+    "/",
+    {
+      preHandler: [
+        app.authenticate,
+        requireAnyPermission("security_check_in", "security_check_out", "view_audit_log"),
+      ],
+    },
+    async (req) => {
     const { requestId, limit } = querySchema.parse(req.query);
 
     const rows = await prisma.securityLog.findMany({

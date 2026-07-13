@@ -10,8 +10,14 @@ cd /app/api
 echo "▶️  تطبيق الـ migrations..."
 pnpm exec prisma migrate deploy
 
-echo "▶️  زرع البيانات الأولية (لو لزم)..."
-pnpm exec prisma db seed || echo "⚠️  تخطّي الزرع (أو فشل غير حرج) — يكمّل التشغيل."
+echo "▶️  زرع البيانات الأولية (idempotent — بيتخطّى لو فيه بيانات)..."
+# الزرع بيرجّع 0 لو الداتا موجودة أصلاً (إعادة التشغيل مأمونة)، فأي فشل هنا فشل حقيقي.
+# بنوقف الإقلاع بدل ما السيرفر يقوم بقاعدة فاضية بلا مستخدمين (محدش يقدر يدخل) بصمت.
+pnpm exec prisma db seed || {
+  echo "❌ فشل الزرع — إيقاف الإقلاع."
+  echo "   السبب الأشهر: SEED_ADMIN_PASSWORD غير محدد في الإنتاج. حدّده في .env وأعد التشغيل."
+  exit 1
+}
 
 echo "▶️  تشغيل الـ API..."
 exec pnpm exec tsx src/server.ts

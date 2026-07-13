@@ -625,3 +625,16 @@ test("الإلغاء عبر الـ API: صاحب الطلب يقدر، ودور 
   assert.equal(ok.statusCode, 200, "صاحب الطلب يقدر يلغي طلبه");
   assert.equal(ok.json().status, "cancelled");
 });
+
+test("سجل الأمن: ضابط الأمن يشوفه، والموظف العادي ممنوع", async () => {
+  // ضابط أمن (security_check_in/out) لازم يوصل لسجل حركته — كان بيترفض قبل الإصلاح.
+  const secToken = (await login(ids.wsec, "WfSecPass!!")).json().token;
+  const ok = await app.inject({ method: "GET", url: "/security-logs", headers: auth(secToken) });
+  assert.equal(ok.statusCode, 200, "ضابط الأمن يشوف سجل الحركة");
+  assert.ok(Array.isArray(ok.json()));
+
+  // موظف عادي (من غير أي صلاحية أمن/تدقيق) ممنوع.
+  const empToken = (await login(ids.wemp, "WfEmpPass!!")).json().token;
+  const denied = await app.inject({ method: "GET", url: "/security-logs", headers: auth(empToken) });
+  assert.equal(denied.statusCode, 403, "الموظف العادي ممنوع من سجل الأمن");
+});

@@ -12,7 +12,7 @@ import type {
   RequestType,
   ServiceType,
 } from "@/app/types/request";
-import { isClosedStatus, requestStatusLabels, statusBadgeClasses } from "@/app/types/workflow";
+import { isClosedStatus, requestStatusLabels, statusBadgeClasses, MONTHLY_CHECKUP_LIMIT } from "@/app/types/workflow";
 import { formatDate } from "@/app/lib/format";
 import {
   AlertTriangle,
@@ -137,7 +137,7 @@ export function EmployeeRequestsPage() {
       );
     }).length;
 
-    const total = 3;
+    const total = MONTHLY_CHECKUP_LIMIT;
 
     return {
       total,
@@ -199,7 +199,7 @@ export function EmployeeRequestsPage() {
 
     if (serviceType === "monthly_treatment" && !monthlyDoctorId) {
       toast.error("لم يتم العثور على طبيب العلاج الشهري", {
-        description: "راجع صلاحيات دكتور روبير في ملف المستخدمين.",
+        description: "لا يوجد مستخدم بدور طبيب نشط — راجع الأدوار في ملف المستخدمين.",
       });
       return;
     }
@@ -588,8 +588,8 @@ export function EmployeeRequestsPage() {
                   <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-200 p-4 text-sm text-yellow-800">
                     <AlertTriangle className="w-5 h-5 mt-0.5" />
                     <p>
-                      لم يتم العثور على طبيب العلاج الشهري. راجع صلاحيات دكتور
-                      روبير في ملف المستخدمين.
+                      لم يتم العثور على طبيب العلاج الشهري. لا يوجد مستخدم بدور
+                      طبيب نشط — راجع الأدوار في ملف المستخدمين.
                     </p>
                   </div>
                 )}
