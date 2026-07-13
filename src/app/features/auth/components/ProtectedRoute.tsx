@@ -1,4 +1,4 @@
-﻿import { Navigate, useLocation } from "react-router";
+﻿import { Navigate } from "react-router";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import type { UserRole, Permission } from "@/app/types/user";
 
@@ -10,18 +10,14 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, roles, permissions }: ProtectedRouteProps) {
   const { user, isAuthenticated, hasRole, hasPermission } = useAuth();
-  const location = useLocation();
 
   // ١. غير مسجل دخول
   if (!isAuthenticated || !user) {
     return <Navigate to="/" replace />;
   }
 
-  // ١.٥. مطالب بتغيير الباسورد → مفيش أي صفحة غير /change-password
-  //      (فرض سياسة «تغيير الباسورد الافتراضي أول دخول» على مستوى الـ router كله).
-  if (user.mustChangePassword && location.pathname !== "/change-password") {
-    return <Navigate to="/change-password" replace />;
-  }
+  // تغيير الباسورد اختياري — المستخدم بيغيّره وقت ما يحب من صفحة البروفايل،
+  // فمفيش فرض redirect هنا.
 
   // ٢. تحقق الأدوار (super_admin يتجاوز)
   if (roles && user.role !== "super_admin" && !hasRole(roles)) {

@@ -139,7 +139,8 @@ async function seedUsers() {
       permissions: JSON.stringify(u.permissions ?? []),
       isActive: u.isActive ?? true,
       // الافتراضي: تغيير الباسورد أول دخول (أمان on-prem). حسابات test مستثناة صراحةً.
-      mustChangePassword: u.mustChangePassword ?? true,
+      // تغيير الباسورد اختياري (مش إجباري) — المستخدم بيغيّره من صفحة البروفايل وقت ما يحب.
+      mustChangePassword: u.mustChangePassword ?? false,
     };
 
     await prisma.user.upsert({
