@@ -13,7 +13,6 @@ import { requestStore } from "../store/requestStore";
 import { useStore } from "../store/reactiveStore";
 import { managersStore } from "../store/managersStore";
 import { departmentsStore } from "../store/departmentsStore";
-import { medicineStore } from "../store/medicineStore";
 import { profilesStore } from "../store/profilesStore";
 import { notificationStore } from "../store/notificationStore";
 import { useAuth } from "@/app/features/auth/AuthContext";
@@ -51,11 +50,13 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setSyncing(true);
 
+    // ملحوظة: كتالوج الأدوية (~19 ألف صنف) مش هنا عمدًا — بيتحمّل كسول عند أول
+    // صفحة محتاجاه (صيدلية/طبيب/مخزون) عبر medicineStore.ensureLoaded()، فأغلب
+    // المستخدمين (موظفين/أمن/مديرين) مش بيسحبوه أصلاً.
     Promise.all([
       requestStore.syncFromApi(),
       managersStore.syncFromApi(),
       departmentsStore.syncFromApi(),
-      medicineStore.syncFromApi(),
       profilesStore.syncFromApi(),
       notificationStore.syncFromApi(),
     ])

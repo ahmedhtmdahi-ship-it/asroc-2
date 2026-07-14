@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Edit3,
   Package,
@@ -88,6 +88,10 @@ function stockStatus(medicine: Medicine) {
 
 export function MedicineInventoryManager({ compact = false }: { compact?: boolean }) {
   const medicines = useStore(medicineStore, (s) => s.getAll());
+  // تحميل الكتالوج كسول عند فتح شاشة المخزون (مش وقت الدخول للكل).
+  useEffect(() => {
+    void medicineStore.ensureLoaded();
+  }, []);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Medicine | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);

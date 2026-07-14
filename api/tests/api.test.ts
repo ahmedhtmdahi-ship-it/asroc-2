@@ -39,6 +39,9 @@ const ids = {
   wempX: "TEST-WF-EMP-X", // موظف اختبار الإلغاء
 };
 
+// أدوية اختبار لبحث/حد نقطة GET /medicines — بنمسحها في after.
+const testMedicineIds = ["TEST-MED-1", "TEST-MED-2", "TEST-MED-3"];
+
 async function makeUser(
   id: string,
   role: string,
@@ -122,6 +125,17 @@ before(async () => {
   await makeUser(ids.wempX, "employee", ["create_request", "view_own_requests"], "WfEmpXPass!!", DEPT_A);
   await makeRequest(ids.r1, ids.emp1, DEPT_A);
   await makeRequest(ids.r2, ids.emp2, DEPT_B);
+
+  // أدوية اختبار لبحث نقطة /medicines: صنفان نشطان بالاسم "ZZTESTMED" + صنف مُعطّل.
+  // نمسح أولاً (تشغيل سابق اتقطع) عشان الإعداد يفضل idempotent زي باقي البيانات.
+  await prisma.medicine.deleteMany({ where: { id: { in: testMedicineIds } } });
+  await prisma.medicine.createMany({
+    data: [
+      { id: testMedicineIds[0], name: "ZZTESTMED Paracetamol", unit: "قرص", isActive: true },
+      { id: testMedicineIds[1], name: "ZZTESTMED Ibuprofen", unit: "قرص", isActive: true },
+      { id: testMedicineIds[2], name: "ZZTESTMED Aspirin", unit: "قرص", isActive: false },
+    ],
+  });
 });
 
 after(async () => {
@@ -143,6 +157,7 @@ after(async () => {
     where: { OR: [{ entityId: { in: requestIds } }, { userId: { in: testUsers } }] },
   });
   await prisma.medicalRequest.deleteMany({ where: { id: { in: requestIds } } });
+  await prisma.medicine.deleteMany({ where: { id: { in: testMedicineIds } } });
   await prisma.user.deleteMany({
     where: { OR: [{ id: { in: testUsers } }, { username: "weak-pass-user" }] },
   });
@@ -637,4 +652,52 @@ test("سجل الأمن: ضابط الأمن يشوفه، والموظف الع�
   const empToken = (await login(ids.wemp, "WfEmpPass!!")).json().token;
   const denied = await app.inject({ method: "GET", url: "/security-logs", headers: auth(empToken) });
   assert.equal(denied.statusCode, 403, "الموظف العادي ممنوع من سجل الأمن");
+});
+
+test("GET /medicines: بحث + حد + activeOnly (وتوافق خلفي بدون باراميترات)", async () => {
+  // أي مستخدم مسجّل يقدر يقرأ الكتالوج — بنستخدم موظف عادي.
+  const token = (await login(ids.emp1, "Emp1Pass!!")).json().token;
+
+  // توافق خلفي: بدون باراميترات بيرجّع الكل (فيهم أدوية الاختبار الثلاثة).
+  const all = await app.inject({ method: "GET", url: "/medicines", headers: auth(token) });
+  assert.equal(all.statusCode, 200);
+  const allBody = all.json() as Array<{ id: string }>;
+  assert.ok(Array.isArray(allBody));
+  const testIdsFound = allBody.filter((m) => testMedicineIds.includes(m.id));
+  assert.equal(testIdsFound.length, 3, "بدون فلتر لازم يرجّع أدوية الاختبار الثلاثة");
+
+  // بحث بالاسم (contains) — الـ token فريد فبيرجّع الثلاثة بالظبط (نشط + مُعطّل).
+  const search = await app.inject({
+    method: "GET",
+    url: "/medicines?search=ZZTESTMED",
+    headers: auth(token),
+  });
+  assert.equal(search.statusCode, 200);
+  const searchBody = search.json() as Array<{ id: string; name: string }>;
+  assert.equal(searchBody.length, 3, "البحث بالاسم لازم يرجّع أدوية الاختبار بس");
+  assert.ok(searchBody.every((m) => m.name.includes("ZZTESTMED")));
+
+  // بحث أضيق — صنف واحد.
+  const one = await app.inject({
+    method: "GET",
+    url: "/medicines?search=Paracetamol",
+    headers: auth(token),
+  });
+  assert.equal(one.json().length, 1, "بحث أضيق لازم يرجّع صنف واحد");
+
+  // activeOnly=true بيستبعد الصنف المُعطّل (Aspirin) → اتنين بس.
+  const activeOnly = await app.inject({
+    method: "GET",
+    url: "/medicines?search=ZZTESTMED&activeOnly=true",
+    headers: auth(token),
+  });
+  assert.equal(activeOnly.json().length, 2, "activeOnly لازم يستبعد الصنف المُعطّل");
+
+  // limit بيحدّ عدد النتائج.
+  const limited = await app.inject({
+    method: "GET",
+    url: "/medicines?search=ZZTESTMED&limit=1",
+    headers: auth(token),
+  });
+  assert.equal(limited.json().length, 1, "limit لازم يحدّ عدد الصفوف المرجّعة");
 });

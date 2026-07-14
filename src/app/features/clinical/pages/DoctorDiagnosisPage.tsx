@@ -28,10 +28,9 @@ import { useWorkflow } from "@/app/context/WorkflowContext";
 import { requestStatusLabels } from "@/app/types/workflow";
 import { toast } from "sonner";
 
-import { medicineStore } from "@/app/store/medicineStore";
 import { requestStore } from "@/app/store/requestStore";
-import { useStore } from "@/app/store/reactiveStore";
 import type { PrescriptionMedication } from "@/app/types/request";
+import { MedicineCombobox } from "@/app/features/clinical/components/MedicineCombobox";
 
 type Medication = {
   medicationId: string;
@@ -47,7 +46,6 @@ export function DoctorDiagnosisPage() {
   const navigate = useNavigate();
   const { requests, refreshRequests } = useWorkflow();
   const request = requests.find((item) => item.id === params.id);
-  const medicines = useStore(medicineStore, (s) => s.getAll());
 
   const [complaint, setComplaint] = useState(request?.reason || "");
   const [diagnosis, setDiagnosis] = useState("");
@@ -93,9 +91,13 @@ export function DoctorDiagnosisPage() {
   };
 
   const updateMedication = (index: number, field: keyof Medication, value: string) => {
-    const updated = [...medications];
-    updated[index] = { ...updated[index], [field]: value };
-    setMedications(updated);
+    // صيغة الـ updater الدالّية: عشان لو اتنادت مرتين ورا بعض (اختيار الدواء
+    // بيحدّث medicationId والـ name سوا) التحديث التاني يبني على الأول مش على نسخة قديمة.
+    setMedications((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
   const handleSave = async () => {
@@ -412,31 +414,13 @@ export function DoctorDiagnosisPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <Label>اسم الدواء</Label>
-                        <Select
+                        <MedicineCombobox
                           value={med.medicationId}
-                          onValueChange={(value) => {
-                            const selected = medicines.find(
-                              (m) => m.id === value
-                            );
-                            updateMedication(index, "medicationId", value);
-                            if (selected) {
-                              updateMedication(index, "name", selected.name);
-                            }
+                          onSelect={(medicine) => {
+                            updateMedication(index, "medicationId", medicine.id);
+                            updateMedication(index, "name", medicine.name);
                           }}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="اختر الدواء" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {medicines
-                              .filter((m) => m.isActive)
-                              .map((m) => (
-                                <SelectItem key={m.id} value={m.id}>
-                                  {m.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </div>
 
 

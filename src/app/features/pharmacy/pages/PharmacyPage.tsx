@@ -1,4 +1,5 @@
-﻿import { useNavigate } from "react-router";
+﻿import { useEffect } from "react";
+import { useNavigate } from "react-router";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -20,6 +21,11 @@ import { useStore } from "@/app/store/reactiveStore";
 export function PharmacyPage() {
   const navigate = useNavigate();
   const { requests } = useWorkflow();
+
+  // كتالوج الأدوية بيتحمّل كسول عند فتح الصيدلية (مش عالميًا وقت الدخول).
+  useEffect(() => {
+    void medicineStore.ensureLoaded();
+  }, []);
 
   const prescriptionQueue = requests.filter(
     (request) =>

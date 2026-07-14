@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   AlertTriangle,
@@ -155,6 +155,10 @@ export default function PharmacyDispensePage() {
   const navigate = useNavigate();
   const { requests, moveRequest } = useWorkflow();
   useStore(medicineStore, (s) => s.getAll()); // اشتراك تفاعلي في قائمة الأدوية
+  // تحميل الكتالوج كسول — لو المستخدم فتح صفحة الصرف مباشرة (deep link).
+  useEffect(() => {
+    void medicineStore.ensureLoaded();
+  }, []);
   const [confirmedReview, setConfirmedReview] = useState(false);
   const [unavailableMeds, setUnavailableMeds] = useState<Set<string>>(new Set());
 

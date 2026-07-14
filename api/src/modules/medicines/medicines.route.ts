@@ -20,10 +20,29 @@ const createMedicineSchema = medicineSchema.extend({
 
 const updateMedicineSchema = medicineSchema.partial();
 
+// بحث + حد على مستوى السيرفر — عشان الواجهة (صيدلية/طبيب) ما تحمّلش الـ 19 ألف
+// دواء كلهم كل مرة. بدون باراميترات بيرجّع الكل (توافق خلفي).
+const listMedicinesQuery = z.object({
+  search: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(1000).optional(),
+  activeOnly: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v === "true"),
+});
+
 export async function medicineRoutes(app: FastifyInstance) {
-  // GET /medicines — كل الأدوية مرتّبة بالاسم
-  app.get("/", { preHandler: [app.authenticate] }, async () => {
-    return prisma.medicine.findMany({ orderBy: { name: "asc" } });
+  // GET /medicines?search=&limit=&activeOnly= — بحث بالاسم + حد اختياري.
+  app.get("/", { preHandler: [app.authenticate] }, async (req) => {
+    const { search, limit, activeOnly } = listMedicinesQuery.parse(req.query);
+    return prisma.medicine.findMany({
+      where: {
+        ...(search ? { name: { contains: search } } : {}),
+        ...(activeOnly ? { isActive: true } : {}),
+      },
+      orderBy: { name: "asc" },
+      ...(limit ? { take: limit } : {}),
+    });
   });
 
   app.post(

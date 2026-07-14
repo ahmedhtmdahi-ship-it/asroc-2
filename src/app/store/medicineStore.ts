@@ -21,9 +21,26 @@ function normalizeMedicine(medicine: Medicine): Medicine {
 
 class MedicineStore extends ReactiveStore {
   private medicines: Medicine[] = [];
+  private loaded = false;
+  private loadingPromise: Promise<void> | null = null;
 
   getAll() {
     return this.medicines;
+  }
+
+  /**
+   * تحميل الكتالوج مرة واحدة عند أول صفحة محتاجاه (صيدلية/طبيب/مخزون).
+   * مش بنحمّل الـ ~19 ألف دواء عالميًا لكل مستخدم وقت الدخول — أغلب المستخدمين
+   * (موظفين/أمن/مديرين) عمرهم ما بيلمسوا الأدوية. النداءات المتزامنة بتتوحّد على
+   * نفس الـ promise، ولو التحميل فشل بيفضل loaded=false فالصفحة اللي بعدها تعيد المحاولة.
+   */
+  ensureLoaded(): Promise<void> {
+    if (this.loaded) return Promise.resolve();
+    if (this.loadingPromise) return this.loadingPromise;
+    this.loadingPromise = this.syncFromApi().finally(() => {
+      this.loadingPromise = null;
+    });
+    return this.loadingPromise;
   }
 
   getById(id: string) {
@@ -72,12 +89,14 @@ class MedicineStore extends ReactiveStore {
   async syncFromApi(): Promise<void> {
     try {
       const data = await listMedicinesApi();
-      if (!data || data.length === 0) return;
+      this.loaded = true; // نجح الاتصال — الكتالوج اتحمّل (حتى لو رجع فاضي)
+      // رد فاضي وإحنا عندنا داتا بالفعل = غالبًا رد عابر → نحافظ على الموجود.
+      if ((!data || data.length === 0) && this.medicines.length > 0) return;
 
-      this.medicines = data.map(normalizeMedicine);
+      this.medicines = (data ?? []).map(normalizeMedicine);
       this.emit();
     } catch {
-      // keep current in-memory data if sync fails
+      // فشل الاتصال — نسيب الداتا الحالية و loaded زي ما هي (إعادة المحاولة لاحقًا)
     }
   }
 }
