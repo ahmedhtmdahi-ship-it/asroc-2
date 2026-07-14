@@ -69,12 +69,15 @@ function loadJson<T>(name: string): T {
   return JSON.parse(readFileSync(join(SEED_DIR, name), "utf8")) as T;
 }
 
-// users.local.json = الداتا الحقيقية (خارج git — شوف api/.gitignore). لو موجودة
-// بتتفضّل على users.json الصناعي. دي وسيلة تسليم الداتا الفعلية للـ on-prem.
-const localUsersPath = join(SEED_DIR, "users.local.json");
+// مصدر بيانات المستخدمين الحقيقية (PII — خارج git وخارج صورة Docker).
+// الأولوية: SEED_USERS_FILE (مسار runtime، مثلاً ملف مركّب على volume الإنتاج)
+// ثم users.local.json المجاور (للتطوير المحلي) ثم users.json الصناعي كأمان افتراضي.
+// بكده صورة Docker بتفضل خالية من الـ PII: لو محدش وفّر ملف حقيقي وقت التشغيل
+// بتتزرع الداتا الصناعية — الحقيقية بتوصل on-prem عن طريق تركيب الملف لا حقنه في الصورة.
+const localUsersPath = process.env.SEED_USERS_FILE ?? join(SEED_DIR, "users.local.json");
 const useLocalUsers = existsSync(localUsersPath);
 const mockUsers = useLocalUsers
-  ? loadJson<SeedUser[]>("users.local.json")
+  ? (JSON.parse(readFileSync(localUsersPath, "utf8")) as SeedUser[])
   : loadJson<SeedUser[]>("users.json");
 const mockDepartments = loadJson<SeedDepartment[]>("departments.json");
 const medicinesSeed = loadJson<SeedMedicine[]>("medicines.json");
@@ -97,7 +100,7 @@ function randomPassword(): string {
 async function seedUsers() {
   const all = [...mockUsers, ...testUsers];
   console.log(
-    `\n👤 زرع ${all.length} مستخدم (مع bcrypt) — المصدر: ${useLocalUsers ? "users.local.json (داتا حقيقية)" : "users.json (داتا صناعية)"}...`,
+    `\n👤 زرع ${all.length} مستخدم (مع bcrypt) — المصدر: ${useLocalUsers ? `${localUsersPath} (داتا حقيقية)` : "users.json (داتا صناعية)"}...`,
   );
   let done = 0;
 

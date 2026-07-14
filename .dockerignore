@@ -11,3 +11,10 @@ dist
 scratch-*
 api/prisma/*.db
 api/prisma/dev.db
+# PII: بيانات حقيقية للموظفين — عمرها ما تتحقن في صورة Docker. توصل on-prem
+# وقت التشغيل عبر تركيب ملف (mount) + SEED_USERS_FILE. الصورة بتفضل بداتا صناعية.
+**/*.local.json
+api/prisma/seed-data/users.local.json
+# باسوردات مولّدة وقت الزرع (credentials) — لا تُحقن في الصورة أبدًا.
+**/seed-output
+api/prisma/seed-output

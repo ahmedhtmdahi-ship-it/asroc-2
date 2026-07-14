@@ -17,12 +17,18 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (>=16 chars) in .env}
       # باسورد admin عند الزرع الأول — الزرع في production بيرفض يشتغل من غيره.
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      # داتا الموظفين الحقيقية (PII) بتتزرع وقت التشغيل من ملف مركّب — مش محقونة
+      # في الصورة. شيل التعليق + فعّل الـ mount بالأسفل. من غيرها بتتزرع داتا صناعية.
+      # SEED_USERS_FILE: /data/seed/users.local.json
       # مرفقات الطلبات على نفس الـ volume الدائم (النسخ الاحتياطي بيشملها).
       UPLOADS_DIR: /data/uploads
       PORT: 4000
       HOST: 0.0.0.0
     volumes:
       - sqlite_data:/data
+      # الداتا الحقيقية: انسخ users.local.json للسيرفر وركّبه read-only، وفعّل
+      # SEED_USERS_FILE فوق. الملف مستبعد من git ومن صورة Docker (PII).
+      # - ./secrets/users.local.json:/data/seed/users.local.json:ro
     expose:
       - "4000"
     healthcheck:

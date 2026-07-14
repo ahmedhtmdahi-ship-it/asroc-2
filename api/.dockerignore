@@ -2,3 +2,9 @@ node_modules
 dist
 .env
 *.log
+# PII: لا تُحقن الداتا الحقيقية في الصورة (شوف SEED_USERS_FILE في docker-compose).
+**/*.local.json
+prisma/seed-data/users.local.json
+# باسوردات مولّدة وقت الزرع (credentials) — لا تُحقن في الصورة أبدًا.
+**/seed-output
+prisma/seed-output
