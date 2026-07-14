@@ -19,8 +19,6 @@ export function ChangePasswordPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const forced = user?.mustChangePassword ?? false;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -66,9 +64,7 @@ export function ChangePasswordPage() {
           </div>
           <h1 className="text-xl font-bold text-slate-800">تغيير كلمة المرور</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {forced
-              ? "لأمان حسابك، لازم تغيّر كلمة المرور الافتراضية قبل المتابعة."
-              : "اختر كلمة مرور جديدة قوية."}
+            اختر كلمة مرور جديدة قوية.
           </p>
         </div>
 

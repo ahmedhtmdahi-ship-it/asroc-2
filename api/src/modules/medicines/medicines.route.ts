@@ -5,12 +5,12 @@ import { prisma } from "../../db/prisma.js";
 import { requirePermission } from "../../middleware/requirePermission.js";
 
 const medicineSchema = z.object({
-  name: z.string().min(1),
-  unit: z.string().min(1),
-  currentStock: z.number().int().min(0).nullable().optional(),
-  minimumStock: z.number().int().min(0).nullable().optional(),
-  category: z.string().optional(),
-  activeIngredient: z.string().optional(),
+  name: z.string().min(1).max(300),
+  unit: z.string().min(1).max(50),
+  currentStock: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  minimumStock: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  category: z.string().max(100).optional(),
+  activeIngredient: z.string().max(300).optional(),
   isActive: z.boolean().optional(),
 });
 

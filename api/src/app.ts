@@ -55,6 +55,10 @@ export function buildApp() {
     const method = req.method;
     if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) return;
 
+    // نسجّل العمليات الناجحة فقط — المحاولات المرفوضة (4xx/5xx) مش "عمليات" تمّت،
+    // وتسجيلها كان بيلوّث سجل التدقيق بمحاولات فاشلة كأنها إجراءات.
+    if (reply.statusCode >= 400) return;
+
     const routeUrl = req.routeOptions.url || req.url;
     if (routeUrl.startsWith("/requests")) return;
 

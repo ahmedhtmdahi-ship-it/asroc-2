@@ -28,23 +28,23 @@ const listUsersQuerySchema = z.object({
 
 const patchUserSchema = z.object({
   role:        z.enum(USER_ROLES).optional(),
-  permissions: z.array(z.enum(PERMISSIONS)).optional(),
+  permissions: z.array(z.enum(PERMISSIONS)).max(40).optional(),
   isActive:    z.boolean().optional(),
 });
 
 const createUserSchema = z.object({
-  username:        z.string().min(1, "اسم المستخدم مطلوب"),
+  username:        z.string().min(1, "اسم المستخدم مطلوب").max(100),
   password:        newPasswordSchema,
-  name:            z.string().min(1, "الاسم مطلوب"),
+  name:            z.string().min(1, "الاسم مطلوب").max(200),
   role:            z.enum(USER_ROLES),
-  permissions:     z.array(z.enum(PERMISSIONS)).default([]),
-  financialNumber: z.string().optional(),
-  jobTitle:        z.string().optional(),
-  workPlace:       z.string().optional(),
-  department:      z.string().optional(),
-  nationalId:      z.string().optional(),
-  phone:           z.string().optional(),
-  workType:        z.string().optional(),
+  permissions:     z.array(z.enum(PERMISSIONS)).max(40).default([]),
+  financialNumber: z.string().max(50).optional(),
+  jobTitle:        z.string().max(200).optional(),
+  workPlace:       z.string().max(200).optional(),
+  department:      z.string().max(200).optional(),
+  nationalId:      z.string().max(50).optional(),
+  phone:           z.string().max(50).optional(),
+  workType:        z.string().max(100).optional(),
 });
 
 // ✅ نوع صريح بدل any

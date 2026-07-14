@@ -109,92 +109,22 @@ test.describe("Authentication", () => {
   });
 });
 
-test.describe("Change Password (forced)", () => {
-  test("redirects seeded users to change-password on first login", async ({
+// تغيير الباسورد بقى اختياري (مش إجباري) — الاختبارات القديمة كانت بتختبر سلوك
+// الإجبار اللي اتشال. النسخة دي بتؤكد السلوك الجديد: حساب علّم mustChangePassword=true
+// بيدخل على صفحة دوره مباشرة من غير ما يتحوّل قسرًا لصفحة تغيير الباسورد.
+test.describe("Password change is optional (not forced)", () => {
+  test("seeded user logs straight to their home — no forced change-password", async ({
     page,
   }) => {
-    const user = TEST_USERS.force_change;
+    const user = TEST_USERS.force_change; // حساب mustChangePassword=true في الـ seed
     await page.goto("/");
     await page.fill(LOGIN.username, user.username);
     await page.fill(LOGIN.password, user.password);
     await page.click(LOGIN.submit);
 
-    await page.waitForURL("**/change-password");
-    await expect(
-      page.getByText("تغيير كلمة المرور"),
-    ).toBeVisible();
-    await expect(
-      page.getByText("لازم تغيّر كلمة المرور الافتراضية"),
-    ).toBeVisible();
-  });
-
-  test("validates new password minimum length", async ({ page }) => {
-    await loginAs(page, "force_change", { skipPasswordChange: true });
-    // Should be on change-password page
-    if (!page.url().includes("/change-password")) return;
-
-    await page.fill(CHANGE_PASSWORD.currentPassword, TEST_USERS.force_change.password);
-    await page.fill(CHANGE_PASSWORD.newPassword, "short");
-    await page.fill(CHANGE_PASSWORD.confirmPassword, "short");
-    await page.click(CHANGE_PASSWORD.submit);
-
-    await expect(
-      page.getByText(CHANGE_PASSWORD.errorMinLength),
-    ).toBeVisible();
-  });
-
-  test("validates password confirmation mismatch", async ({ page }) => {
-    await loginAs(page, "force_change", { skipPasswordChange: true });
-    if (!page.url().includes("/change-password")) return;
-
-    await page.fill(CHANGE_PASSWORD.currentPassword, TEST_USERS.force_change.password);
-    await page.fill(CHANGE_PASSWORD.newPassword, "NewPass@2025!");
-    await page.fill(CHANGE_PASSWORD.confirmPassword, "DifferentPass@2025!");
-    await page.click(CHANGE_PASSWORD.submit);
-
-    await expect(
-      page.getByText(CHANGE_PASSWORD.errorMismatch),
-    ).toBeVisible();
-  });
-
-  test("validates new password differs from current", async ({ page }) => {
-    await loginAs(page, "force_change", { skipPasswordChange: true });
-    if (!page.url().includes("/change-password")) return;
-
-    const samePass = "SamePassword@2025!";
-    await page.fill(CHANGE_PASSWORD.currentPassword, samePass);
-    await page.fill(CHANGE_PASSWORD.newPassword, samePass);
-    await page.fill(CHANGE_PASSWORD.confirmPassword, samePass);
-    await page.click(CHANGE_PASSWORD.submit);
-
-    await expect(
-      page.getByText(CHANGE_PASSWORD.errorSameAsCurrent),
-    ).toBeVisible();
-  });
-
-  test("successfully changes password and redirects to dashboard", async ({
-    page,
-  }) => {
-    // Use the loginAs helper which handles password change flow
-    // This will change the password if mustChangePassword is true,
-    // or login directly if already changed from a previous run
-    await loginAs(page, "force_change_success");
-    // بعد التغيير بيهبط على صفحة دوره (موظف → /employee)
-    await expect(page).toHaveURL(/\/employee/);
-  });
-
-  test("can log out from change-password page", async ({ page }) => {
-    const user = TEST_USERS.force_change;
-    await page.goto("/");
-    await page.fill(LOGIN.username, user.username);
-    await page.fill(LOGIN.password, user.password);
-    await page.click(LOGIN.submit);
-
-    // If on change-password page, logout button should be visible
-    if (page.url().includes("/change-password")) {
-      await page.click(`text=${CHANGE_PASSWORD.logoutText}`);
-      await page.waitForURL("/");
-    }
+    // بيهبط على صفحة الموظف مباشرة — مفيش redirect إجباري لـ /change-password.
+    await page.waitForURL("**/employee");
+    await expect(page).not.toHaveURL(/change-password/);
   });
 });
 

@@ -111,7 +111,6 @@ class RequestStore extends ReactiveStore {
         }
       })
       .catch((e) => {
-        console.warn("[api] create request:", e?.message);
         this.requests = this.requests.filter((r) => r.id !== tempId);
         this.emit();
         toast.error(
@@ -177,8 +176,7 @@ class RequestStore extends ReactiveStore {
     const request = this.getById(id);
     if (!request) return null;
 
-    this.transitionAsync(id, status, note).catch((e) => {
-      console.warn("[api] transition:", e?.message);
+    this.transitionAsync(id, status, note).catch(() => {
       toast.error("حدث خطأ أثناء تغيير الحالة. تمت استعادة الحالة السابقة.");
     });
 
@@ -189,8 +187,7 @@ class RequestStore extends ReactiveStore {
     const request = this.getById(id);
     if (!request) return null;
 
-    this.patchAsync(id, fields).catch((e) => {
-      console.warn("[api] update fields:", e?.message);
+    this.patchAsync(id, fields).catch(() => {
       toast.error("حدث خطأ أثناء التحديث. تمت استعادة البيانات القديمة.");
     });
 

@@ -7,8 +7,8 @@ import {
 } from "@asroc/shared/policy.js";
 
 export const loginSchema = z.object({
-  username: z.string().min(1, "اسم المستخدم مطلوب"),
-  password: z.string().min(1, "كلمة المرور مطلوبة"),
+  username: z.string().min(1, "اسم المستخدم مطلوب").max(100),
+  password: z.string().min(1, "كلمة المرور مطلوبة").max(200),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -17,10 +17,11 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export const newPasswordSchema = z
   .string()
   .min(PASSWORD_MIN_LENGTH, PASSWORD_POLICY_MESSAGE)
+  .max(200, "كلمة المرور طويلة جدًا")
   .refine(isValidPassword, PASSWORD_POLICY_MESSAGE);
 
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "كلمة المرور الحالية مطلوبة"),
+  currentPassword: z.string().min(1, "كلمة المرور الحالية مطلوبة").max(200),
   newPassword: newPasswordSchema,
 });
 
