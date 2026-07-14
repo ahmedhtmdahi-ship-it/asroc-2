@@ -129,6 +129,10 @@ model User {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
+  // إشعارات المستخدم (FK). مراجع الأشخاص في medical_requests بتفضل نصية
+  // (denormalized) عمدًا — snapshots عشان السجلّ الطبي يعيش بعد تعطيل المستخدم.
+  notifications Notification[]
+
   @@index([role])
   @@index([financialNumber])
   @@map("users")
@@ -180,10 +184,12 @@ model MedicalRequest {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   // كيانات تابعة
-  medications RequestMedication[]
-  timeline    RequestTimelineEvent[]
-  attachments RequestAttachment[]
-  referral    Referral?
+  medications   RequestMedication[]
+  timeline      RequestTimelineEvent[]
+  attachments   RequestAttachment[]
+  referral      Referral?
+  notifications Notification[]
+  securityLogs  SecurityLog[]
 
   @@index([employeeId])
   @@index([status])
@@ -316,6 +322,10 @@ model SecurityLog {
   notes        String?
   createdAt    DateTime        @default(now()) @map("created_at")
 
+  // ربط بالطلب (اختياري). SetNull: لو اتمسح الطلب يفضل سجلّ الأمن موجود (سجلّ
+  // دخول/خروج فعلي) بس الرابط يبقى null. أعمدة الأشخاص snapshots بتفضل نصية.
+  request MedicalRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+
   @@index([requestId])
   @@map("security_logs")
 }
@@ -332,6 +342,11 @@ model Notification {
   bg        String?
   createdAt DateTime @default(now()) @map("created_at")
 
+  // إشعارات ephemeral: Cascade على المستخدم وعلى الطلب — تختفي مع اللي بتخصّه.
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  request MedicalRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
   @@index([userId])
+  @@index([requestId])
   @@map("notifications")
 }
