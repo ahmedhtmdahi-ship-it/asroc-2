@@ -18,7 +18,8 @@ export interface ApiUser {
   isActive: boolean;
 }
 
-// دليل مصغّر — السيرفر عمدًا لا يرجّع nationalId/phone من /users/lookup (تقليل PII).
+// دليل مصغّر — السيرفر عمدًا لا يرجّع nationalId/phone ولا permissions من
+// /users/lookup (تقليل PII + عدم كشف خريطة صلاحيات المؤسسة لأي مستخدم مسجّل).
 export interface ApiUserLookup {
   id: string;
   name: string;
@@ -26,7 +27,6 @@ export interface ApiUserLookup {
   department?: string | null;
   financialNumber?: string | null;
   jobTitle?: string | null;
-  permissions: string[];
   isActive: boolean;
 }
 

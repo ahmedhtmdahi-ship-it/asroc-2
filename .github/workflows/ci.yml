@@ -46,5 +46,18 @@ jobs:
       - name: Apply migrations (test DB)
         run: pnpm --filter @asroc/api exec prisma migrate deploy
 
+      # حارس ضد schema/migration drift: بيطبّق الـ migrations على shadow DB مؤقتة
+      # ويقارنها بـ schema.prisma. لو الـ schema سبق الـ migrations (زي ما حصل مع أعمدة
+      # الـ audit اللي كانت شغالة بـ db push بس) الـ diff بيرجّع exit code 2 فالـ build
+      # بيفشل بدل ما الـ drift يوصل production ويرمي P2022 وقت التشغيل.
+      - name: Guard against schema/migration drift
+        working-directory: api
+        run: >
+          pnpm exec prisma migrate diff
+          --from-migrations prisma/migrations
+          --to-schema-datamodel prisma/schema.prisma
+          --shadow-database-url "file:./drift-shadow.db"
+          --exit-code
+
       - name: API integration tests
         run: pnpm --filter @asroc/api run test

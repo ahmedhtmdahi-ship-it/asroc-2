@@ -134,15 +134,21 @@ export async function createRequest(input: CreateRequestInput, actor: Actor) {
     });
   });
 
-  // Best-effort audit (لا نُفشل العملية الأساسية بسبب drift في AuditLog schema/DB)
+  // Best-effort audit (لا نُفشل العملية الأساسية بسبب drift في AuditLog schema/DB).
+  // طلب الطوارئ بيتعمل approve تلقائي (بيتخطّى المدير) — بنسجّله صراحةً بتفاصيل
+  // عشان يكون فيه أثر واضح لأي تخطّي لموافقة المدير.
+  const isEmergency = input.requestType === "emergency";
   try {
     await prisma.auditLog.create({
       data: {
         userId: actor.id,
         userName: actor.name,
-        action: "CREATE_REQUEST",
+        action: isEmergency ? "CREATE_REQUEST_EMERGENCY" : "CREATE_REQUEST",
         entityType: "MedicalRequest",
         entityId: created.id,
+        details: isEmergency
+          ? { emergency: true, autoApproved: true, bypassedManagerApproval: true }
+          : undefined,
       },
     });
   } catch {
