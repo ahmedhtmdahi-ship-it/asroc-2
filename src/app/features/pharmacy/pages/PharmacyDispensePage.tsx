@@ -372,6 +372,7 @@ export default function PharmacyDispensePage() {
             <div className="rounded-2xl border bg-white p-4">
               <div className="flex items-start gap-3">
                 <Checkbox
+                  data-testid="confirm-review"
                   checked={confirmedReview}
                   onCheckedChange={(checked: boolean | "indeterminate") => setConfirmedReview(Boolean(checked))}
                 />
@@ -398,7 +399,7 @@ export default function PharmacyDispensePage() {
 
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => navigate("/pharmacy")}>إلغاء</Button>
-                <Button onClick={handleDispense} disabled={!canDispense}>
+                <Button onClick={handleDispense} disabled={!canDispense} data-testid="confirm-dispense">
                   <CheckCircle2 className="ml-2 h-4 w-4" />
                   تأكيد الصرف
                 </Button>

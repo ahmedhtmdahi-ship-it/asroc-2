@@ -159,6 +159,7 @@ export function PharmacyPage() {
                             <Button
                               size="sm"
                               variant="outline"
+                              data-testid={`dispense-${request.id}`}
                               onClick={() =>
                                 navigate(`/pharmacy/dispense/${request.id}`)
                               }

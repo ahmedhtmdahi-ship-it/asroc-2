@@ -99,3 +99,40 @@ export const SUPER_ADMIN = {
   activate: "تفعيل",
   deactivate: "تعطيل",
 };
+
+// ── data-testid ثابتة (بديل النصوص الهشّة في اختبارات المسار) ──
+// مصدر واحد؛ المفهرسة بالـ id بتاخد request.id عشان نستهدف الطلب المحدّد.
+export const tid = {
+  requestReason: "request-reason",
+  requestSubmit: "request-submit",
+  typeNormal: "type-normal",
+  typeEmergency: "type-emergency",
+
+  myreqId: (id: string) => `myreq-id-${id}`,
+  myreqStatus: (id: string) => `myreq-status-${id}`,
+  myreqRow: (id: string) => `myreq-row-${id}`,
+
+  approvalRequest: (id: string) => `approval-request-${id}`,
+  approveBtn: "approve-btn",
+  rejectBtn: "reject-btn",
+  confirmDecision: "confirm-decision",
+
+  checkout: (id: string) => `checkout-${id}`,
+  checkinComplete: (id: string) => `checkin-complete-${id}`,
+
+  startDiagnosis: (id: string) => `start-diagnosis-${id}`,
+  diagnosisInput: "diagnosis-input",
+  medicineCombobox: "medicine-combobox",
+  savePrescription: "save-prescription",
+
+  dispense: (id: string) => `dispense-${id}`,
+  confirmReview: "confirm-review",
+  confirmDispense: "confirm-dispense",
+} as const;
+
+// نصوص حالات الطلب (من packages/shared/src/workflow.ts) — للتأكيد على الحالة.
+export const statusText = {
+  pending: "بانتظار موافقة المدير",
+  approved: "تمت الموافقة",
+  completed: "مكتمل",
+} as const;

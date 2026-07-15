@@ -306,6 +306,7 @@ export function ManagerApprovalsPage() {
                   <button
                     key={request.id}
                     type="button"
+                    data-testid={`approval-request-${request.id}`}
                     onClick={() => setSelectedRequest(request)}
                     className={`w-full rounded-2xl border p-4 text-right transition-all ${
                       selectedRequest?.id === request.id
@@ -465,6 +466,7 @@ export function ManagerApprovalsPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     <Button
+                      data-testid="approve-btn"
                       className="bg-teal-600 hover:bg-teal-700"
                       onClick={() => setActionType("approve")}
                     >
@@ -474,6 +476,7 @@ export function ManagerApprovalsPage() {
 
                     <Button
                       variant="destructive"
+                      data-testid="reject-btn"
                       onClick={() => setActionType("reject")}
                     >
                       <XCircle className="w-4 h-4 ml-2" />
@@ -541,6 +544,7 @@ export function ManagerApprovalsPage() {
             </Button>
 
             <Button
+              data-testid="confirm-decision"
               onClick={handleAction}
               className={
                 actionType === "approve"

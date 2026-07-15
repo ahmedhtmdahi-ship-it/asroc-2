@@ -359,6 +359,7 @@ export function DoctorDiagnosisPage() {
                     التشخيص <span className="text-red-600">*</span>
                   </Label>
                   <Textarea
+                    data-testid="diagnosis-input"
                     rows={5}
                     value={diagnosis}
                     onChange={(e) => setDiagnosis(e.target.value)}
@@ -556,7 +557,11 @@ export function DoctorDiagnosisPage() {
                       حفظ كمسودة
                     </Button>
 
-                    <Button onClick={handleSave} className="bg-teal-600 hover:bg-teal-700">
+                    <Button
+                      onClick={handleSave}
+                      data-testid="save-prescription"
+                      className="bg-teal-600 hover:bg-teal-700"
+                    >
                       <CheckCircle2 className="w-4 h-4 ml-2" />
                       حفظ وإرسال للصيدلية
                     </Button>

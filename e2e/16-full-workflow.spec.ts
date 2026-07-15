@@ -1,257 +1,137 @@
 import { test, expect, type Page } from "@playwright/test";
-import { loginAs, TEST_USERS } from "./helpers/auth";
+import { loginAs } from "./helpers/auth";
+import { tid, statusText } from "./helpers/selectors";
 
 /**
- * Full end-to-end workflow test:
- * Employee creates request → Manager approves → Security check-out →
- * Doctor diagnoses → Pharmacy dispenses → Security check-in → Complete
+ * المسار الكامل للكشف عبر الواجهة (اختبار حقيقي — مش مسرح):
+ * موظف ينشئ طلب → مدير يوافق → أمن يسجّل خروج → طبيب يشخّص ويكتب روشتة →
+ * صيدلية تصرف → أمن يسجّل عودة ويغلق → الطلب يبان "مكتمل" للموظف.
  *
- * This tests the COMPLETE checkup workflow path.
+ * كل خطوة بتأكّد أثرًا ملموسًا (toast/انتقال حالة/ظهور الطلب في قائمة الدور)،
+ * ومفيش `if (isVisible)` ولا `waitForTimeout`. الاعتماد على data-testid ثابتة.
  */
 
-let requestId: string | null = null;
+let requestId = "";
 
-async function loginAndGo(page: Page, role: keyof typeof TEST_USERS, path: string) {
-  await loginAs(page, role);
-  await page.goto(path);
-  await page.waitForTimeout(2000);
+// ننتظر استجابة انتقال ناجحة على السيرفر قبل ما ننتقل لدور تاني — بعض الصفحات
+// بتكتب fire-and-forget، والانتظار بيمنع إن إغلاق سياق المتصفح يلغي الكتابة.
+function waitForTransition(page: Page, id = "[^/]+") {
+  return page.waitForResponse(
+    (r) =>
+      new RegExp(`/requests/${id}/transition`).test(r.url()) &&
+      r.request().method() === "POST" &&
+      r.ok(),
+  );
 }
 
-test.describe.serial("Full Checkup Workflow - End to End", () => {
-  test("Step 1: Employee creates a normal checkup request", async ({
-    page,
-  }) => {
-    await loginAndGo(page, "employee", "/request/new");
+test.describe.serial("المسار الكامل للكشف عبر الواجهة", () => {
+  // حالة نظيفة قبل الملف: مفيش طلب مفتوح يعطّل قاعدة «طلب واحد لكل موظف».
+  test.beforeAll(async ({ request }) => {
+    const res = await request.post("http://localhost:4000/test/reset-workflow");
+    expect(res.ok()).toBeTruthy();
+  });
 
-    // Fill in the reason for the request
-    const reasonField = page
-      .locator("textarea")
-      .first()
-      .or(page.locator('input[name="reason"]'));
+  test("١) الموظف ينشئ طلب كشف عادي", async ({ page }) => {
+    await loginAs(page, "employee");
+    await page.goto("/request/new");
 
-    if (await reasonField.isVisible()) {
-      await reasonField.fill(
-        "اختبار سير العمل الكامل - صداع وألم في الظهر",
-      );
-    }
+    await page.getByTestId(tid.requestReason).fill("اختبار المسار الكامل - صداع وإرهاق");
+    await page.getByTestId(tid.typeNormal).click();
+    await page.getByTestId(tid.requestSubmit).click();
 
-    // Select checkup type
-    const checkupOption = page.getByText("كشف طبي").or(page.getByText("كشف")).first();
-    if (await checkupOption.isVisible()) {
-      await checkupOption.click();
-    }
+    await expect(page.getByText("تم إرسال الطلب بنجاح")).toBeVisible();
 
-    // Select normal request type
-    const normalOption = page.getByText("عادي").first();
-    if (await normalOption.isVisible()) {
-      await normalOption.click();
-    }
-
-    // Submit
-    const submitBtn = page
-      .getByText("إرسال الطلب")
-      .or(page.getByText("إرسال"))
-      .or(page.locator('button[type="submit"]'))
-      .first();
-
-    if (await submitBtn.isVisible()) {
-      await submitBtn.click();
-      await page.waitForTimeout(3000);
-    }
-
-    // Try to capture request ID from URL or page content
+    // نلتقط id الطلب من «طلباتي» ونأكّد إنه «بانتظار موافقة المدير».
     await page.goto("/my-requests");
-    await page.waitForTimeout(2000);
-
-    // Get the first request link
-    const firstRequestLink = page.locator("a[href*='/requests/']").first();
-    if (await firstRequestLink.isVisible()) {
-      const href = await firstRequestLink.getAttribute("href");
-      if (href) {
-        requestId = href.split("/requests/")[1];
-      }
-    }
+    const idCell = page.locator('[data-testid^="myreq-id-"]').first();
+    await expect(idCell).toBeVisible();
+    requestId = (await idCell.getAttribute("data-testid"))!.replace("myreq-id-", "");
+    expect(requestId).not.toEqual("");
+    await expect(page.getByTestId(tid.myreqStatus(requestId))).toHaveText(statusText.pending);
   });
 
-  test("Step 2: Manager approves the request", async ({ page }) => {
-    await loginAndGo(page, "manager", "/manager/approvals");
+  test("٢) المدير يوافق على الطلب", async ({ page }) => {
+    await loginAs(page, "manager");
+    await page.goto("/manager/approvals");
 
-    // Find and approve the pending request
-    const approveBtn = page.getByText("موافقة").first();
-    if (await approveBtn.isVisible()) {
-      await approveBtn.click();
-      await page.waitForTimeout(1000);
+    await page.getByTestId(tid.approvalRequest(requestId)).click();
+    await page.getByTestId(tid.approveBtn).click();
+    const resp = waitForTransition(page, requestId);
+    await page.getByTestId(tid.confirmDecision).click();
+    await resp;
 
-      // Handle confirmation dialog
-      const confirmBtn = page.getByRole("button", { name: "تأكيد" }).first();
-      if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.click();
-      }
-      await page.waitForTimeout(2000);
-    }
+    await expect(page.getByText("تمت الموافقة على الطلب")).toBeVisible();
   });
 
-  test("Step 3: Security checks out the employee", async ({ page }) => {
-    await loginAndGo(page, "security", "/security");
+  test("٣) الأمن يسجّل خروج الموظف", async ({ page }) => {
+    await loginAs(page, "security");
+    await page.goto("/security/checkinout");
 
-    const checkOutBtn = page
-      .getByText("تسجيل خروج")
-      .or(page.getByText("خروج"))
-      .first();
-
-    if (await checkOutBtn.isVisible()) {
-      await checkOutBtn.click();
-      await page.waitForTimeout(1000);
-
-      const confirmBtn = page.getByRole("button", { name: "تأكيد" }).first();
-      if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.click();
-      }
-      await page.waitForTimeout(2000);
-    }
+    const btn = page.getByTestId(tid.checkout(requestId));
+    await expect(btn).toBeVisible();
+    const resp = waitForTransition(page, requestId);
+    await btn.click();
+    await resp;
+    await expect(page.getByText(/تم تسجيل خروج/)).toBeVisible();
   });
 
-  test("Step 4: Doctor starts diagnosis", async ({ page }) => {
-    await loginAndGo(page, "doctor", "/doctor");
+  test("٤) الطبيب يبدأ الكشف ويكتب الروشتة", async ({ page }) => {
+    await loginAs(page, "doctor");
+    await page.goto("/doctor");
 
-    // Find the patient waiting for diagnosis
-    const diagnosisLink = page
-      .locator("a[href*='/doctor/diagnosis/']")
-      .or(page.getByText("بدء الكشف"))
-      .first();
+    const startBtn = page.getByTestId(tid.startDiagnosis(requestId));
+    await expect(startBtn).toBeVisible();
+    const resp = waitForTransition(page, requestId); // انتقال in_diagnosis
+    await startBtn.click();
+    await resp;
+    await expect(page).toHaveURL(new RegExp(`/doctor/diagnosis/${requestId}`));
 
-    if (await diagnosisLink.isVisible()) {
-      await diagnosisLink.click();
-      await page.waitForTimeout(2000);
+    await page.getByTestId(tid.diagnosisInput).fill("صداع توتري وإرهاق عام");
 
-      // Fill diagnosis
-      const diagnosisField = page.locator("textarea").first();
-      if (await diagnosisField.isVisible()) {
-        await diagnosisField.fill("تشخيص: صداع توتري وإرهاق عام");
-      }
+    // اختيار دواء من الـ combobox القابل للبحث. cmdk بيختار بالكيبورد بثبات أكتر
+    // من كليك على العنصر — نفتح، نتأكد إن فيه أصناف، ننزل سهم ونضغط Enter.
+    const combo = page.getByTestId(tid.medicineCombobox);
+    await combo.click();
+    await expect(page.locator('[data-slot="command-item"]').first()).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    // اتأكد إن الاختيار اتسجّل (الزر مبقاش «اختر الدواء»).
+    await expect(combo).not.toContainText("اختر الدواء");
 
-      // Add medication
-      const addMedBtn = page.getByText("إضافة دواء").or(page.getByText("إضافة")).first();
-      if (await addMedBtn.isVisible()) {
-        await addMedBtn.click();
-        await page.waitForTimeout(500);
-
-        // Fill medication fields
-        const medFields = page.locator('[role="dialog"] input, form input');
-        const count = await medFields.count();
-        if (count >= 4) {
-          await medFields.nth(0).fill("باراسيتامول");
-          await medFields.nth(1).fill("500 مج");
-          await medFields.nth(2).fill("3 أيام");
-          await medFields.nth(3).fill("قرص كل 8 ساعات");
-        }
-      }
-
-      // Save and prescribe
-      const saveBtn = page
-        .getByText("حفظ التشخيص")
-        .or(page.getByText("حفظ"))
-        .or(page.getByText("إرسال"))
-        .first();
-
-      if (await saveBtn.isVisible()) {
-        await saveBtn.click();
-        await page.waitForTimeout(2000);
-      }
-    }
+    await page.getByTestId(tid.savePrescription).click();
+    await expect(page.getByText("تم حفظ الكشف وإرسال الروشتة للصيدلية")).toBeVisible();
   });
 
-  test("Step 5: Pharmacy dispenses the prescription", async ({ page }) => {
-    await loginAndGo(page, "pharmacy", "/pharmacy");
+  test("٥) الصيدلية تصرف الروشتة", async ({ page }) => {
+    await loginAs(page, "pharmacy");
+    await page.goto("/pharmacy");
 
-    const dispenseLink = page
-      .locator("a[href*='/pharmacy/dispense/']")
-      .or(page.getByText("صرف"))
-      .first();
+    const dispenseLink = page.getByTestId(tid.dispense(requestId));
+    await expect(dispenseLink).toBeVisible();
+    await dispenseLink.click();
+    await expect(page).toHaveURL(new RegExp(`/pharmacy/dispense/${requestId}`));
 
-    if (await dispenseLink.isVisible()) {
-      await dispenseLink.click();
-      await page.waitForTimeout(2000);
-
-      // Confirm dispensing
-      const dispenseBtn = page
-        .getByText("تأكيد الصرف")
-        .or(page.getByText("صرف"))
-        .or(page.getByRole("button", { name: "تأكيد" }))
-        .first();
-
-      if (await dispenseBtn.isVisible()) {
-        await dispenseBtn.click();
-        await page.waitForTimeout(2000);
-      }
-    }
+    await page.getByTestId(tid.confirmReview).click();
+    const resp = waitForTransition(page, requestId);
+    await page.getByTestId(tid.confirmDispense).click();
+    await resp;
+    await expect(page.getByText("تم الصرف بنجاح")).toBeVisible();
   });
 
-  test("Step 6: Security checks in the employee (return)", async ({
-    page,
-  }) => {
-    await loginAndGo(page, "security", "/security");
+  test("٦) الأمن يسجّل العودة ويغلق الطلب", async ({ page }) => {
+    await loginAs(page, "security");
+    await page.goto("/security/checkinout");
 
-    const checkInBtn = page
-      .getByText("تسجيل دخول")
-      .or(page.getByText("دخول"))
-      .first();
-
-    if (await checkInBtn.isVisible()) {
-      await checkInBtn.click();
-      await page.waitForTimeout(1000);
-
-      const confirmBtn = page.getByRole("button", { name: "تأكيد" }).first();
-      if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.click();
-      }
-      await page.waitForTimeout(2000);
-    }
+    const btn = page.getByTestId(tid.checkinComplete(requestId));
+    await expect(btn).toBeVisible();
+    // بيصدر انتقالين: returned ثم completed — الـ toast بيظهر بعد ما الاتنين ينجحوا.
+    await btn.click();
+    await expect(page.getByText(/تم تسجيل عودة/)).toBeVisible();
   });
 
-  test("Step 7: Verify request is completed", async ({ page }) => {
-    await loginAndGo(page, "employee", "/my-requests");
-
-    // Check that the request now shows a completed/returned status
-    const completedBadge = page
-      .getByText("مكتمل")
-      .or(page.getByText("تم الانتهاء"))
-      .or(page.getByText("عاد"))
-      .first();
-
-    if (await completedBadge.isVisible()) {
-      await expect(completedBadge).toBeVisible();
-    }
-  });
-});
-
-test.describe("Emergency Request - Direct Flow", () => {
-  test("emergency request skips manager approval", async ({ page }) => {
-    await loginAndGo(page, "employee", "/request/new");
-
-    const reasonField = page.locator("textarea").first();
-    if (await reasonField.isVisible()) {
-      await reasonField.fill("حالة طوارئ - ألم حاد في الصدر");
-    }
-
-    // Select emergency type
-    const emergencyOption = page.getByText("طوارئ").first();
-    if (await emergencyOption.isVisible()) {
-      await emergencyOption.click();
-    }
-
-    const submitBtn = page
-      .getByText("إرسال")
-      .or(page.locator('button[type="submit"]'))
-      .first();
-
-    if (await submitBtn.isVisible()) {
-      await submitBtn.click();
-      await page.waitForTimeout(3000);
-    }
-
-    // Emergency requests should be auto-approved — check in my-requests
+  test("٧) الموظف يشوف الطلب مكتمل", async ({ page }) => {
+    await loginAs(page, "employee");
     await page.goto("/my-requests");
-    await page.waitForTimeout(2000);
+    await expect(page.getByTestId(tid.myreqStatus(requestId))).toHaveText(statusText.completed);
   });
 });

@@ -1,22 +1,22 @@
 # TODO - B9 اختبارات e2e حقيقية
 
-- [x] تحليل ملفات e2e الأساسية: 04 / 05 / 16 (تمت القراءة)
-- [ ] إضافة `data-testid` للعناصر الحرجة في الـ UI:
-  - [ ] زر إرسال الطلب + حقول الإنشاء في `CreateMedicalRequestPage.tsx`
-  - [ ] جدول/صفوف الطلبات + badges في `MyMedicalRequestsPage.tsx`
-  - [ ] أزرار موافقة/رفض/تأجيل + صف/جدول الطلبات في `ManagerApprovalsPage.tsx`
-  - [ ] صفحات workflow: `SecurityPage`, `SecurityCheckInOutPage`, `DoctorPage`, `DoctorDiagnosisPage`, `PharmacyPage`, `PharmacyDispensePage`
-  - [ ] رسائل success/toast/alert الخاصة بالـ workflow (testids للنجاح)
-- [ ] تحديث `e2e/helpers/selectors.ts` لتجميع testids (بدل الاعتماد على النصوص)
-- [ ] إعادة كتابة `e2e/04-employee-requests.spec.ts`:
-  - [ ] ممنوع `if (await x.isVisible())`
-  - [ ] ممنوع `waitForTimeout`
-  - [ ] assertions أثر ملموس بعد الإرسال (toast/انتقال/صف الحالة)
-- [ ] إعادة كتابة `e2e/05-manager-approvals.spec.ts` بنفس القواعد + assertions بعد كل قرار
-- [ ] إعادة كتابة `e2e/16-full-workflow.spec.ts` (serial):
-  - [ ] assertions أثر ملموس بعد كل step
-  - [ ] إزالة كل waitForTimeout + كل if isVisible
-  - [ ] التحقق النهائي عبر badge/صف “مكتمل” بـ testid
-- [ ] التأكد من استخدام حسابات test-* فقط
-- [ ] تشغيل Playwright e2e والتركيز على 04 ثم 05 ثم 16
+- [x] تحليل ملفات e2e الأساسية: 04 / 05 / 16
+- [x] إضافة `data-testid` للعناصر الحرجة في الـ UI:
+  - [x] حقول/زر إنشاء الطلب + نوع الكشف في `CreateMedicalRequestPage.tsx`
+  - [x] صف/حالة/رقم الطلب في `MyMedicalRequestsPage.tsx`
+  - [x] صف الطلب + موافقة/رفض + تأكيد القرار في `ManagerApprovalsPage.tsx`
+  - [x] صفحات workflow: `SecurityCheckInOutPage` (خروج/عودة)، `DoctorPage` (بدء الكشف)،
+        `DoctorDiagnosisPage` (تشخيص/دواء/حفظ)، `PharmacyPage` + `PharmacyDispensePage` (صرف)
+- [x] تجميع الـ testids في `e2e/helpers/selectors.ts` (كائن `tid`)
+- [x] إعادة كتابة `e2e/04-employee-requests.spec.ts` — assertions حقيقية، بلا `if(isVisible)`/`waitForTimeout`
+- [x] إعادة كتابة `e2e/05-manager-approvals.spec.ts` — بذرة طلب عبر الـ API + تأكيد الموافقة/الرفض
+- [x] إعادة كتابة `e2e/16-full-workflow.spec.ts` (serial) — بيوصل شارة «مكتمل» بـ testid فعلاً
+- [x] حالة نظيفة: `POST /test/reset-workflow` (بيتسجّل في NODE_ENV=test بس) + globalSetup
+- [x] تشغيل e2e في CI: job منفصل بيسطّب المتصفح ويشغّل 04/05/16
 
+## ملاحظات
+- الاختبارات محتاجة متصفح؛ نسخة Playwright المثبّتة ممكن ما تطابقش build الـ Chromium
+  المنزّل محليًا — استخدم `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium` محليًا (CI بيستخدم
+  `playwright install`).
+- الربط بين قسم الاختبار و test-manager بيتظبط في `api/scripts/reset-workflow.mjs`
+  (الـ seed بيحط test-manager في قسم حقيقي مربوط بمدير مش موجود في قاعدة الاختبار).

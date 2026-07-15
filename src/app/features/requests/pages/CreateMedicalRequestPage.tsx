@@ -473,6 +473,7 @@ export function EmployeeRequestsPage() {
                     <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                       <button
                         type="button"
+                        data-testid="type-normal"
                         onClick={() => setRequestType("normal")}
                         className={`rounded-2xl border p-5 text-right transition ${
                           requestType === "normal"
@@ -495,6 +496,7 @@ export function EmployeeRequestsPage() {
 
                       <button
                         type="button"
+                        data-testid="type-emergency"
                         onClick={() => setRequestType("emergency")}
                         className={`rounded-2xl border p-5 text-right transition ${
                           requestType === "emergency"

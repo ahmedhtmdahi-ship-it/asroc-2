@@ -1,8 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
-const isCI = Boolean((globalThis as any).process?.env?.CI);
+const env = (globalThis as any).process?.env ?? {};
+const isCI = Boolean(env.CI);
+// متصفح محلي مثبّت مسبقًا لو نسخة Playwright مش متطابقة مع build الـ Chromium
+// المنزّل. في CI بنسيبها فاضية فبيستخدم اللي نزّله `playwright install`.
+const chromiumPath: string | undefined = env.PW_CHROMIUM_PATH || undefined;
 
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
@@ -22,7 +27,10 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(chromiumPath ? { launchOptions: { executablePath: chromiumPath } } : {}),
+      },
     },
   ],
 

@@ -64,6 +64,7 @@ export function MedicineCombobox({
           type="button"
           variant="outline"
           role="combobox"
+          data-testid="medicine-combobox"
           aria-expanded={open}
           className="w-full justify-between font-normal"
         >

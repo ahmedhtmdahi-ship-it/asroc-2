@@ -1,149 +1,62 @@
 import { test, expect } from "@playwright/test";
 import { loginAs } from "./helpers/auth";
+import { tid, statusText } from "./helpers/selectors";
 
-test.describe("Employee - Create Medical Request", () => {
+// اختبارات حقيقية لإنشاء الطلب: كل واحد بيبدأ من حالة نظيفة (reset) وبيأكّد أثرًا
+// ملموسًا (toast + ظهور الطلب بحالته الصحيحة) — مفيش if(isVisible) ولا waitForTimeout.
+test.describe("الموظف — إنشاء طلب طبي", () => {
   test.beforeEach(async ({ page }) => {
+    const res = await page.request.post("http://localhost:4000/test/reset-workflow");
+    expect(res.ok()).toBeTruthy();
     await loginAs(page, "employee");
   });
 
-  test("navigates to new request page", async ({ page }) => {
+  test("سبب فاضي بيمنع الإرسال (تحقّق required في المتصفح)", async ({ page }) => {
     await page.goto("/request/new");
-    await expect(page).toHaveURL(/\/request\/new/);
+    await page.getByTestId(tid.requestSubmit).click();
+    // حقل السبب `required` — المتصفح بيوقف الإرسال (valueMissing) قبل ما يوصل للسيرفر.
+    const reason = page.getByTestId(tid.requestReason);
+    const valueMissing = await reason.evaluate(
+      (el) => (el as HTMLTextAreaElement).validity.valueMissing,
+    );
+    expect(valueMissing).toBeTruthy();
+    // وما اتنقلناش لأي حالة نجاح.
+    await expect(page.getByText("تم إرسال الطلب بنجاح")).toBeHidden();
   });
 
-  test("shows the request creation form", async ({ page }) => {
+  test("إنشاء كشف عادي بيظهر «بانتظار موافقة المدير» في طلباتي", async ({ page }) => {
     await page.goto("/request/new");
+    await page.getByTestId(tid.requestReason).fill("صداع مستمر واحتياج كشف طبي");
+    await page.getByTestId(tid.typeNormal).click();
+    await page.getByTestId(tid.requestSubmit).click();
 
-    // Should have the reason/complaint field
-    await expect(
-      page.getByText("سبب").or(page.getByText("الشكوى")).or(page.getByText("الطلب")),
-    ).toBeVisible();
+    await expect(page.getByText("تم إرسال الطلب بنجاح")).toBeVisible();
+
+    await page.goto("/my-requests");
+    const statusBadge = page.locator('[data-testid^="myreq-status-"]').first();
+    await expect(statusBadge).toBeVisible();
+    await expect(statusBadge).toHaveText(statusText.pending);
   });
 
-  test("shows service type options (checkup / monthly)", async ({ page }) => {
+  test("كشف طوارئ بيتعمل approve فورًا (بيظهر «تمت الموافقة»)", async ({ page }) => {
     await page.goto("/request/new");
+    await page.getByTestId(tid.requestReason).fill("حالة طوارئ - ألم حاد في الصدر");
+    await page.getByTestId(tid.typeEmergency).click();
+    await page.getByTestId(tid.requestSubmit).click();
 
-    await expect(
-      page.getByText("كشف").or(page.getByText("كشف طبي")),
-    ).toBeVisible();
-  });
+    await expect(page.getByText("تم إرسال الطلب بنجاح")).toBeVisible();
 
-  test("creates a normal checkup request", async ({ page }) => {
-    await page.goto("/request/new");
-
-    // Fill in reason
-    const reasonField = page
-      .getByPlaceholder("سبب")
-      .or(page.getByPlaceholder("الشكوى"))
-      .or(page.locator('textarea').first())
-      .or(page.locator('input[name="reason"]'));
-
-    if (await reasonField.isVisible()) {
-      await reasonField.fill("صداع مستمر واحتياج كشف طبي");
-    }
-
-    // Select checkup service type if visible
-    const checkupOption = page.getByText("كشف طبي").or(page.getByText("كشف"));
-    if (await checkupOption.first().isVisible()) {
-      await checkupOption.first().click();
-    }
-
-    // Submit the request
-    const submitBtn = page
-      .getByText("إرسال الطلب")
-      .or(page.getByText("إرسال"))
-      .or(page.locator('button[type="submit"]'));
-    if (await submitBtn.first().isVisible()) {
-      await submitBtn.first().click();
-    }
-
-    // Should show success feedback or redirect
-    await page.waitForTimeout(2000);
-  });
-
-  test("creates an emergency request", async ({ page }) => {
-    await page.goto("/request/new");
-
-    const reasonField = page
-      .locator('textarea')
-      .first()
-      .or(page.locator('input[name="reason"]'));
-
-    if (await reasonField.isVisible()) {
-      await reasonField.fill("حالة طوارئ - ألم حاد");
-    }
-
-    // Select emergency type if visible
-    const emergencyOption = page.getByText("طوارئ");
-    if (await emergencyOption.first().isVisible()) {
-      await emergencyOption.first().click();
-    }
-
-    const submitBtn = page
-      .getByText("إرسال")
-      .or(page.locator('button[type="submit"]'));
-    if (await submitBtn.first().isVisible()) {
-      await submitBtn.first().click();
-    }
-
-    await page.waitForTimeout(2000);
+    await page.goto("/my-requests");
+    const statusBadge = page.locator('[data-testid^="myreq-status-"]').first();
+    await expect(statusBadge).toBeVisible();
+    await expect(statusBadge).toHaveText(statusText.approved);
   });
 });
 
-test.describe("Employee - My Requests", () => {
-  test.beforeEach(async ({ page }) => {
+test.describe("الموظف — طلباتي", () => {
+  test("قائمة طلباتي بتفتح", async ({ page }) => {
     await loginAs(page, "employee");
-  });
-
-  test("shows my requests page", async ({ page }) => {
     await page.goto("/my-requests");
     await expect(page).toHaveURL(/\/my-requests/);
-  });
-
-  test("displays request list or empty state", async ({ page }) => {
-    await page.goto("/my-requests");
-
-    // Should show either request cards or an empty state message
-    const content = page.locator("main, [class*='content'], [class*='Content']");
-    await expect(content.first()).toBeVisible();
-  });
-
-  test("request cards show status badges", async ({ page }) => {
-    await page.goto("/my-requests");
-    await page.waitForTimeout(2000);
-
-    // If there are requests, they should have status indicators
-    const statusBadge = page.locator('[class*="badge"], [class*="Badge"], [class*="status"]');
-    // This is a soft check — may or may not have requests
-    const count = await statusBadge.count();
-    if (count > 0) {
-      await expect(statusBadge.first()).toBeVisible();
-    }
-  });
-});
-
-test.describe("Employee - Request Details", () => {
-  test("can view request details page", async ({ page }) => {
-    await loginAs(page, "employee");
-    await page.goto("/my-requests");
-    await page.waitForTimeout(2000);
-
-    // Click on first request if any exist
-    const requestLink = page.locator("a[href*='/requests/']").first();
-    if (await requestLink.isVisible()) {
-      await requestLink.click();
-      await page.waitForURL(/\/requests\//);
-
-      // Should show request details
-      await expect(page.locator("main")).toBeVisible();
-    }
-  });
-});
-
-test.describe("Employee - Medical History", () => {
-  test("shows medical history page", async ({ page }) => {
-    await loginAs(page, "employee");
-    await page.goto("/employee/history");
-    await expect(page).toHaveURL(/\/employee\/history/);
   });
 });

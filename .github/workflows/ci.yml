@@ -61,3 +61,58 @@ jobs:
 
       - name: API integration tests
         run: pnpm --filter @asroc/api run test
+
+  # اختبارات e2e الأساسية عبر المتصفح (المسار الكامل + الإنشاء + الموافقة). بتقلع
+  # api+web وبتشغّل حزم 04/05/16 اللي بتأكّد أثرًا حقيقيًا (مش vacuous).
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: "file:./test.db"
+      JWT_SECRET: ci-test-secret-1234567890
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @asroc/api exec prisma generate
+
+      - name: Apply migrations (test DB)
+        run: pnpm --filter @asroc/api exec prisma migrate deploy
+
+      # بنزرع حسابات الاختبار فقط (سريع) بدل الـ 1585 مستخدم الصناعي — الـ e2e
+      # بيحتاج test-users + الأدوية + الأقسام بس. الأدوية والأقسام بتتزرع دايمًا.
+      - name: Seed test DB (test accounts + medicines + departments)
+        run: pnpm --filter @asroc/api exec prisma db seed
+        env:
+          SEED_USERS_FILE: ${{ github.workspace }}/api/prisma/seed-data/test-users.json
+
+      - name: Install Playwright browser (chromium)
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run core e2e (04 create, 05 approve, 16 full workflow)
+        run: >
+          pnpm exec playwright test
+          e2e/04-employee-requests.spec.ts
+          e2e/05-manager-approvals.spec.ts
+          e2e/16-full-workflow.spec.ts
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

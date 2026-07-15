@@ -381,6 +381,7 @@ export function DoctorPage() {
 
                           <Button
                             className="bg-teal-600 hover:bg-teal-700"
+                            data-testid={`start-diagnosis-${request.id}`}
                             onClick={() => handleStartDiagnosis(request.id)}
                           >
                             <Stethoscope className="w-4 h-4 ml-2" />

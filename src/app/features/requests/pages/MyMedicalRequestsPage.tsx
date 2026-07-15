@@ -158,8 +158,15 @@ export function MyMedicalRequestsPage() {
 
                   <tbody className="divide-y bg-white">
                     {myRequests.map((request) => (
-                      <tr key={request.id} className="hover:bg-slate-50">
-                        <td className="p-3 font-semibold text-blue-700">
+                      <tr
+                        key={request.id}
+                        data-testid={`myreq-row-${request.id}`}
+                        className="hover:bg-slate-50"
+                      >
+                        <td
+                          data-testid={`myreq-id-${request.id}`}
+                          className="p-3 font-semibold text-blue-700"
+                        >
                           {request.id}
                         </td>
 
@@ -199,6 +206,7 @@ export function MyMedicalRequestsPage() {
                         <td className="p-3">
                           <Badge
                             variant="outline"
+                            data-testid={`myreq-status-${request.id}`}
                             className="bg-yellow-100 text-yellow-800 border-yellow-200"
                           >
                             {requestStatusLabels[request.status]}

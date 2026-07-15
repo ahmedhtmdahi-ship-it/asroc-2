@@ -1,120 +1,77 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 import { loginAs } from "./helpers/auth";
+import { tid } from "./helpers/selectors";
 
-test.describe("Manager - Approvals Page", () => {
-  test.beforeEach(async ({ page }) => {
+const API = "http://localhost:4000";
+
+// بيحضّر طلب pending في قسم مدير الاختبار عبر الـ API (أسرع من الواجهة) بعد تنظيف
+// الحالة، ويرجّع الـ id. الطلب في نفس قسم test-manager عشان فصل الإدارات يوريه له.
+async function seedPendingRequest(request: APIRequestContext): Promise<string> {
+  const reset = await request.post(`${API}/test/reset-workflow`);
+  expect(reset.ok()).toBeTruthy();
+
+  const login = await request.post(`${API}/auth/login`, {
+    data: { username: "test-employee", password: "Test@1234" },
+  });
+  expect(login.ok()).toBeTruthy();
+  const { token, user } = await login.json();
+
+  const created = await request.post(`${API}/requests`, {
+    headers: { authorization: `Bearer ${token}` },
+    data: {
+      employeeId: user.id,
+      employeeName: user.name,
+      financialNumber: user.financialNumber ?? user.id,
+      department: user.department,
+      reason: "طلب اختبار لموافقة المدير",
+      serviceType: "checkup",
+      requestType: "normal",
+    },
+  });
+  expect(created.status()).toBe(201);
+  return (await created.json()).id as string;
+}
+
+test.describe("المدير — الموافقات", () => {
+  let requestId = "";
+
+  test.beforeEach(async ({ page, request }) => {
+    requestId = await seedPendingRequest(request);
     await loginAs(page, "manager");
   });
 
-  test("shows the approvals page", async ({ page }) => {
+  test("صفحة الموافقات بتفتح وبتعرض الطلب المعلّق", async ({ page }) => {
     await page.goto("/manager/approvals");
     await expect(page).toHaveURL(/\/manager\/approvals/);
+    await expect(page.getByTestId(tid.approvalRequest(requestId))).toBeVisible();
   });
 
-  test("displays pending requests or empty state", async ({ page }) => {
+  test("الموافقة بتحوّل الطلب وبتشيله من قائمة المعلّق", async ({ page }) => {
     await page.goto("/manager/approvals");
-    await page.waitForTimeout(2000);
+    await page.getByTestId(tid.approvalRequest(requestId)).click();
+    await page.getByTestId(tid.approveBtn).click();
+    await page.getByTestId(tid.confirmDecision).click();
 
-    // Should show either pending requests or an empty state
-    const content = page.locator("main");
-    await expect(content).toBeVisible();
+    await expect(page.getByText("تمت الموافقة على الطلب")).toBeVisible();
+    // فلتر «pending» الافتراضي: الطلب المعتمَد بيختفي من القائمة.
+    await expect(page.getByTestId(tid.approvalRequest(requestId))).toBeHidden();
   });
 
-  test("shows approve/reject/postpone action buttons on requests", async ({
-    page,
-  }) => {
+  test("الرفض بيظهر تنبيه الرفض وبيشيل الطلب من المعلّق", async ({ page }) => {
     await page.goto("/manager/approvals");
-    await page.waitForTimeout(2000);
+    await page.getByTestId(tid.approvalRequest(requestId)).click();
+    await page.getByTestId(tid.rejectBtn).click();
+    await page.getByTestId(tid.confirmDecision).click();
 
-    // If there are pending requests, action buttons should be visible
-    const approveBtn = page.getByText("موافقة").first();
-    const rejectBtn = page.getByText("رفض").first();
-
-    if (await approveBtn.isVisible()) {
-      await expect(approveBtn).toBeVisible();
-    }
-    if (await rejectBtn.isVisible()) {
-      await expect(rejectBtn).toBeVisible();
-    }
+    await expect(page.getByText("تم رفض الطلب")).toBeVisible();
+    await expect(page.getByTestId(tid.approvalRequest(requestId))).toBeHidden();
   });
 });
 
-test.describe("Office Manager - Approvals", () => {
-  test("office manager can access approvals page", async ({ page }) => {
+test.describe("مدير المكتب — الوصول للموافقات", () => {
+  test("مدير المكتب يقدر يفتح صفحة الموافقات", async ({ page }) => {
     await loginAs(page, "office_manager");
     await page.goto("/manager/approvals");
     await expect(page).toHaveURL(/\/manager\/approvals/);
-  });
-});
-
-test.describe("Manager - Approve Request Flow", () => {
-  test("can approve a pending request", async ({ page }) => {
-    await loginAs(page, "manager");
-    await page.goto("/manager/approvals");
-    await page.waitForTimeout(2000);
-
-    const approveBtn = page.getByText("موافقة").first();
-    if (await approveBtn.isVisible()) {
-      await approveBtn.click();
-
-      // May show a confirmation dialog
-      const confirmBtn = page
-        .getByRole("button", { name: "تأكيد" })
-        .or(page.getByRole("button", { name: "موافقة" }));
-      if (await confirmBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.first().click();
-      }
-
-      await page.waitForTimeout(2000);
-    }
-  });
-
-  test("can reject a pending request", async ({ page }) => {
-    await loginAs(page, "manager");
-    await page.goto("/manager/approvals");
-    await page.waitForTimeout(2000);
-
-    const rejectBtn = page.getByText("رفض").first();
-    if (await rejectBtn.isVisible()) {
-      await rejectBtn.click();
-
-      // May need to provide a reason
-      const reasonField = page.locator("textarea").first();
-      if (await reasonField.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await reasonField.fill("رفض لعدم استيفاء الشروط");
-      }
-
-      const confirmBtn = page
-        .getByRole("button", { name: "تأكيد" })
-        .or(page.getByRole("button", { name: "رفض" }));
-      if (await confirmBtn.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.first().click();
-      }
-
-      await page.waitForTimeout(2000);
-    }
-  });
-
-  test("can postpone a pending request", async ({ page }) => {
-    await loginAs(page, "manager");
-    await page.goto("/manager/approvals");
-    await page.waitForTimeout(2000);
-
-    const postponeBtn = page.getByText("تأجيل").first();
-    if (await postponeBtn.isVisible()) {
-      await postponeBtn.click();
-
-      const reasonField = page.locator("textarea").first();
-      if (await reasonField.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await reasonField.fill("تأجيل لحين استكمال المستندات");
-      }
-
-      const confirmBtn = page.getByRole("button", { name: "تأكيد" }).first();
-      if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await confirmBtn.click();
-      }
-
-      await page.waitForTimeout(2000);
-    }
   });
 });

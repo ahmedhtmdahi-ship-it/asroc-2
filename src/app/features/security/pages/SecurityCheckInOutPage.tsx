@@ -187,6 +187,7 @@ export function SecurityCheckInOutPage() {
                         <Button
                           size="sm"
                           className="w-full"
+                          data-testid={`checkout-${request.id}`}
                           onClick={() =>
                             handleCheckOut(request.id, request.employeeName)
                           }

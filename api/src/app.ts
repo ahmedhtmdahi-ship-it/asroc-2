@@ -27,9 +27,14 @@ export function buildApp() {
   const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
   const allowedOrigins = corsOrigin.split(",").map((s) => s.trim());
 
+  // لازم نسمح صراحةً بـ PATCH/PUT/DELETE — الواجهة بتستخدمها (تعديل مستخدم/دواء،
+  // حفظ التشخيص، تعليم الإشعارات مقروءة). من غير كده متصفّح على origin مختلف
+  // (تطوير محلي / e2e) بيتحظر منها في الـ preflight. في الإنتاج nginx بيقدّم
+  // الواجهة same-origin فالمشكلة مكنتش بتبان.
   app.register(cors, {
     origin: allowedOrigins,
     credentials: true,
+    methods: ["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   });
 
   // مرفقات الطلبات — ملف واحد لكل نداء وبحد حجم صارم على السيرفر.
@@ -94,6 +99,22 @@ export function buildApp() {
   app.register(notificationRoutes,  { prefix: "/notifications" });
   app.register(securityRoutes,      { prefix: "/security-logs" });
   app.register(departmentRoutes,    { prefix: "/departments" });
+
+  // مسار إعادة تهيئة مسار الطلبات — للاختبارات فقط (e2e). بيتسجّل حصريًا في بيئة
+  // الاختبار، فمش موجود أصلاً في الإنتاج. بيمسح الطلبات وتابعينها عشان كل ملف
+  // اختبار يبدأ نظيف (المستخدمون/الأدوية/الأقسام ما بتتلمسش).
+  if (process.env.NODE_ENV === "test") {
+    app.post("/test/reset-workflow", async () => {
+      await prisma.requestTimelineEvent.deleteMany({});
+      await prisma.requestMedication.deleteMany({});
+      await prisma.requestAttachment.deleteMany({});
+      await prisma.referral.deleteMany({});
+      await prisma.notification.deleteMany({});
+      await prisma.securityLog.deleteMany({});
+      await prisma.medicalRequest.deleteMany({});
+      return { ok: true };
+    });
+  }
 
   return app; // ✅ الـ return لسه في آخر الـ function
 }
