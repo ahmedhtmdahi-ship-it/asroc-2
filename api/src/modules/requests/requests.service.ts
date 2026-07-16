@@ -155,6 +155,45 @@ export async function createRequest(input: CreateRequestInput, actor: Actor) {
     // ignore
   }
 
+  // سياسة الطوارئ: مفتوحة لأي موظف (للحالات الحقيقية) لكن مدير الإدارة بياخد علم
+  // فورًا بأي طلب طوارئ اتخطّى موافقته — إشعار + الـ audit فوق. best-effort:
+  // ما بنفشلش إنشاء الطلب لو الإشعار فشل، وبنتأكد إن المدير مستخدم فعلي (قيد الـ FK).
+  if (isEmergency) {
+    try {
+      const dept = await prisma.department.findFirst({
+        where: { name: created.department },
+        select: { managerId: true, managerFinancialNumber: true },
+      });
+      const managerOr = [
+        ...(dept?.managerId ? [{ id: dept.managerId }] : []),
+        ...(dept?.managerFinancialNumber
+          ? [{ financialNumber: dept.managerFinancialNumber }]
+          : []),
+      ];
+      const manager = managerOr.length
+        ? await prisma.user.findFirst({
+            where: { OR: managerOr, isActive: true },
+            select: { id: true },
+          })
+        : null;
+      if (manager) {
+        await prisma.notification.create({
+          data: {
+            userId: manager.id,
+            title: "طلب طوارئ في إدارتك",
+            message: `${created.employeeName} أنشأ طلب كشف طوارئ (${created.id}) واعتُمد تلقائيًا وأُرسل للأمن. السبب: ${created.reason}`,
+            requestId: created.id,
+            icon: "AlertTriangle",
+            color: "text-red-700",
+            bg: "bg-red-50",
+          },
+        });
+      }
+    } catch {
+      // best-effort — الإشعار ما بيوقفش إنشاء الطلب
+    }
+  }
+
   return created;
 }
 

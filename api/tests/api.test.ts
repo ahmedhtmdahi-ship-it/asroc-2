@@ -37,6 +37,7 @@ const ids = {
   wemp: "TEST-WF-EMP", // موظف مسار الكشف الكامل
   wempM: "TEST-WF-EMP-M", // موظف مسار الشهري
   wempX: "TEST-WF-EMP-X", // موظف اختبار الإلغاء
+  wEmerg: "TEST-WF-EMERG", // موظف اختبار إشعار الطوارئ للمدير
 };
 
 // أدوية اختبار لبحث/حد نقطة GET /medicines — بنمسحها في after.
@@ -123,6 +124,7 @@ before(async () => {
   await makeUser(ids.wemp, "employee", ["create_request", "view_own_requests"], "WfEmpPass!!", DEPT_A);
   await makeUser(ids.wempM, "employee", ["create_request", "view_own_requests"], "WfEmpMPass!!", DEPT_A);
   await makeUser(ids.wempX, "employee", ["create_request", "view_own_requests"], "WfEmpXPass!!", DEPT_A);
+  await makeUser(ids.wEmerg, "employee", ["create_request", "view_own_requests"], "WfEmergPass!!", DEPT_A);
   await makeRequest(ids.r1, ids.emp1, DEPT_A);
   await makeRequest(ids.r2, ids.emp2, DEPT_B);
 
@@ -141,10 +143,10 @@ before(async () => {
 after(async () => {
   const testUsers = [
     ids.emp1, ids.emp2, ids.emp3, ids.admin, ids.mgr, ids.mgr2,
-    ids.wsec, ids.wdoc, ids.wpharm, ids.wpension, ids.wemp, ids.wempM, ids.wempX,
+    ids.wsec, ids.wdoc, ids.wpharm, ids.wpension, ids.wemp, ids.wempM, ids.wempX, ids.wEmerg,
   ];
   // الطلبات اللي اتعملت عبر الـ API بـ ids مولّدة — بنمسحها بالموظف مش بالـ id.
-  const apiEmployees = [ids.emp3, ids.wemp, ids.wempM, ids.wempX];
+  const apiEmployees = [ids.emp3, ids.wemp, ids.wempM, ids.wempX, ids.wEmerg];
   const apiRequests = await prisma.medicalRequest.findMany({
     where: { employeeId: { in: apiEmployees } },
     select: { id: true },
@@ -158,6 +160,7 @@ after(async () => {
   });
   await prisma.medicalRequest.deleteMany({ where: { id: { in: requestIds } } });
   await prisma.medicine.deleteMany({ where: { id: { in: testMedicineIds } } });
+  await prisma.department.deleteMany({ where: { name: DEPT_A } });
   await prisma.user.deleteMany({
     where: { OR: [{ id: { in: testUsers } }, { username: "weak-pass-user" }] },
   });
@@ -700,4 +703,33 @@ test("GET /medicines: بحث + حد + activeOnly (وتوافق خلفي بدون
     headers: auth(token),
   });
   assert.equal(limited.json().length, 1, "limit لازم يحدّ عدد الصفوف المرجّعة");
+});
+
+test("طلب طوارئ: approve تلقائي + إشعار لمدير الإدارة (سياسة الطوارئ)", async () => {
+  // نربط قسم DEPT_A بالمدير mgr هنا (self-contained) — اختبار الأقسام بيمسح القسم
+  // في نهايته، فلازم نأسّس الربط جوه الاختبار مش في before.
+  await prisma.department.upsert({
+    where: { name: DEPT_A },
+    create: { name: DEPT_A, managerId: ids.mgr, managerFinancialNumber: "MGR-FN-A" },
+    update: { managerId: ids.mgr, managerFinancialNumber: "MGR-FN-A" },
+  });
+
+  const empToken = (await login(ids.wEmerg, "WfEmergPass!!")).json().token;
+  const created = await createRequestAs(empToken, ids.wEmerg, "0700", {
+    department: DEPT_A,
+    serviceType: "checkup",
+    requestType: "emergency",
+  });
+  assert.equal(created.statusCode, 201);
+  assert.equal(created.json().status, "approved", "الطوارئ بيتعمل approve تلقائي");
+  const reqId = created.json().id;
+
+  // مدير الإدارة (mgr المربوط بـ DEPT_A) لازم ياخد إشعار بطلب الطوارئ.
+  const mgrToken = (await login(ids.mgr, "MgrPass!!!")).json().token;
+  const notifs = await app.inject({ method: "GET", url: "/notifications", headers: auth(mgrToken) });
+  assert.equal(notifs.statusCode, 200);
+  const rows = notifs.json() as Array<{ requestId: string | null; title: string }>;
+  const emergencyNotif = rows.find((n) => n.requestId === reqId);
+  assert.ok(emergencyNotif, "مدير الإدارة لازم ياخد إشعار بطلب الطوارئ");
+  assert.match(emergencyNotif.title, /طوارئ/);
 });
