@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router";
+import { Link } from "react-router";
 import { Button } from "@/app/components/ui/button";
 import { Home } from "lucide-react";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";

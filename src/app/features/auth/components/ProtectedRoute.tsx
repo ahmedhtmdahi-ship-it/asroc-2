@@ -1,4 +1,4 @@
-﻿import { Navigate } from "react-router";
+import { Navigate } from "react-router";
 import { useAuth, getHomePathByRole } from "@/app/features/auth/AuthContext";
 import type { UserRole, Permission } from "@/app/types/user";
 

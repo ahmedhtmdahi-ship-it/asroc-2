@@ -1,4 +1,4 @@
-﻿import { createBrowserRouter } from "react-router";
+import { createBrowserRouter } from "react-router";
 
 import { ProtectedRoute } from "./features/auth/components/ProtectedRoute";
 

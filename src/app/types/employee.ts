@@ -1,4 +1,4 @@
-﻿export type EmployeeStatus = "active" | "retired" | "on_leave" | "suspended";
+export type EmployeeStatus = "active" | "retired" | "on_leave" | "suspended";
 
 export interface Employee {
   id: string;

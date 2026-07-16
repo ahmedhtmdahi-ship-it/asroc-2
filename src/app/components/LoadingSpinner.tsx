@@ -1,4 +1,4 @@
-﻿import { Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
