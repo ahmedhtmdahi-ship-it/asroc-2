@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { requestStore } from "@/app/store/requestStore";
 import { formatDate } from "@/app/lib/format";
 import { requestStatusLabels } from "@/app/types/workflow";
 import type { MedicalRequest } from "@/app/types/request";
@@ -45,7 +46,7 @@ function matchesSearch(request: MedicalRequest, searchTerm: string) {
 }
 
 export function MonthlyTreatmentPage() {
-  const { requests, moveRequest } = useWorkflow();
+  const { requests, moveRequest, refreshRequests } = useWorkflow();
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -76,10 +77,21 @@ export function MonthlyTreatmentPage() {
     ["monthly_modified", "monthly_rejected", "cancelled"].includes(request.status)
   );
 
-  const handleApprove = (requestId: string) => {
-    moveRequest(requestId, "monthly_approved", "تمت الموافقة على العلاج الشهري");
-    moveRequest(requestId, "monthly_ready_pharmacy", "تم إرسال العلاج الشهري للصيدلية");
-    toast.success("تم إرسال العلاج الشهري إلى الصيدلية");
+  const handleApprove = async (requestId: string) => {
+    // انتقالان متتابعان: monthly_ready_pharmacy لازم يستنّى monthly_approved يتطبّق
+    // على السيرفر الأول. لو اتبعتوا معًا (fire-and-forget) ممكن يتسابقوا فالتاني
+    // يترفض ويعلق الطلب عند monthly_approved من غير ما يوصل الصيدلية.
+    try {
+      await requestStore.transitionAsync(requestId, "monthly_approved", "تمت الموافقة على العلاج الشهري");
+      await requestStore.transitionAsync(requestId, "monthly_ready_pharmacy", "تم إرسال العلاج الشهري للصيدلية");
+      refreshRequests();
+      toast.success("تم إرسال العلاج الشهري إلى الصيدلية");
+    } catch (error) {
+      refreshRequests();
+      toast.error("تعذر إرسال العلاج الشهري للصيدلية", {
+        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+      });
+    }
   };
 
   const handleReject = (requestId: string) => {
@@ -231,6 +243,7 @@ export function MonthlyTreatmentPage() {
                             <Button
                               className="w-full bg-teal-600 hover:bg-teal-700"
                               disabled={!canDispense}
+                              data-testid={`monthly-dispense-${request.id}`}
                               onClick={() => handleDispense(request)}
                             >
                               <CheckCircle2 className="w-4 h-4 ml-2" />
@@ -284,7 +297,7 @@ export function MonthlyTreatmentPage() {
                     </p>
 
                     <div className="mt-3 grid grid-cols-2 gap-2">
-                      <Button size="sm" className="bg-teal-600 hover:bg-teal-700" onClick={() => handleApprove(request.id)}>
+                      <Button size="sm" className="bg-teal-600 hover:bg-teal-700" data-testid={`monthly-approve-${request.id}`} onClick={() => handleApprove(request.id)}>
                         اعتماد
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => handleReject(request.id)}>

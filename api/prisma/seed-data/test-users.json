@@ -69,6 +69,7 @@
     "role": "pension_admin",
     "permissions": [
       "manage_pensioners",
+      "recommend_monthly_treatment",
       "manage_monthly_treatment",
       "dispense_monthly_treatment",
       "view_reports"

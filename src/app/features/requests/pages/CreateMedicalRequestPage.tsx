@@ -440,6 +440,7 @@ export function EmployeeRequestsPage() {
 
                     <button
                       type="button"
+                      data-testid="service-monthly"
                       onClick={() => setServiceType("monthly_treatment")}
                       className={`rounded-2xl border p-5 text-right transition ${
                         serviceType === "monthly_treatment"

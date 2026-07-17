@@ -102,12 +102,13 @@ jobs:
       - name: Install Playwright browser (chromium)
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run core e2e (04 create, 05 approve, 16 full workflow)
+      - name: Run core e2e (04 create, 05 approve, 16 checkup, 17 monthly)
         run: >
           pnpm exec playwright test
           e2e/04-employee-requests.spec.ts
           e2e/05-manager-approvals.spec.ts
           e2e/16-full-workflow.spec.ts
+          e2e/17-monthly-workflow.spec.ts
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

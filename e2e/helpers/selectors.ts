@@ -107,6 +107,10 @@ export const tid = {
   requestSubmit: "request-submit",
   typeNormal: "type-normal",
   typeEmergency: "type-emergency",
+  serviceMonthly: "service-monthly",
+
+  monthlyApprove: (id: string) => `monthly-approve-${id}`,
+  monthlyDispense: (id: string) => `monthly-dispense-${id}`,
 
   myreqId: (id: string) => `myreq-id-${id}`,
   myreqStatus: (id: string) => `myreq-status-${id}`,

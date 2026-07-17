@@ -24,6 +24,7 @@ import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { Input } from "@/app/components/ui/input";
 import { useWorkflow } from "@/app/context/WorkflowContext";
+import { requestStore } from "@/app/store/requestStore";
 import { useAuth } from "@/app/features/auth/AuthContext";
 import { formatDate } from "@/app/lib/format";
 import { requestStatusLabels } from "@/app/types/workflow";
@@ -62,7 +63,7 @@ export function DoctorPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { requests, moveRequest } = useWorkflow();
+  const { requests, moveRequest, refreshRequests } = useWorkflow();
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -174,17 +175,26 @@ export function DoctorPage() {
     navigate(`/doctor/diagnosis/${requestId}`);
   };
 
-  const handleApproveMonthlyTreatment = (requestId: string) => {
-    moveRequest(requestId, "monthly_approved", "تمت الموافقة على العلاج الشهري");
-    moveRequest(
-      requestId,
-      "monthly_ready_pharmacy",
-      "تم إرسال طلب العلاج الشهري إلى الصيدلية"
-    );
-
-    toast.success("تمت الموافقة على العلاج الشهري", {
-      description: "تم إرسال الطلب إلى الصيدلية للصرف.",
-    });
+  const handleApproveMonthlyTreatment = async (requestId: string) => {
+    // انتقالان متتابعان لازم يتسلسلوا (await) — لو اتبعتوا معًا ممكن monthly_ready_pharmacy
+    // يسبق monthly_approved على السيرفر فيترفض ويعلق الطلب قبل الصيدلية.
+    try {
+      await requestStore.transitionAsync(requestId, "monthly_approved", "تمت الموافقة على العلاج الشهري");
+      await requestStore.transitionAsync(
+        requestId,
+        "monthly_ready_pharmacy",
+        "تم إرسال طلب العلاج الشهري إلى الصيدلية",
+      );
+      refreshRequests();
+      toast.success("تمت الموافقة على العلاج الشهري", {
+        description: "تم إرسال الطلب إلى الصيدلية للصرف.",
+      });
+    } catch (error) {
+      refreshRequests();
+      toast.error("تعذر الموافقة على العلاج الشهري", {
+        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+      });
+    }
   };
 
   const handleRejectMonthlyTreatment = (requestId: string) => {
