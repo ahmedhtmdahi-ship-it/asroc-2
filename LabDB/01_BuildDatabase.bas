@@ -272,7 +272,7 @@ Private Sub InsertSampleData(db As DAO.Database)
         "Normal_Range_Min, Normal_Range_Max, Price, Sample_Type, Is_Active) VALUES " & _
         "('هيموجلوبين','HGB','دم','g/dL',12,16,40,'دم',True)", dbFailOnError
 
-    db.Execute "INSERT INTO Tests (Test_Name, Test_Code, Category, Unit, " & _
+    db.Execute "INSERT INTO Tests (Test_Name, Test_Code, Category, " & _
         "Normal_Range_Text, Price, Sample_Type, Is_Active) VALUES " & _
         "('تحليل حمل','HCG-Q','هرمونات','Negative',60,'بول',True)", dbFailOnError
 
