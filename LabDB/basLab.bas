@@ -210,6 +210,20 @@ Public Function DoInvoicePDF() As Variant
     DoInvoicePDF = Null
 End Function
 
+' زر التقرير اليومي (يسأل عن التاريخ ثم يصدّر PDF):  =DoDailyPDF()
+Public Function DoDailyPDF() As Variant
+    On Error Resume Next
+    Dim d As String
+    d = InputBox("اكتب اليوم المطلوب بصيغة yyyy/mm/dd:", "تقرير يومي", Format(Date, "yyyy/mm/dd"))
+    If Len(d) = 0 Then DoDailyPDF = Null: Exit Function
+    Dim w As String
+    ' نطاق اليوم كامل (من بداية اليوم حتى بداية اليوم التالي)
+    w = "Order_Date>=#" & Format(CDate(d), "mm/dd/yyyy") & "# AND " & _
+        "Order_Date<#" & Format(DateAdd("d", 1, CDate(d)), "mm/dd/yyyy") & "#"
+    ExportPDFReport "rptDaily", "يومي_" & Replace(d, "/", "-"), w
+    DoDailyPDF = Null
+End Function
+
 ' زر تصدير تقرير النتيجة من فورم النتائج:  =DoResultPDF()
 Public Function DoResultPDF() As Variant
     On Error Resume Next
