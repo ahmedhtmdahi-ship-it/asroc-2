@@ -1,6 +1,12 @@
 Option Compare Database
 Option Explicit
 
+' Standard report sections (always present on a new report)
+Private Const PH As Integer = 3     ' page header
+Private Const DET As Integer = 0    ' detail
+Private Const RF As Integer = 2     ' report footer
+Private Const PF As Integer = 4     ' page footer
+
 ' ============================================================================
 '  Medical Lab - Stage 3 : Build queries and reports (English UI)
 ' ----------------------------------------------------------------------------
@@ -126,12 +132,6 @@ Private Sub SaveReport(rpt As Report, finalName As String)
     DoCmd.Close acReport, tmp, acSaveYes
     DoCmd.Rename finalName, acReport, tmp
 End Sub
-
-' Standard sections (always present on a new report)
-Private Const PH As Integer = 3     ' page header
-Private Const DET As Integer = 0    ' detail
-Private Const RF As Integer = 2     ' report footer
-Private Const PF As Integer = 4     ' page footer
 
 
 ' ===========================================================================
