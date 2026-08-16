@@ -2,39 +2,26 @@ Option Compare Database
 Option Explicit
 
 ' ============================================================================
-'  basLab  -  وحدة المنطق الرئيسية للمعمل (المرحلة 2)
+'  basLab  -  Main logic module (English UI)
 ' ----------------------------------------------------------------------------
-'  هذه الوحدة تحتوي كل "الوظائف الذكية" التي تستدعيها الفورمات:
-'   - حساب السن من تاريخ الميلاد
-'   - تحديد حالة النتيجة تلقائيًا (طبيعي/مرتفع/منخفض)
-'   - نسخ سعر التحليل وقت الطلب
-'   - قراءة إعدادات المعمل من جدول tblSettings
-'   - أزرار التنقل بين الفورمات
-'   - تصدير التقارير PDF
+'  Status values used across the app:
+'     Order.Status  : Registered / In Progress / Ready / Delivered
+'     Result_Status : Normal / High / Low / Abnormal / Pending
 '
-'  طريقة اللصق:  Alt+F11  ثم  Insert > Module  ثم الصق كل هذا الملف.
-'  اسم الوحدة: سمّها basLab (من نافذة Properties يسار المحرر: Name = basLab)
-'
-'  ملاحظة: بعض الدوال تُرجع Null وتُستدعى من خصائص الأحداث بصيغة  =OnPickTest()
-'          وهذا مقصود حتى تعمل بدون كتابة كود داخل كل فورم.
+'  Paste into a Module named "basLab".
 ' ============================================================================
 
 
-' ---------------------------------------------------------------------------
-'  1) حساب السن بالسنوات من تاريخ الميلاد
-' ---------------------------------------------------------------------------
+' 1) Calculate age in years from birth date
 Public Function CalcAge(vBirth As Variant) As Variant
     If IsNull(vBirth) Then CalcAge = Null: Exit Function
     If Not IsDate(vBirth) Then CalcAge = Null: Exit Function
-
     Dim a As Integer
-    a = DateDiff("yyyy", vBirth, Date)                 ' فرق السنوات المبدئي
-    ' لو لم يأتِ عيد الميلاد هذا العام بعد، ننقص سنة
+    a = DateDiff("yyyy", vBirth, Date)
     If Date < DateSerial(Year(Date), Month(vBirth), Day(vBirth)) Then a = a - 1
     CalcAge = a
 End Function
 
-' تُستدعى من حدث AfterUpdate لحقل تاريخ الميلاد في فورم المريض:  =AgeUpdate()
 Public Function AgeUpdate() As Variant
     On Error Resume Next
     Dim f As Form
@@ -44,52 +31,43 @@ Public Function AgeUpdate() As Variant
 End Function
 
 
-' ---------------------------------------------------------------------------
-'  2) تحديد حالة النتيجة تلقائيًا
-'     - لو النتيجة غير رقمية أو لا يوجد مدى رقمي => نُرجع "" (يبقى اختيار يدوي)
-' ---------------------------------------------------------------------------
+' 2) Auto-determine result status (numeric results with numeric range only)
 Public Function ResultStatus(vValue As Variant, vMin As Variant, vMax As Variant) As String
     ResultStatus = ""
     If IsNull(vValue) Then Exit Function
-    If Not IsNumeric(vValue) Then Exit Function          ' نتيجة نصية => يدوي
-    If IsNull(vMin) Or IsNull(vMax) Then Exit Function   ' لا يوجد مدى رقمي => يدوي
-
+    If Not IsNumeric(vValue) Then Exit Function
+    If IsNull(vMin) Or IsNull(vMax) Then Exit Function
     Dim n As Double
     n = CDbl(vValue)
     If n < CDbl(vMin) Then
-        ResultStatus = "منخفض"
+        ResultStatus = "Low"
     ElseIf n > CDbl(vMax) Then
-        ResultStatus = "مرتفع"
+        ResultStatus = "High"
     Else
-        ResultStatus = "طبيعي"
+        ResultStatus = "Normal"
     End If
 End Function
 
-' تُستدعى من حدث AfterUpdate لحقل النتيجة في الفورم الفرعي للنتائج:  =OnResultEntered()
 Public Function OnResultEntered() As Variant
     On Error Resume Next
     Dim f As Form
-    Set f = Screen.ActiveControl.Parent          ' الفورم الفرعي (تفاصيل الطلب)
+    Set f = Screen.ActiveControl.Parent
     Dim vMin As Variant, vMax As Variant
     vMin = DLookup("Normal_Range_Min", "Tests", "Test_ID=" & f!Test_ID)
     vMax = DLookup("Normal_Range_Max", "Tests", "Test_ID=" & f!Test_ID)
-
     Dim s As String
     s = ResultStatus(f!Result_Value, vMin, vMax)
-    If Len(s) > 0 Then f!Result_Status = s        ' لو حدّدها آليًا نضعها
+    If Len(s) > 0 Then f!Result_Status = s
     If IsNull(f!Result_Date) Then f!Result_Date = Now()
     OnResultEntered = Null
 End Function
 
 
-' ---------------------------------------------------------------------------
-'  3) نسخ سعر التحليل إلى Price_At_Order وقت اختياره
-'     تُستدعى من حدث AfterUpdate لقائمة التحاليل في الفورم الفرعي:  =OnPickTest()
-' ---------------------------------------------------------------------------
+' 3) Copy the test price to Price_At_Order when a test is picked
 Public Function OnPickTest() As Variant
     On Error Resume Next
     Dim f As Form
-    Set f = Screen.ActiveControl.Parent          ' الفورم الفرعي
+    Set f = Screen.ActiveControl.Parent
     If Not IsNull(f!Test_ID) Then
         f!Price_At_Order = Nz(DLookup("Price", "Tests", "Test_ID=" & f!Test_ID), 0)
     End If
@@ -97,9 +75,7 @@ Public Function OnPickTest() As Variant
 End Function
 
 
-' ---------------------------------------------------------------------------
-'  4) إعادة حساب إجمالي الطلب وتخزينه (يُستدعى عند الحفظ)
-' ---------------------------------------------------------------------------
+' 4) Recalculate and store the order total
 Public Sub RecalcOrderTotal(orderId As Long)
     Dim t As Currency
     t = Nz(DSum("Price_At_Order", "Order_Details", "Order_ID=" & orderId), 0)
@@ -108,26 +84,20 @@ Public Sub RecalcOrderTotal(orderId As Long)
 End Sub
 
 
-' ---------------------------------------------------------------------------
-'  5) قراءة إعدادات المعمل (اسم/عنوان/تليفون/مسؤول التوقيع) من tblSettings
-' ---------------------------------------------------------------------------
+' 5) Read a lab setting from tblSettings
 Public Function GetSetting(fieldName As String) As String
     On Error Resume Next
     GetSetting = Nz(DLookup(fieldName, "tblSettings"), "")
 End Function
 
 
-' ---------------------------------------------------------------------------
-'  6) أزرار التنقل بين الفورمات
-'     مثال على زر:  خاصية On Click =  =Nav("frmPatient")
-' ---------------------------------------------------------------------------
+' 6) Navigation between forms
 Public Function Nav(formName As String) As Variant
     On Error Resume Next
     DoCmd.OpenForm formName
     Nav = Null
 End Function
 
-' فتح فورم المريض من فورم الطلب لتسجيل مريض جديد بسرعة
 Public Function NavNewPatient() As Variant
     On Error Resume Next
     DoCmd.OpenForm "frmPatient", , , , acFormAdd
@@ -135,24 +105,19 @@ Public Function NavNewPatient() As Variant
 End Function
 
 
-' ---------------------------------------------------------------------------
-'  7) حفظ السجل الحالي وتغيير حالة الطلب  (لأزرار: جاهز / مسلّم ...)
-'     مثال:  =SetOrderStatus("جاهز")
-' ---------------------------------------------------------------------------
+' 7) Save and change order status
 Public Function SetOrderStatus(newStatus As String) As Variant
     On Error Resume Next
     Dim f As Form
     Set f = Screen.ActiveForm
-    If f.Dirty Then f.Dirty = False              ' يحفظ التعديلات أولًا
+    If f.Dirty Then f.Dirty = False
     f!Status = newStatus
-    f.Dirty = False                              ' يحفظ الحالة الجديدة
-    ' نحدّث الإجمالي المخزّن أيضًا
+    f.Dirty = False
     If Not IsNull(f!Order_ID) Then RecalcOrderTotal CLng(f!Order_ID)
-    MsgBox "تم الحفظ وتغيير حالة الطلب إلى: " & newStatus, vbInformation, "تم"
+    MsgBox "Saved. Order status changed to: " & newStatus, vbInformation, "Done"
     SetOrderStatus = Null
 End Function
 
-' حفظ الطلب فقط (يحدّث الإجمالي المخزّن)  ->  =SaveOrder()
 Public Function SaveOrder() As Variant
     On Error Resume Next
     Dim f As Form
@@ -163,10 +128,7 @@ Public Function SaveOrder() As Variant
 End Function
 
 
-' ---------------------------------------------------------------------------
-'  8) الانتقال إلى طلب معيّن في فورم النتائج (من قائمة منسدلة cboPick)
-'     خاصية AfterUpdate للقائمة:  =GoToOrder()
-' ---------------------------------------------------------------------------
+' 8) Jump to an order in the results form (from cboPick)
 Public Function GoToOrder() As Variant
     On Error Resume Next
     Dim f As Form
@@ -178,27 +140,22 @@ Public Function GoToOrder() As Variant
 End Function
 
 
-' ---------------------------------------------------------------------------
-'  9) تصدير تقرير PDF (يُستخدم في المرحلة 3 بعد إنشاء التقارير)
-'     يفتح التقرير مفلترًا على شرط ثم يحفظه PDF على سطح المكتب
-' ---------------------------------------------------------------------------
+' 9) Export a report to PDF (filtered) onto the Desktop
 Public Function ExportPDFReport(rpt As String, tag As String, whereClause As String) As Variant
     On Error GoTo H
-    ' نفتح التقرير مخفيًا ومفلترًا على الطلب المطلوب
     DoCmd.OpenReport rpt, acViewPreview, , whereClause, acHidden
     Dim p As String
     p = DesktopPath() & rpt & "_" & CleanName(tag) & "_" & Format(Now, "yyyymmdd_hhnnss") & ".pdf"
     DoCmd.OutputTo acOutputReport, rpt, acFormatPDF, p, False
     DoCmd.Close acReport, rpt
-    MsgBox "تم حفظ الملف على سطح المكتب:" & vbCrLf & p, vbInformation, "تم التصدير"
+    MsgBox "PDF saved on the Desktop:" & vbCrLf & p, vbInformation, "Exported"
     ExportPDFReport = Null
     Exit Function
 H:
-    MsgBox "تعذّر التصدير. تأكد أن التقرير باسم '" & rpt & "' موجود." & vbCrLf & _
-           "تفاصيل: " & Err.Description, vbExclamation, "خطأ التصدير"
+    MsgBox "Could not export. Make sure the report '" & rpt & "' exists." & vbCrLf & _
+           "Details: " & Err.Description, vbExclamation, "Export error"
 End Function
 
-' زر تصدير الفاتورة من فورم الطلب:  =DoInvoicePDF()
 Public Function DoInvoicePDF() As Variant
     On Error Resume Next
     Dim f As Form
@@ -210,21 +167,6 @@ Public Function DoInvoicePDF() As Variant
     DoInvoicePDF = Null
 End Function
 
-' زر التقرير اليومي (يسأل عن التاريخ ثم يصدّر PDF):  =DoDailyPDF()
-Public Function DoDailyPDF() As Variant
-    On Error Resume Next
-    Dim d As String
-    d = InputBox("اكتب اليوم المطلوب بصيغة yyyy/mm/dd:", "تقرير يومي", Format(Date, "yyyy/mm/dd"))
-    If Len(d) = 0 Then DoDailyPDF = Null: Exit Function
-    Dim w As String
-    ' نطاق اليوم كامل (من بداية اليوم حتى بداية اليوم التالي)
-    w = "Order_Date>=#" & Format(CDate(d), "mm/dd/yyyy") & "# AND " & _
-        "Order_Date<#" & Format(DateAdd("d", 1, CDate(d)), "mm/dd/yyyy") & "#"
-    ExportPDFReport "rptDaily", "يومي_" & Replace(d, "/", "-"), w
-    DoDailyPDF = Null
-End Function
-
-' زر تصدير تقرير النتيجة من فورم النتائج:  =DoResultPDF()
 Public Function DoResultPDF() As Variant
     On Error Resume Next
     Dim f As Form
@@ -236,34 +178,39 @@ Public Function DoResultPDF() As Variant
     DoResultPDF = Null
 End Function
 
+Public Function DoDailyPDF() As Variant
+    On Error Resume Next
+    Dim d As String
+    d = InputBox("Enter the day (yyyy/mm/dd):", "Daily report", Format(Date, "yyyy/mm/dd"))
+    If Len(d) = 0 Then DoDailyPDF = Null: Exit Function
+    Dim w As String
+    w = "Order_Date>=#" & Format(CDate(d), "mm/dd/yyyy") & "# AND " & _
+        "Order_Date<#" & Format(DateAdd("d", 1, CDate(d)), "mm/dd/yyyy") & "#"
+    ExportPDFReport "rptDaily", "Daily_" & Replace(d, "/", "-"), w
+    DoDailyPDF = Null
+End Function
 
-' ---------------------------------------------------------------------------
-'  10) أزرار عامة للفورمات (حفظ / رجوع / سجل جديد)
-' ---------------------------------------------------------------------------
 
-' حفظ السجل الحالي في الفورم النشط  ->  =SaveCurrent()
+' 10) Generic form buttons (Save / Close / New)
 Public Function SaveCurrent() As Variant
     On Error Resume Next
-    ' تحقق بسيط: اسم المريض مطلوب في فورم المريض
     Dim f As Form
     Set f = Screen.ActiveForm
     If f.Name = "frmPatient" Then
         If Len(Nz(f!Full_Name, "")) = 0 Then
-            MsgBox "اسم المريض مطلوب.", vbExclamation, "تنبيه"
+            MsgBox "Patient name is required.", vbExclamation, "Notice"
             SaveCurrent = Null: Exit Function
         End If
-        ' التليفون أرقام فقط (إن أُدخل)
         If Len(Nz(f!Phone, "")) > 0 And Not IsNumeric(f!Phone) Then
-            MsgBox "رقم التليفون يجب أن يكون أرقامًا فقط.", vbExclamation, "تنبيه"
+            MsgBox "Phone must be numbers only.", vbExclamation, "Notice"
             SaveCurrent = Null: Exit Function
         End If
     End If
     If f.Dirty Then f.Dirty = False
-    MsgBox "تم الحفظ.", vbInformation, "تم"
+    MsgBox "Saved.", vbInformation, "Done"
     SaveCurrent = Null
 End Function
 
-' إغلاق الفورم النشط والعودة  ->  =CloseMe()
 Public Function CloseMe() As Variant
     On Error Resume Next
     Dim f As Form
@@ -273,27 +220,24 @@ Public Function CloseMe() As Variant
     CloseMe = Null
 End Function
 
-' الانتقال إلى سجل جديد فارغ في الفورم النشط  ->  =NavNewRecord()
 Public Function NavNewRecord() As Variant
     On Error Resume Next
     DoCmd.GoToRecord , , acNewRec
     NavNewRecord = Null
 End Function
 
-' إعادة تحديث الفورم الفرعي في شاشة البحث  ->  =RequerySub()
 Public Function RequerySub() As Variant
     On Error Resume Next
     Screen.ActiveForm!sfOrders.Requery
     RequerySub = Null
 End Function
 
-' تصدير نتيجة الطلب المحدد في شاشة البحث  ->  =ExportSelectedResult()
 Public Function ExportSelectedResult() As Variant
     On Error Resume Next
     Dim f As Form
-    Set f = Screen.ActiveForm!sfOrders.Form         ' الفورم الفرعي للطلبات
+    Set f = Screen.ActiveForm!sfOrders.Form
     If IsNull(f!Order_ID) Then
-        MsgBox "اختر طلبًا من القائمة أولًا (اضغط على صف الطلب).", vbExclamation
+        MsgBox "Select an order from the list first (click the order row).", vbExclamation
         ExportSelectedResult = Null: Exit Function
     End If
     Dim oid As Long: oid = CLng(f!Order_ID)
@@ -305,16 +249,11 @@ Public Function ExportSelectedResult() As Variant
 End Function
 
 
-' ---------------------------------------------------------------------------
-'  دوال مساعدة صغيرة
-' ---------------------------------------------------------------------------
-
-' مسار سطح المكتب للمستخدم الحالي
+' Small helpers
 Public Function DesktopPath() As String
     DesktopPath = Environ$("USERPROFILE") & "\Desktop\"
 End Function
 
-' تنظيف اسم الملف من الرموز الممنوعة في ويندوز
 Public Function CleanName(s As String) As String
     Dim bad As Variant, ch As Variant, r As String
     r = Nz(s, "")

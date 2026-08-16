@@ -2,25 +2,19 @@ Option Compare Database
 Option Explicit
 
 ' ============================================================================
-'  معمل التحاليل - المرحلة 2 : بناء الفورمات تلقائيًا
+'  Medical Lab - Stage 2 : Build all forms automatically (English UI, LTR)
 ' ----------------------------------------------------------------------------
-'  يبني هذا الكود الفورمات الآتية دفعة واحدة:
-'     frmMain  (الشاشة الرئيسية)
-'     frmPatient  (تسجيل مريض)
-'     frmTests  (إدارة التحاليل والأسعار)
-'     frmOrder + sfrmOrderDetails  (طلب تحاليل مع فورم فرعي)
-'     frmResults + sfrmResults  (إدخال النتائج)
-'     frmSearch + sfrmSearch  (بحث عن مريض وسجله)
+'  Builds: frmMain, frmPatient, frmTests,
+'          frmOrder + sfrmOrderDetails,
+'          frmResults + sfrmResults,
+'          frmSearch + sfrmSearch
 '
-'  المتطلبات قبل التشغيل:
-'     1) أن تكون قد شغّلت كود المرحلة 1 (BuildDatabase) والجداول موجودة
-'     2) أن تكون قد لصقت وحدة basLab
+'  Requires: Stage 1 tables exist, and module basLab is pasted.
+'  Run: put the cursor in BuildAllForms and press F5
+'       (or type BuildAllForms in the Immediate window and press Enter).
 '
-'  طريقة التشغيل:
-'     Insert > Module  ثم الصق هذا الملف، ثم ضع المؤشر داخل BuildAllForms واضغط F5
-'
-'  ملاحظة مهمة: كل فورم يُبنى داخل معالجة أخطاء مستقلة، فلو تعثّر فورم واحد
-'  يكمل الباقي ويخبرك باسم المتعثّر. أرسل لي اسمه وأصلحه لك بدقة.
+'  Each form is built with its own error handling; if one fails the rest
+'  continue and the summary tells you which failed.
 ' ============================================================================
 
 Public Sub BuildAllForms()
@@ -28,7 +22,7 @@ Public Sub BuildAllForms()
     log = TryBuild("frmMain", "BuildMain")
     log = log & TryBuild("frmPatient", "BuildPatient")
     log = log & TryBuild("frmTests", "BuildTests")
-    log = log & TryBuild("sfrmOrderDetails", "BuildOrderSub")   ' الفرعي قبل الرئيسي
+    log = log & TryBuild("sfrmOrderDetails", "BuildOrderSub")
     log = log & TryBuild("frmOrder", "BuildOrder")
     log = log & TryBuild("sfrmResults", "BuildResultsSub")
     log = log & TryBuild("frmResults", "BuildResults")
@@ -36,39 +30,32 @@ Public Sub BuildAllForms()
     log = log & TryBuild("frmSearch", "BuildSearch")
 
     SetStartupForm "frmMain"
+    Application.RefreshDatabaseWindow
 
-    MsgBox "انتهى بناء الفورمات." & vbCrLf & vbCrLf & log & vbCrLf & _
-           "تم ضبط frmMain لتفتح تلقائيًا (يظهر بعد إغلاق وإعادة فتح الملف).", _
-           vbInformation, "نتيجة البناء"
+    MsgBox "Form build finished." & vbCrLf & vbCrLf & log & vbCrLf & _
+           "frmMain is set to open on startup (after you close and reopen the file).", _
+           vbInformation, "Build result"
 End Sub
 
-' يشغّل دالة بناء فورم ويعيد سطر حالة (نجاح/فشل)
 Private Function TryBuild(formName As String, procName As String) As String
     On Error GoTo Fail
     DeleteFormIfExists formName
     Application.Run procName
-    TryBuild = "[نجح] " & formName & vbCrLf
+    TryBuild = "[OK]   " & formName & vbCrLf
     Exit Function
 Fail:
-    TryBuild = "[فشل] " & formName & "  ->  " & Err.Description & vbCrLf
+    TryBuild = "[FAIL] " & formName & "  ->  " & Err.Description & vbCrLf
 End Function
 
 
 ' ===========================================================================
-'  أدوات مساعدة للبناء
+'  Build helpers
 ' ===========================================================================
 
 Private Function CM(ByVal cmVal As Double) As Long
-    CM = CLng(cmVal * 567)          ' تحويل سنتيمتر إلى twips
+    CM = CLng(cmVal * 567)          ' centimeters -> twips
 End Function
 
-' تجعل الفورم من اليمين لليسار (عربي)
-Private Sub SetRTL(frm As Form)
-    On Error Resume Next
-    frm.Orientation = 1             ' 1 = من اليمين لليسار
-End Sub
-
-' إضافة عنوان (Label) نصي
 Private Function AddLabel(frmName As String, cap As String, _
                           l As Double, t As Double, w As Double, Optional h As Double = 0.6) As Control
     Dim c As Control
@@ -77,7 +64,6 @@ Private Function AddLabel(frmName As String, cap As String, _
     Set AddLabel = c
 End Function
 
-' إضافة صندوق نص مرتبط بحقل
 Private Function AddBox(frmName As String, fieldName As String, _
                         l As Double, t As Double, w As Double, Optional h As Double = 0.6) As Control
     Dim c As Control
@@ -86,7 +72,6 @@ Private Function AddBox(frmName As String, fieldName As String, _
     Set AddBox = c
 End Function
 
-' إضافة زر أمر
 Private Function AddBtn(frmName As String, cap As String, onClickExpr As String, _
                         l As Double, t As Double, w As Double, Optional h As Double = 0.8) As Control
     Dim c As Control
@@ -96,7 +81,6 @@ Private Function AddBtn(frmName As String, cap As String, onClickExpr As String,
     Set AddBtn = c
 End Function
 
-' إضافة قائمة منسدلة مرتبطة بحقل مع مصدر بيانات
 Private Function AddCombo(frmName As String, fieldName As String, rowSrc As String, _
                           colCount As Integer, colWidths As String, _
                           l As Double, t As Double, w As Double) As Control
@@ -111,7 +95,6 @@ Private Function AddCombo(frmName As String, fieldName As String, rowSrc As Stri
     Set AddCombo = c
 End Function
 
-' حفظ الفورم باسمه النهائي
 Private Sub SaveForm(frm As Form, finalName As String)
     Dim tmp As String
     tmp = frm.Name
@@ -120,20 +103,17 @@ Private Sub SaveForm(frm As Form, finalName As String)
     DoCmd.Rename finalName, acForm, tmp
 End Sub
 
-' حذف فورم لو موجود (لإعادة التشغيل بأمان)
 Private Sub DeleteFormIfExists(formName As String)
     On Error Resume Next
     DoCmd.DeleteObject acForm, formName
     On Error GoTo 0
 End Sub
 
-' ضبط الفورم الذي يفتح تلقائيًا عند فتح قاعدة البيانات
 Private Sub SetStartupForm(formName As String)
     On Error Resume Next
     Dim db As DAO.Database
     Set db = CurrentDb
     Dim p As DAO.Property
-    On Error Resume Next
     db.Properties("StartupForm") = formName
     If Err.Number <> 0 Then
         Set p = db.CreateProperty("StartupForm", dbText, formName)
@@ -144,22 +124,21 @@ End Sub
 
 
 ' ===========================================================================
-'  1) الشاشة الرئيسية frmMain  (غير مرتبطة بجدول - مجرد أزرار)
+'  1) Main menu frmMain (unbound - buttons only)
 ' ===========================================================================
 Public Sub BuildMain()
     Dim frm As Form
     Set frm = CreateForm()
-    frm.Caption = "معمل التحاليل الطبية"
-    SetRTL frm
+    frm.Caption = "Medical Lab"
 
-    AddLabel frm.Name, "نظام إدارة معمل التحاليل الطبية", 1, 0.5, 12, 1#
+    AddLabel frm.Name, "Medical Lab Management System", 1, 0.5, 13, 1#
 
-    AddBtn frm.Name, "مريض جديد", "=Nav(""frmPatient"")", 8, 2, 5, 1
-    AddBtn frm.Name, "طلب تحاليل جديد", "=Nav(""frmOrder"")", 2, 2, 5, 1
-    AddBtn frm.Name, "إدخال النتائج", "=Nav(""frmResults"")", 8, 3.3, 5, 1
-    AddBtn frm.Name, "بحث عن مريض", "=Nav(""frmSearch"")", 2, 3.3, 5, 1
-    AddBtn frm.Name, "إدارة التحاليل والأسعار", "=Nav(""frmTests"")", 8, 4.6, 5, 1
-    AddBtn frm.Name, "الإعدادات (بيانات المعمل)", "=Nav(""tblSettings"")", 2, 4.6, 5, 1
+    AddBtn frm.Name, "New Patient", "=Nav(""frmPatient"")", 1, 2, 6, 1
+    AddBtn frm.Name, "New Order", "=Nav(""frmOrder"")", 8, 2, 6, 1
+    AddBtn frm.Name, "Enter Results", "=Nav(""frmResults"")", 1, 3.3, 6, 1
+    AddBtn frm.Name, "Search Patient", "=Nav(""frmSearch"")", 8, 3.3, 6, 1
+    AddBtn frm.Name, "Manage Tests & Prices", "=Nav(""frmTests"")", 1, 4.6, 6, 1
+    AddBtn frm.Name, "Settings (Lab Info)", "=Nav(""tblSettings"")", 8, 4.6, 6, 1
 
     frm.Section(acDetail).Height = CM(6.5)
     SaveForm frm, "frmMain"
@@ -167,33 +146,31 @@ End Sub
 
 
 ' ===========================================================================
-'  2) فورم المريض frmPatient
+'  2) Patient form frmPatient
 ' ===========================================================================
 Public Sub BuildPatient()
     Dim frm As Form
     Set frm = CreateForm()
     frm.RecordSource = "Patients"
-    frm.Caption = "تسجيل / تعديل مريض"
-    SetRTL frm
+    frm.Caption = "Patient"
 
-    ' صف = عنوان يمين + صندوق يساره
-    AddLabel frm.Name, "الاسم:", 13, 0.5, 3:      AddBox frm.Name, "Full_Name", 6, 0.5, 6.5
-    AddLabel frm.Name, "التليفون:", 13, 1.3, 3:   AddBox frm.Name, "Phone", 9.5, 1.3, 3
-    AddLabel frm.Name, "النوع:", 13, 2.1, 3
+    AddLabel frm.Name, "Name:", 0.5, 0.5, 3:            AddBox frm.Name, "Full_Name", 3.7, 0.5, 6.5
+    AddLabel frm.Name, "Phone:", 0.5, 1.3, 3:           AddBox frm.Name, "Phone", 3.7, 1.3, 3
+    AddLabel frm.Name, "Gender:", 0.5, 2.1, 3
     Dim g As Control
-    Set g = AddCombo(frm.Name, "Gender", "SELECT ""ذكر"" UNION SELECT ""أنثى"";", 1, "3cm", 9.5, 2.1, 3)
-    g.RowSourceType = "Value List": g.RowSource = "ذكر;أنثى"
-    AddLabel frm.Name, "تاريخ الميلاد:", 13, 2.9, 3
+    Set g = AddCombo(frm.Name, "Gender", "Male;Female", 1, "3cm", 3.7, 2.1, 3)
+    g.RowSourceType = "Value List": g.RowSource = "Male;Female"
+    AddLabel frm.Name, "Birth Date:", 0.5, 2.9, 3
     Dim b As Control
-    Set b = AddBox(frm.Name, "Birth_Date", 9.5, 2.9, 3)
-    b.AfterUpdate = "=AgeUpdate()"            ' يحسب السن تلقائيًا
-    AddLabel frm.Name, "السن:", 13, 3.7, 3:      AddBox frm.Name, "Age", 11.5, 3.7, 1
-    AddLabel frm.Name, "العنوان:", 13, 4.5, 3:    AddBox frm.Name, "Address", 6, 4.5, 6.5
-    AddLabel frm.Name, "الطبيب المحوِّل:", 13, 5.3, 3: AddBox frm.Name, "Referring_Doctor", 6, 5.3, 6.5
+    Set b = AddBox(frm.Name, "Birth_Date", 3.7, 2.9, 3)
+    b.AfterUpdate = "=AgeUpdate()"
+    AddLabel frm.Name, "Age:", 0.5, 3.7, 3:             AddBox frm.Name, "Age", 3.7, 3.7, 1.5
+    AddLabel frm.Name, "Address:", 0.5, 4.5, 3:         AddBox frm.Name, "Address", 3.7, 4.5, 6.5
+    AddLabel frm.Name, "Referring Doctor:", 0.5, 5.3, 3: AddBox frm.Name, "Referring_Doctor", 3.7, 5.3, 6.5
 
-    AddBtn frm.Name, "جديد", "=NavNewPatient()", 11, 6.3, 2.5
-    AddBtn frm.Name, "حفظ", "=SaveCurrent()", 8, 6.3, 2.5
-    AddBtn frm.Name, "رجوع", "=CloseMe()", 5, 6.3, 2.5
+    AddBtn frm.Name, "Save", "=SaveCurrent()", 0.5, 6.3, 2.5
+    AddBtn frm.Name, "New", "=NavNewPatient()", 3.2, 6.3, 2.5
+    AddBtn frm.Name, "Back", "=CloseMe()", 5.9, 6.3, 2.5
 
     frm.Section(acDetail).Height = CM(7.6)
     SaveForm frm, "frmPatient"
@@ -201,31 +178,30 @@ End Sub
 
 
 ' ===========================================================================
-'  3) فورم التحاليل frmTests
+'  3) Tests form frmTests
 ' ===========================================================================
 Public Sub BuildTests()
     Dim frm As Form
     Set frm = CreateForm()
     frm.RecordSource = "Tests"
-    frm.Caption = "إدارة التحاليل والأسعار"
-    SetRTL frm
+    frm.Caption = "Manage Tests & Prices"
 
-    AddLabel frm.Name, "اسم التحليل:", 13, 0.5, 3:   AddBox frm.Name, "Test_Name", 6, 0.5, 6.5
-    AddLabel frm.Name, "الكود:", 13, 1.3, 3:          AddBox frm.Name, "Test_Code", 10, 1.3, 2.5
-    AddLabel frm.Name, "التصنيف:", 13, 2.1, 3:        AddBox frm.Name, "Category", 9, 2.1, 3.5
-    AddLabel frm.Name, "الوحدة:", 13, 2.9, 3:         AddBox frm.Name, "Unit", 10, 2.9, 2.5
-    AddLabel frm.Name, "المدى الطبيعي من:", 13, 3.7, 3: AddBox frm.Name, "Normal_Range_Min", 10, 3.7, 2.5
-    AddLabel frm.Name, "إلى:", 8, 3.7, 1.5:           AddBox frm.Name, "Normal_Range_Max", 6, 3.7, 1.5
-    AddLabel frm.Name, "مدى نصي:", 13, 4.5, 3:        AddBox frm.Name, "Normal_Range_Text", 9, 4.5, 3.5
-    AddLabel frm.Name, "ملاحظات المدى:", 13, 5.3, 3:  AddBox frm.Name, "Normal_Range_Notes", 6, 5.3, 6.5
-    AddLabel frm.Name, "السعر:", 13, 6.1, 3:          AddBox frm.Name, "Price", 10, 6.1, 2.5
-    AddLabel frm.Name, "نوع العينة:", 13, 6.9, 3:     AddBox frm.Name, "Sample_Type", 9, 6.9, 3.5
-    AddLabel frm.Name, "نشط؟", 13, 7.7, 3
-    CreateControl frm.Name, acCheckBox, acDetail, , "Is_Active", CM(12), CM(7.7), CM(0.5), CM(0.5)
+    AddLabel frm.Name, "Test Name:", 0.5, 0.5, 3:        AddBox frm.Name, "Test_Name", 4, 0.5, 6.5
+    AddLabel frm.Name, "Code:", 0.5, 1.3, 3:             AddBox frm.Name, "Test_Code", 4, 1.3, 2.5
+    AddLabel frm.Name, "Category:", 0.5, 2.1, 3:         AddBox frm.Name, "Category", 4, 2.1, 3.5
+    AddLabel frm.Name, "Unit:", 0.5, 2.9, 3:             AddBox frm.Name, "Unit", 4, 2.9, 2.5
+    AddLabel frm.Name, "Normal Range Min:", 0.5, 3.7, 3: AddBox frm.Name, "Normal_Range_Min", 4, 3.7, 2
+    AddLabel frm.Name, "Max:", 6.3, 3.7, 1.5:            AddBox frm.Name, "Normal_Range_Max", 8, 3.7, 2
+    AddLabel frm.Name, "Range (text):", 0.5, 4.5, 3:     AddBox frm.Name, "Normal_Range_Text", 4, 4.5, 3.5
+    AddLabel frm.Name, "Range Notes:", 0.5, 5.3, 3:      AddBox frm.Name, "Normal_Range_Notes", 4, 5.3, 6.5
+    AddLabel frm.Name, "Price:", 0.5, 6.1, 3:            AddBox frm.Name, "Price", 4, 6.1, 2.5
+    AddLabel frm.Name, "Sample Type:", 0.5, 6.9, 3:      AddBox frm.Name, "Sample_Type", 4, 6.9, 6.5
+    AddLabel frm.Name, "Active?", 0.5, 7.7, 3
+    CreateControl frm.Name, acCheckBox, acDetail, , "Is_Active", CM(4), CM(7.7), CM(0.5), CM(0.5)
 
-    AddBtn frm.Name, "جديد", "=NavNewRecord()", 11, 8.6, 2.5
-    AddBtn frm.Name, "حفظ", "=SaveCurrent()", 8, 8.6, 2.5
-    AddBtn frm.Name, "رجوع", "=CloseMe()", 5, 8.6, 2.5
+    AddBtn frm.Name, "Save", "=SaveCurrent()", 0.5, 8.6, 2.5
+    AddBtn frm.Name, "New", "=NavNewRecord()", 3.2, 8.6, 2.5
+    AddBtn frm.Name, "Back", "=CloseMe()", 5.9, 8.6, 2.5
 
     frm.Section(acDetail).Height = CM(10)
     SaveForm frm, "frmTests"
@@ -233,22 +209,20 @@ End Sub
 
 
 ' ===========================================================================
-'  4أ) الفورم الفرعي لتفاصيل الطلب sfrmOrderDetails  (شكل جدول Datasheet)
+'  4a) Order details subform sfrmOrderDetails (Datasheet)
 ' ===========================================================================
 Public Sub BuildOrderSub()
     Dim frm As Form
     Set frm = CreateForm()
     frm.RecordSource = "Order_Details"
-    frm.DefaultView = 2                        ' 2 = Datasheet (شكل جدول)
-    frm.Caption = "تفاصيل الطلب"
-    SetRTL frm
+    frm.DefaultView = 2                        ' Datasheet
+    frm.Caption = "Order Details"
 
-    ' قائمة اختيار التحليل (تعرض الاسم وتخزّن الرقم)
     Dim c As Control
     Set c = AddCombo(frm.Name, "Test_ID", _
         "SELECT Test_ID, Test_Name FROM Tests WHERE Is_Active=True ORDER BY Test_Name;", _
         2, "0cm;6cm", 0.2, 0.2, 6)
-    c.AfterUpdate = "=OnPickTest()"            ' ينسخ السعر تلقائيًا
+    c.AfterUpdate = "=OnPickTest()"
 
     AddBox frm.Name, "Price_At_Order", 6.4, 0.2, 2
     AddBox frm.Name, "Result_Value", 8.6, 0.2, 3
@@ -258,49 +232,46 @@ Public Sub BuildOrderSub()
 End Sub
 
 ' ===========================================================================
-'  4ب) فورم طلب التحاليل frmOrder
+'  4b) Order form frmOrder
 ' ===========================================================================
 Public Sub BuildOrder()
     Dim frm As Form
     Set frm = CreateForm()
     frm.RecordSource = "Orders"
-    frm.Caption = "طلب تحاليل جديد"
-    SetRTL frm
+    frm.Caption = "New Order"
 
-    AddLabel frm.Name, "المريض:", 13, 0.5, 3
+    AddLabel frm.Name, "Patient:", 0.5, 0.5, 3
     AddCombo frm.Name, "Patient_ID", _
         "SELECT Patient_ID, Full_Name, Phone FROM Patients ORDER BY Full_Name;", _
-        3, "0cm;6cm;3cm", 4, 0.5, 8.5
-    AddBtn frm.Name, "مريض جديد", "=NavNewPatient()", 1, 0.5, 2.8
+        3, "0cm;6cm;3cm", 3.7, 0.5, 8.5
+    AddBtn frm.Name, "New Patient", "=NavNewPatient()", 12.4, 0.5, 2.8
 
-    AddLabel frm.Name, "تاريخ الطلب:", 13, 1.3, 3:  AddBox frm.Name, "Order_Date", 9.5, 1.3, 3
-    AddLabel frm.Name, "الحالة:", 13, 2.1, 3:        AddBox frm.Name, "Status", 9.5, 2.1, 3
+    AddLabel frm.Name, "Order Date:", 0.5, 1.3, 3:  AddBox frm.Name, "Order_Date", 3.7, 1.3, 3.5
+    AddLabel frm.Name, "Status:", 0.5, 2.1, 3:      AddBox frm.Name, "Status", 3.7, 2.1, 3.5
 
-    ' الفورم الفرعي (التحاليل)
     Dim sub1 As Control
-    Set sub1 = CreateControl(frm.Name, acSubform, acDetail, , "", CM(1), CM(3), CM(13), CM(5))
+    Set sub1 = CreateControl(frm.Name, acSubform, acDetail, , "", CM(0.5), CM(3), CM(14), CM(5))
     sub1.Name = "sfDetails"
     sub1.SourceObject = "sfrmOrderDetails"
     sub1.LinkMasterFields = "Order_ID"
     sub1.LinkChildFields = "Order_ID"
 
-    ' الإجمالي = مجموع الأسعار في الفورم الفرعي (بدون كود - تعبير مباشر)
-    AddLabel frm.Name, "الإجمالي:", 13, 8.3, 3
+    AddLabel frm.Name, "Total:", 0.5, 8.3, 3
     Dim t As Control
-    Set t = CreateControl(frm.Name, acTextBox, acDetail, , "", CM(9.5), CM(8.3), CM(3), CM(0.6))
+    Set t = CreateControl(frm.Name, acTextBox, acDetail, , "", CM(3.7), CM(8.3), CM(3), CM(0.6))
     t.Name = "txtTotal"
     t.ControlSource = "=Nz(DSum(""Price_At_Order"",""Order_Details"",""Order_ID="" & [Order_ID]),0)"
 
-    AddLabel frm.Name, "المدفوع:", 13, 9.1, 3:  AddBox frm.Name, "Amount_Paid", 9.5, 9.1, 3
-    AddLabel frm.Name, "المتبقي:", 13, 9.9, 3
+    AddLabel frm.Name, "Paid:", 0.5, 9.1, 3:  AddBox frm.Name, "Amount_Paid", 3.7, 9.1, 3
+    AddLabel frm.Name, "Remaining:", 0.5, 9.9, 3
     Dim r As Control
-    Set r = CreateControl(frm.Name, acTextBox, acDetail, , "", CM(9.5), CM(9.9), CM(3), CM(0.6))
+    Set r = CreateControl(frm.Name, acTextBox, acDetail, , "", CM(3.7), CM(9.9), CM(3), CM(0.6))
     r.Name = "txtRemain"
     r.ControlSource = "=[txtTotal]-Nz([Amount_Paid],0)"
 
-    AddBtn frm.Name, "حفظ", "=SaveOrder()", 10, 10.9, 2.5
-    AddBtn frm.Name, "حفظ + طباعة إيصال PDF", "=DoInvoicePDF()", 5.5, 10.9, 4.2
-    AddBtn frm.Name, "رجوع", "=CloseMe()", 2.5, 10.9, 2.5
+    AddBtn frm.Name, "Save", "=SaveOrder()", 0.5, 10.9, 2.5
+    AddBtn frm.Name, "Save + Invoice PDF", "=DoInvoicePDF()", 3.2, 10.9, 4.5
+    AddBtn frm.Name, "Back", "=CloseMe()", 7.9, 10.9, 2.5
 
     frm.Section(acDetail).Height = CM(12)
     SaveForm frm, "frmOrder"
@@ -308,17 +279,15 @@ End Sub
 
 
 ' ===========================================================================
-'  5أ) الفورم الفرعي للنتائج sfrmResults
+'  5a) Results subform sfrmResults
 ' ===========================================================================
 Public Sub BuildResultsSub()
     Dim frm As Form
     Set frm = CreateForm()
     frm.RecordSource = "Order_Details"
     frm.DefaultView = 2
-    frm.Caption = "إدخال النتائج"
-    SetRTL frm
+    frm.Caption = "Enter Results"
 
-    ' التحليل (للعرض فقط)
     Dim c As Control
     Set c = AddCombo(frm.Name, "Test_ID", _
         "SELECT Test_ID, Test_Name FROM Tests ORDER BY Test_Name;", _
@@ -326,7 +295,7 @@ Public Sub BuildResultsSub()
 
     Dim v As Control
     Set v = AddBox(frm.Name, "Result_Value", 6.4, 0.2, 3)
-    v.AfterUpdate = "=OnResultEntered()"       ' يحدد الحالة تلقائيًا
+    v.AfterUpdate = "=OnResultEntered()"
     AddBox frm.Name, "Result_Status", 9.6, 0.2, 2.5
     AddBox frm.Name, "Result_Date", 12.2, 0.2, 2.5
 
@@ -334,38 +303,36 @@ Public Sub BuildResultsSub()
 End Sub
 
 ' ===========================================================================
-'  5ب) فورم إدخال النتائج frmResults
+'  5b) Results form frmResults
 ' ===========================================================================
 Public Sub BuildResults()
     Dim frm As Form
     Set frm = CreateForm()
-    ' الطلبات التي حالتها مسجل أو جاري فقط
-    frm.RecordSource = "SELECT * FROM Orders WHERE Status IN ('مسجل','جاري') ORDER BY Order_Date DESC;"
-    frm.Caption = "إدخال النتائج"
-    SetRTL frm
+    frm.RecordSource = "SELECT * FROM Orders WHERE Status IN ('Registered','In Progress') ORDER BY Order_Date DESC;"
+    frm.Caption = "Enter Results"
 
-    AddLabel frm.Name, "اذهب إلى طلب رقم:", 13, 0.5, 4
+    AddLabel frm.Name, "Go to order #:", 0.5, 0.5, 3.5
     Dim p As Control
-    Set p = CreateControl(frm.Name, acComboBox, acDetail, , "", CM(8), CM(0.5), CM(4.5), CM(0.6))
+    Set p = CreateControl(frm.Name, acComboBox, acDetail, , "", CM(4), CM(0.5), CM(4.5), CM(0.6))
     p.Name = "cboPick"
     p.RowSourceType = "Table/Query"
-    p.RowSource = "SELECT Order_ID, Order_ID FROM Orders WHERE Status IN ('مسجل','جاري') ORDER BY Order_ID DESC;"
+    p.RowSource = "SELECT Order_ID, Order_ID FROM Orders WHERE Status IN ('Registered','In Progress') ORDER BY Order_ID DESC;"
     p.ColumnCount = 1
     p.AfterUpdate = "=GoToOrder()"
 
-    AddLabel frm.Name, "رقم الطلب:", 13, 1.3, 3:  AddBox frm.Name, "Order_ID", 10, 1.3, 2.5
-    AddLabel frm.Name, "الحالة:", 13, 2.1, 3:      AddBox frm.Name, "Status", 10, 2.1, 2.5
+    AddLabel frm.Name, "Order #:", 0.5, 1.3, 3:  AddBox frm.Name, "Order_ID", 4, 1.3, 2.5
+    AddLabel frm.Name, "Status:", 0.5, 2.1, 3:   AddBox frm.Name, "Status", 4, 2.1, 3
 
     Dim sub1 As Control
-    Set sub1 = CreateControl(frm.Name, acSubform, acDetail, , "", CM(1), CM(3), CM(13), CM(5))
+    Set sub1 = CreateControl(frm.Name, acSubform, acDetail, , "", CM(0.5), CM(3), CM(14), CM(5))
     sub1.Name = "sfResults"
     sub1.SourceObject = "sfrmResults"
     sub1.LinkMasterFields = "Order_ID"
     sub1.LinkChildFields = "Order_ID"
 
-    AddBtn frm.Name, "حفظ + الطلب جاهز", "=SetOrderStatus(""جاهز"")", 9.5, 8.3, 3.5
-    AddBtn frm.Name, "تصدير تقرير النتيجة PDF", "=DoResultPDF()", 5, 8.3, 4.2
-    AddBtn frm.Name, "رجوع", "=CloseMe()", 2.5, 8.3, 2.3
+    AddBtn frm.Name, "Save + Mark Ready", "=SetOrderStatus(""Ready"")", 0.5, 8.3, 4
+    AddBtn frm.Name, "Result PDF", "=DoResultPDF()", 4.7, 8.3, 3.5
+    AddBtn frm.Name, "Back", "=CloseMe()", 8.4, 8.3, 2.3
 
     frm.Section(acDetail).Height = CM(9.5)
     SaveForm frm, "frmResults"
@@ -373,16 +340,15 @@ End Sub
 
 
 ' ===========================================================================
-'  6أ) الفورم الفرعي لسجل المريض sfrmSearch
+'  6a) Patient history subform sfrmSearch
 ' ===========================================================================
 Public Sub BuildSearchSub()
     Dim frm As Form
     Set frm = CreateForm()
-    ' لا بد من وجود Patient_ID في المصدر حتى يعمل الربط مع القائمة (وإن لم نعرضه)
+    ' Patient_ID must be in the source for linking (even if not shown)
     frm.RecordSource = "SELECT Patient_ID, Order_ID, Order_Date, Status, Total_Price, Amount_Paid FROM Orders ORDER BY Order_Date DESC;"
     frm.DefaultView = 2
-    frm.Caption = "طلبات المريض"
-    SetRTL frm
+    frm.Caption = "Patient Orders"
 
     AddBox frm.Name, "Order_ID", 0.2, 0.2, 2
     AddBox frm.Name, "Order_Date", 2.4, 0.2, 3
@@ -394,17 +360,16 @@ Public Sub BuildSearchSub()
 End Sub
 
 ' ===========================================================================
-'  6ب) فورم البحث عن مريض frmSearch
+'  6b) Search form frmSearch
 ' ===========================================================================
 Public Sub BuildSearch()
     Dim frm As Form
     Set frm = CreateForm()
-    frm.Caption = "بحث عن مريض وسجله"
-    SetRTL frm
+    frm.Caption = "Search Patient"
 
-    AddLabel frm.Name, "اختر المريض (بالاسم أو التليفون):", 13, 0.5, 5
+    AddLabel frm.Name, "Select patient (by name or phone):", 0.5, 0.5, 5.5
     Dim c As Control
-    Set c = CreateControl(frm.Name, acComboBox, acDetail, , "", CM(3), CM(0.5), CM(8), CM(0.6))
+    Set c = CreateControl(frm.Name, acComboBox, acDetail, , "", CM(6.2), CM(0.5), CM(8), CM(0.6))
     c.Name = "cboPatient"
     c.RowSourceType = "Table/Query"
     c.RowSource = "SELECT Patient_ID, Full_Name, Phone FROM Patients ORDER BY Full_Name;"
@@ -413,16 +378,15 @@ Public Sub BuildSearch()
     c.BoundColumn = 1
     c.AfterUpdate = "=RequerySub()"
 
-    ' الفورم الفرعي مربوط بقيمة القائمة (يتصفّى تلقائيًا عند اختيار مريض)
     Dim sub1 As Control
-    Set sub1 = CreateControl(frm.Name, acSubform, acDetail, , "", CM(1), CM(1.5), CM(13), CM(6))
+    Set sub1 = CreateControl(frm.Name, acSubform, acDetail, , "", CM(0.5), CM(1.5), CM(14), CM(6))
     sub1.Name = "sfOrders"
     sub1.SourceObject = "sfrmSearch"
     sub1.LinkMasterFields = "cboPatient"
     sub1.LinkChildFields = "Patient_ID"
 
-    AddBtn frm.Name, "تصدير نتيجة الطلب المحدد PDF", "=ExportSelectedResult()", 8, 7.8, 5
-    AddBtn frm.Name, "رجوع", "=CloseMe()", 5, 7.8, 2.5
+    AddBtn frm.Name, "Export Result PDF (selected order)", "=ExportSelectedResult()", 0.5, 7.8, 6
+    AddBtn frm.Name, "Back", "=CloseMe()", 7, 7.8, 2.5
 
     frm.Section(acDetail).Height = CM(9)
     SaveForm frm, "frmSearch"
