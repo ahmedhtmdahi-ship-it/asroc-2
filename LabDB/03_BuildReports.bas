@@ -122,7 +122,9 @@ Private Function RBox(rptName As String, sec As Integer, src As String, _
 End Function
 
 Private Sub RLine(rptName As String, sec As Integer, l As Double, t As Double, w As Double)
-    CreateReportControl rptName, acLine, sec, , "", CM(l), CM(t), CM(w), 0
+    ' الخطوط الأفقية ديكور فقط؛ لو رفضها الأكسس نتجاهلها بدل إيقاف البناء
+    On Error Resume Next
+    CreateReportControl rptName, acLine, sec, , "", CM(l), CM(t), CM(w), CM(0.02)
 End Sub
 
 Private Sub SaveReport(rpt As Report, finalName As String)
