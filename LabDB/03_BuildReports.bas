@@ -5,15 +5,15 @@ Option Explicit
 '  Medical Lab - Stage 3 : Build queries and reports (English UI)
 ' ----------------------------------------------------------------------------
 '  Creates queries:  qryResult, qryInvoice, qryDaily
-'  Creates reports:  rptResult (result report), rptInvoice (invoice), rptDaily
+'  Creates reports:  rptResult, rptInvoice, rptDaily
 '
-'  After this the PDF buttons on the forms will work.
+'  Each report is always opened FILTERED to a single order by the PDF buttons,
+'  so we use only the standard sections that always exist on a new report:
+'     Page Header (3), Detail (0), Report Footer (2), Page Footer (4).
+'  No group levels are used (they caused error 2148 on some Access builds).
+'
 '  Requires Stage 1 + 2 done, and module basLab present.
-'
 '  Run: type BuildAllReports in the Immediate window and press Enter.
-'
-'  Lab info (name/address/phone/signatory) is read from tblSettings via
-'  GetSetting(), so editing it in one place changes every report.
 ' ============================================================================
 
 Public Sub BuildAllReports()
@@ -127,49 +127,49 @@ Private Sub SaveReport(rpt As Report, finalName As String)
     DoCmd.Rename finalName, acReport, tmp
 End Sub
 
+' Standard sections (always present on a new report)
+Private Const PH As Integer = 3     ' page header
+Private Const DET As Integer = 0    ' detail
+Private Const RF As Integer = 2     ' report footer
+Private Const PF As Integer = 4     ' page footer
+
 
 ' ===========================================================================
-'  Result report  rptResult
+'  Result report  rptResult   (always filtered to one order)
 ' ===========================================================================
 Public Sub BuildRptResult()
     Dim rpt As Report
     Set rpt = CreateReport()
     rpt.RecordSource = "qryResult"
 
-    CreateGroupLevel rpt.Name, "Order_ID", True, False
+    ' Page header: lab info + patient info + column titles
+    CreateReportControl rpt.Name, acImage, PH, , "", CM(0.5), CM(0.2), CM(3), CM(2.5)
 
-    Const GH As Integer = 5      ' group header
-    Const DET As Integer = 0     ' detail
-    Const PF As Integer = 4      ' page footer
-    Const RF As Integer = 2      ' report footer
+    RBox rpt.Name, PH, "=GetSetting(""Lab_Name"")", 4, 0.2, 12, 0.8, True, 16
+    RBox rpt.Name, PH, "=GetSetting(""Lab_Address"")", 4, 1#, 12, 0.6, False, 10
+    RBox rpt.Name, PH, "=""Phone: "" & GetSetting(""Lab_Phone"")", 4, 1.6, 12, 0.6, False, 10
 
-    ' logo placeholder (top-left) - replace with your image in Design View
-    CreateReportControl rpt.Name, acImage, GH, , "", CM(0.5), CM(0.2), CM(3), CM(2.5)
+    RLbl rpt.Name, PH, "Test Result Report", 4, 2.4, 10, 0.8, True, 14
+    RLine rpt.Name, PH, 0.5, 3.3, 19
 
-    RBox rpt.Name, GH, "=GetSetting(""Lab_Name"")", 4, 0.2, 12, 0.8, True, 16
-    RBox rpt.Name, GH, "=GetSetting(""Lab_Address"")", 4, 1#, 12, 0.6, False, 10
-    RBox rpt.Name, GH, "=""Phone: "" & GetSetting(""Lab_Phone"")", 4, 1.6, 12, 0.6, False, 10
+    RBox rpt.Name, PH, "=""Name: "" & [Full_Name]", 0.5, 3.5, 7
+    RBox rpt.Name, PH, "=""Age: "" & Nz([Age],"""")", 8, 3.5, 3
+    RBox rpt.Name, PH, "=""Sex: "" & Nz([Gender],"""")", 11.5, 3.5, 3
+    RBox rpt.Name, PH, "=""Order #: "" & [Order_ID]", 15, 3.5, 4
 
-    RLbl rpt.Name, GH, "Test Result Report", 4, 2.4, 10, 0.8, True, 14
-    RLine rpt.Name, GH, 0.5, 3.3, 19
+    RBox rpt.Name, PH, "=""Referred By: "" & Nz([Referring_Doctor],"""")", 0.5, 4.1, 7
+    RBox rpt.Name, PH, "=""Order Date: "" & Format([Order_Date],""yyyy/mm/dd"")", 8, 4.1, 5
+    RBox rpt.Name, PH, "=""Result Date: "" & Format(Nz([Result_Date],Now()),""yyyy/mm/dd"")", 13.5, 4.1, 5.5
 
-    RBox rpt.Name, GH, "=""Name: "" & [Full_Name]", 0.5, 3.5, 7
-    RBox rpt.Name, GH, "=""Age: "" & Nz([Age],"""")", 8, 3.5, 3
-    RBox rpt.Name, GH, "=""Sex: "" & Nz([Gender],"""")", 11.5, 3.5, 3
-    RBox rpt.Name, GH, "=""Order #: "" & [Order_ID]", 15, 3.5, 4
+    RLine rpt.Name, PH, 0.5, 4.9, 19
+    RLbl rpt.Name, PH, "Test Name", 0.5, 5#, 6.5, 0.6, True
+    RLbl rpt.Name, PH, "Result", 7, 5#, 3, 0.6, True
+    RLbl rpt.Name, PH, "Unit", 10, 5#, 2.5, 0.6, True
+    RLbl rpt.Name, PH, "Normal Range", 12.5, 5#, 3.5, 0.6, True
+    RLbl rpt.Name, PH, "Status", 16, 5#, 3, 0.6, True
+    rpt.Section(PH).Height = CM(5.8)
 
-    RBox rpt.Name, GH, "=""Referred By: "" & Nz([Referring_Doctor],"""")", 0.5, 4.1, 7
-    RBox rpt.Name, GH, "=""Order Date: "" & Format([Order_Date],""yyyy/mm/dd"")", 8, 4.1, 5
-    RBox rpt.Name, GH, "=""Result Date: "" & Format(Nz([Result_Date],Now()),""yyyy/mm/dd"")", 13.5, 4.1, 5.5
-
-    RLine rpt.Name, GH, 0.5, 4.9, 19
-    RLbl rpt.Name, GH, "Test Name", 0.5, 5#, 6.5, 0.6, True
-    RLbl rpt.Name, GH, "Result", 7, 5#, 3, 0.6, True
-    RLbl rpt.Name, GH, "Unit", 10, 5#, 2.5, 0.6, True
-    RLbl rpt.Name, GH, "Normal Range", 12.5, 5#, 3.5, 0.6, True
-    RLbl rpt.Name, GH, "Status", 16, 5#, 3, 0.6, True
-    rpt.Section(GH).Height = CM(5.8)
-
+    ' Detail: one row per test
     RBox rpt.Name, DET, "=[Test_Name]", 0.5, 0.1, 6.5
     RBox rpt.Name, DET, "=[Result_Value]", 7, 0.1, 3
     RBox rpt.Name, DET, "=[Unit]", 10, 0.1, 2.5
@@ -177,10 +177,12 @@ Public Sub BuildRptResult()
     RBox rpt.Name, DET, "=[Result_Status]", 16, 0.1, 3
     rpt.Section(DET).Height = CM(0.75)
 
-    RLine rpt.Name, RF, 0.5, 1.2, 5
-    RBox rpt.Name, RF, "=""Signature: "" & GetSetting(""Signatory_Name"")", 0.5, 1.3, 7
-    rpt.Section(RF).Height = CM(2.5)
+    ' Report footer: signature
+    RLine rpt.Name, RF, 0.5, 0.8, 5
+    RBox rpt.Name, RF, "=""Signature: "" & GetSetting(""Signatory_Name"")", 0.5, 0.9, 8
+    rpt.Section(RF).Height = CM(2#)
 
+    ' Page footer: page number + note
     RBox rpt.Name, PF, "=""Page "" & [Page] & "" of "" & [Pages]", 0.5, 0.2, 4
     RLbl rpt.Name, PF, "This report is for medical purposes only", 8, 0.2, 9
     rpt.Section(PF).Height = CM(1)
@@ -190,45 +192,39 @@ End Sub
 
 
 ' ===========================================================================
-'  Invoice  rptInvoice
+'  Invoice  rptInvoice   (always filtered to one order)
 ' ===========================================================================
 Public Sub BuildRptInvoice()
     Dim rpt As Report
     Set rpt = CreateReport()
     rpt.RecordSource = "qryInvoice"
 
-    CreateGroupLevel rpt.Name, "Order_ID", True, True
+    RBox rpt.Name, PH, "=GetSetting(""Lab_Name"")", 4, 0.2, 15, 0.8, True, 16
+    RBox rpt.Name, PH, "=GetSetting(""Lab_Address"")", 4, 1#, 15, 0.6, False, 10
+    RBox rpt.Name, PH, "=""Phone: "" & GetSetting(""Lab_Phone"")", 4, 1.6, 15, 0.6, False, 10
+    RLbl rpt.Name, PH, "Invoice / Receipt", 4, 2.4, 10, 0.8, True, 14
+    RLine rpt.Name, PH, 0.5, 3.3, 19
 
-    Const GH As Integer = 5
-    Const GF As Integer = 6
-    Const DET As Integer = 0
-    Const PF As Integer = 4
+    RBox rpt.Name, PH, "=""Name: "" & [Full_Name]", 0.5, 3.5, 7
+    RBox rpt.Name, PH, "=""Order #: "" & [Order_ID]", 8, 3.5, 4
+    RBox rpt.Name, PH, "=""Date: "" & Format([Order_Date],""yyyy/mm/dd"")", 12.5, 3.5, 5
 
-    RBox rpt.Name, GH, "=GetSetting(""Lab_Name"")", 4, 0.2, 15, 0.8, True, 16
-    RBox rpt.Name, GH, "=GetSetting(""Lab_Address"")", 4, 1#, 15, 0.6, False, 10
-    RBox rpt.Name, GH, "=""Phone: "" & GetSetting(""Lab_Phone"")", 4, 1.6, 15, 0.6, False, 10
-    RLbl rpt.Name, GH, "Invoice / Receipt", 4, 2.4, 10, 0.8, True, 14
-    RLine rpt.Name, GH, 0.5, 3.3, 19
-
-    RBox rpt.Name, GH, "=""Name: "" & [Full_Name]", 0.5, 3.5, 7
-    RBox rpt.Name, GH, "=""Order #: "" & [Order_ID]", 8, 3.5, 4
-    RBox rpt.Name, GH, "=""Date: "" & Format([Order_Date],""yyyy/mm/dd"")", 12.5, 3.5, 5
-
-    RLine rpt.Name, GH, 0.5, 4.3, 19
-    RLbl rpt.Name, GH, "Test Name", 0.5, 4.4, 12, 0.6, True
-    RLbl rpt.Name, GH, "Price", 13, 4.4, 4, 0.6, True
-    rpt.Section(GH).Height = CM(5.2)
+    RLine rpt.Name, PH, 0.5, 4.3, 19
+    RLbl rpt.Name, PH, "Test Name", 0.5, 4.4, 12, 0.6, True
+    RLbl rpt.Name, PH, "Price", 13, 4.4, 4, 0.6, True
+    rpt.Section(PH).Height = CM(5.2)
 
     RBox rpt.Name, DET, "=[Test_Name]", 0.5, 0.1, 12
     RBox rpt.Name, DET, "=[Price_At_Order]", 13, 0.1, 4
     rpt.Section(DET).Height = CM(0.7)
 
-    RLine rpt.Name, GF, 0.5, 0.1, 19
-    RBox rpt.Name, GF, "=""Total: "" & Sum([Price_At_Order])", 0.5, 0.3, 7, 0.6, True
-    RBox rpt.Name, GF, "=""Paid: "" & Nz(First([Amount_Paid]),0)", 0.5, 0.9, 7
-    RBox rpt.Name, GF, "=""Remaining: "" & (Sum([Price_At_Order]) - Nz(First([Amount_Paid]),0))", 0.5, 1.5, 7, 0.6, True
-    RBox rpt.Name, GF, "=""Expected pickup: "" & Format(DateAdd(""d"",1,First([Order_Date])),""yyyy/mm/dd"")", 9, 1.5, 8
-    rpt.Section(GF).Height = CM(2.5)
+    ' Report footer: totals (Sum works here)
+    RLine rpt.Name, RF, 0.5, 0.1, 19
+    RBox rpt.Name, RF, "=""Total: "" & Sum([Price_At_Order])", 0.5, 0.3, 7, 0.6, True
+    RBox rpt.Name, RF, "=""Paid: "" & Nz(First([Amount_Paid]),0)", 0.5, 0.9, 7
+    RBox rpt.Name, RF, "=""Remaining: "" & (Sum([Price_At_Order]) - Nz(First([Amount_Paid]),0))", 0.5, 1.5, 7, 0.6, True
+    RBox rpt.Name, RF, "=""Expected pickup: "" & Format(DateAdd(""d"",1,First([Order_Date])),""yyyy/mm/dd"")", 9, 1.5, 8
+    rpt.Section(RF).Height = CM(2.5)
 
     RBox rpt.Name, PF, "=""Page "" & [Page] & "" of "" & [Pages]", 0.5, 0.2, 4
     rpt.Section(PF).Height = CM(0.9)
@@ -244,10 +240,6 @@ Public Sub BuildRptDaily()
     Dim rpt As Report
     Set rpt = CreateReport()
     rpt.RecordSource = "qryDaily"
-
-    Const PH As Integer = 3
-    Const DET As Integer = 0
-    Const RF As Integer = 2
 
     RBox rpt.Name, PH, "=GetSetting(""Lab_Name"") & "" - Daily Report""", 0.5, 0.2, 15, 0.8, True, 14
     RLine rpt.Name, PH, 0.5, 1.2, 19
