@@ -152,7 +152,7 @@ Private Sub CreateOrders(db As DAO.Database)
     AddAutoPK td, "Order_ID"
     AddLong td, "Patient_ID", True
     AddDate td, "Order_Date", "Now()"
-    AddText td, "Status", 20, False, "'Registered'"
+    AddText td, "Status", 20, False, """Registered"""
     AddCurrency td, "Total_Price"
     AddCurrency td, "Amount_Paid"
     AddText td, "Notes", 255
