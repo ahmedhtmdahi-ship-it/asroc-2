@@ -31,7 +31,8 @@ Public Function AgeUpdate() As Variant
 End Function
 
 
-' 2) Auto-determine result status (numeric results with numeric range only)
+' 2) Auto-determine result flag, matching the lab's printed format:
+'    H = above the reference range, L = below it, blank = within range.
 Public Function ResultStatus(vValue As Variant, vMin As Variant, vMax As Variant) As String
     ResultStatus = ""
     If IsNull(vValue) Then Exit Function
@@ -40,11 +41,11 @@ Public Function ResultStatus(vValue As Variant, vMin As Variant, vMax As Variant
     Dim n As Double
     n = CDbl(vValue)
     If n < CDbl(vMin) Then
-        ResultStatus = "Low"
+        ResultStatus = "L"
     ElseIf n > CDbl(vMax) Then
-        ResultStatus = "High"
+        ResultStatus = "H"
     Else
-        ResultStatus = "Normal"
+        ResultStatus = "N"          ' normal (not printed on the report)
     End If
 End Function
 
