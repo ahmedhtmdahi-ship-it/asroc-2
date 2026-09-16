@@ -11,3 +11,5 @@ coverage/
 *.log
 .DS_Store
 *.sqlite3
+*.tsbuildinfo
+dist-mock/
