@@ -13,3 +13,5 @@ coverage/
 *.sqlite3
 *.tsbuildinfo
 dist-mock/
+.coverage
+htmlcov/

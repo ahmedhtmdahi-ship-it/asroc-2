@@ -1,3 +1,9 @@
+> ⚠️ **التوجّه الحالي اتغيّر.** السبيك المعتمد دلوقتي بيحط **متابعة المهام**
+> (Sheets + Drive → حالة + دليل → تيليجرام) كـ **مرحلة ١**، والحضور بقى **مرحلة ٢**.
+> الملف ده لسه صالح في المعمارية والقواعد الحاكمة، بس ترتيب المراحل والنطاق
+> في `README.md` هو المرجع. الأقسام اللي اتغيرت: «What we are building»
+> و«Build order and gates».
+
 # CLAUDE.md — HATM OS (حوتمة) MVP
 
 You are building **HATM OS**, an AI operations assistant for training-program

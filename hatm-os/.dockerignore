@@ -1,0 +1,14 @@
+# the api/worker/beat build context is the repo root now — keep it small
+ai/
+frontend/
+docs/
+prototype/
+tests/
+.git/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+secrets/
+*.md
