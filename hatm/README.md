@@ -36,50 +36,47 @@ python -m app.db            # ينشئ hatm.db والجداول الأربعة
 بعد ما يكمل:
 
 ```bash
+# اطبع محتويات فولدر — أول حاجة تجربها بعد تسجيل الدخول
+python -m app.drive https://drive.google.com/drive/folders/xxxxx
+
 python -m app.scan          # الفحص (لسه متعملش)
 uvicorn app.main:app        # الواجهة (لسه متعملش)
 ```
 
 ---
 
-## إعداد Google Service Account
+## تسجيل الدخول لجوجل
+
+البرنامج بيشتغل **بحسابك إنت** (OAuth Desktop app)، فبيشوف بالظبط كل اللي إنت
+شايفه — مشاريع إنت مديرها، ومشاريع إنت داخل عليها، وShared Drives. **مفيش
+مشاركة فولدرات ولا إيميل بوت.**
 
 ```
-1. console.cloud.google.com → مشروع جديد
-2. APIs & Services → Enable → Google Drive API · Google Sheets API
-3. Credentials → Create credentials → Service account
-4. جوّه الـ service account → Keys → Add key → JSON → نزّله
-5. سمّيه service-account.json وحطه جنب المشروع (في .gitignore أصلاً)
+1. console.cloud.google.com ← ادخل بحساب الشغل
+2. فوق جنب اللوجو → قايمة المشاريع → New Project → سمّيه hatm → Create
+3. من البحث فوق:  "Google Drive API"  → Enable
+                  "Google Sheets API" → Enable
+4. APIs & Services → OAuth consent screen
+   → External → املا الاسم والإيميل → Save
+   → Audience / Test users → Add users → حط إيميلك إنت
+5. APIs & Services → Credentials
+   → Create credentials → OAuth client ID
+   → Application type: Desktop app → Create
+   → Download JSON
+6. غيّر اسمه لـ client_secret.json وحطه جوّه فولدر hatm/
 ```
 
-### ⚠️ الخطوة اللي بتضيّع يوم
+أول مرة تشغّل حاجة بتكلم جوجل، هيفتح المتصفح لوحده. سجّل دخول، وهيطلعلك
+تحذير **"Google hasn't verified this app"** — ده طبيعي، البرنامج بتاعك إنت:
+اضغط **Advanced** → **Go to hatm (unsafe)** → **Continue**.
 
-الـ service account **مش بيشوف أي حاجة** لحد ما تشاركها معاه صراحة. هو
-مستخدم مستقل بإيميل شكله كده:
+بعدها بيتعمل `token.json` ومش هيسألك تاني. عايز تسجّل بحساب تاني؟ امسحه.
 
-```
-hatm-bot@my-project-123456.iam.gserviceaccount.com
-```
+**الصلاحيات:** الدرايف **قراءة بس** — البرنامج عمره ما هيلمس ملفات حد.
+الشيت قراءة وكتابة، عشان الفحص يكتب عمود الحالة.
 
-(الإيميل ده موجود جوّه ملف الـ JSON في حقل `client_email`)
-
-- **شيت المهام** → Share → الصق الإيميل ده → **Viewer**
-- **فولدر المشروع في الدرايف** → Share → نفس الإيميل → **Viewer**
-
-من غير كده:
-- الشيت → **403**
-- الفولدر → **404** أو ليست ملفات فاضية
-
-الاتنين دول بيخلوك تدوّر في الكود ساعتين والمشكلة مش في الكود.
-
-### Shared Drive
-
-لو الفولدرات على **Shared Drive** مش My Drive، حط `DRIVE_SHARED_DRIVE=true`
-في `.env`. من غيرها الـ API بيرجّع **ليست فاضية من غير أي خطأ** — يعني
-هتفتكر إن الفولدر فاضي وهو مليان. وكمان ضيف الـ service account عضو في الـ
-Shared Drive نفسه، مش بس تشارك الفولدر.
-
----
+⚠️ `client_secret.json` و `token.json` **متتعملهمش commit** (في `.gitignore`).
+وميتبعتوش لحد.
 
 ## الجداول الأربعة
 
@@ -109,6 +106,10 @@ Shared Drive نفسه، مش بس تشارك الفولدر.
   الفحص تحدّث المهمة بدل ما تكرّرها. (لو بقى فيه أكتر من شيت، ده أول حاجة
   تتغير.)
 - **`UNIQUE(task_id, drive_file_id)`** — نفس السبب، على مستوى الملفات.
+- **`supportsAllDrives` و `includeItemsFromAllDrives` دايمًا شغالين** في كل
+  استدعاء للدرايف. من غيرهم فولدر الـ Shared Drive بيرجّع **ليست فاضية من غير
+  أي خطأ** — تفتكر الفولدر فاضي وهو مليان. وهُمّ مش بيضروا My Drive، فمفيش
+  خانة إعدادات تغلط فيها.
 - **`PRAGMA foreign_keys = ON` في كل اتصال** — SQLite بتتجاهل المفاتيح
   الأجنبية افتراضيًا، ومن غير السطر ده الـ `ON DELETE CASCADE` مش بيعمل حاجة.
 
@@ -130,7 +131,7 @@ Shared Drive نفسه، مش بس تشارك الفولدر.
 ## اللي خلص واللي لسه
 
 - ✅ **يوم ١** — الهيكل · SQLite · الجداول · `.env`
-- ⬜ يوم ٢ — `drive.py`
+- ✅ **يوم ٢** — `drive.py` + تسجيل الدخول لجوجل
 - ⬜ يوم ٣ — `sheet.py`
 - ⬜ يوم ٤–٥ — `status.py` + اختباراته
 - ⬜ يوم ٦ — `scan.py`
@@ -141,6 +142,6 @@ Shared Drive نفسه، مش بس تشارك الفولدر.
 
 ## ممنوع
 
-- `.env` و `service-account.json` **مش بيتعملهم commit** (في `.gitignore`).
+- `.env` و `client_secret.json` و `token.json` **مش بيتعملهم commit**.
 - بيانات حقيقية (أسماء، تليفونات) ممنوعة في الريبو والاختبارات.
 - اشتغل على **نسخة** من الشيت وفولدر تجريبي لحد ما تثق في النظام.

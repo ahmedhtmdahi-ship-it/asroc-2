@@ -1,4 +1,6 @@
 .env
+client_secret.json
+token.json
 service-account.json
 secrets/
 *.db
