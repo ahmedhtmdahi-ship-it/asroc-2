@@ -1,0 +1,9 @@
+.env
+service-account.json
+secrets/
+*.db
+*.db-journal
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
