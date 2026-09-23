@@ -65,12 +65,23 @@ Private Function AddLabel(frmName As String, cap As String, _
 End Function
 
 Private Function AddBox(frmName As String, fieldName As String, _
-                        l As Double, t As Double, w As Double, Optional h As Double = 0.6) As Control
+                        l As Double, t As Double, w As Double, Optional h As Double = 0.6, _
+                        Optional cap As String = "") As Control
     Dim c As Control
     Set c = CreateControl(frmName, acTextBox, acDetail, , fieldName, CM(l), CM(t), CM(w), CM(h))
     c.Name = "txt" & fieldName
+    If Len(cap) > 0 Then AttachLabel frmName, c.Name, cap
     Set AddBox = c
 End Function
+
+' Attaches a label to a control. In datasheet view the attached label's
+' caption becomes the column heading (otherwise the control name shows).
+Private Sub AttachLabel(frmName As String, ctlName As String, cap As String)
+    On Error Resume Next
+    Dim lbl As Control
+    Set lbl = CreateControl(frmName, acLabel, acDetail, ctlName, "", 0, 0, CM(2), CM(0.5))
+    lbl.Caption = cap
+End Sub
 
 Private Function AddBtn(frmName As String, cap As String, onClickExpr As String, _
                         l As Double, t As Double, w As Double, Optional h As Double = 0.8) As Control
@@ -83,7 +94,8 @@ End Function
 
 Private Function AddCombo(frmName As String, fieldName As String, rowSrc As String, _
                           colCount As Integer, colWidths As String, _
-                          l As Double, t As Double, w As Double) As Control
+                          l As Double, t As Double, w As Double, _
+                          Optional cap As String = "") As Control
     Dim c As Control
     Set c = CreateControl(frmName, acComboBox, acDetail, , fieldName, CM(l), CM(t), CM(w), CM(0.6))
     c.Name = "cbo" & fieldName
@@ -92,6 +104,7 @@ Private Function AddCombo(frmName As String, fieldName As String, rowSrc As Stri
     c.ColumnCount = colCount
     c.ColumnWidths = colWidths
     c.BoundColumn = 1
+    If Len(cap) > 0 Then AttachLabel frmName, c.Name, cap
     Set AddCombo = c
 End Function
 
@@ -221,12 +234,12 @@ Public Sub BuildOrderSub()
     Dim c As Control
     Set c = AddCombo(frm.Name, "Test_ID", _
         "SELECT Test_ID, Test_Name FROM Tests WHERE Is_Active=True ORDER BY Test_Name;", _
-        2, "0cm;6cm", 0.2, 0.2, 6)
+        2, "0cm;6cm", 0.2, 0.2, 6, "Test")
     c.AfterUpdate = "=OnPickTest()"
 
-    AddBox frm.Name, "Price_At_Order", 6.4, 0.2, 2
-    AddBox frm.Name, "Result_Value", 8.6, 0.2, 3
-    AddBox frm.Name, "Result_Status", 11.8, 0.2, 2.5
+    AddBox frm.Name, "Price_At_Order", 6.4, 0.2, 2, 0.6, "Price"
+    AddBox frm.Name, "Result_Value", 8.6, 0.2, 3, 0.6, "Result"
+    AddBox frm.Name, "Result_Status", 11.8, 0.2, 2.5, 0.6, "Flag"
 
     SaveForm frm, "sfrmOrderDetails"
 End Sub
@@ -246,8 +259,8 @@ Public Sub BuildOrder()
         3, "0cm;6cm;3cm", 3.7, 0.5, 8.5
     AddBtn frm.Name, "New Patient", "=NavNewPatient()", 12.4, 0.5, 2.8
 
-    AddLabel frm.Name, "Order Date:", 0.5, 1.3, 3:  AddBox frm.Name, "Order_Date", 3.7, 1.3, 3.5
-    AddLabel frm.Name, "Status:", 0.5, 2.1, 3:      AddBox frm.Name, "Status", 3.7, 2.1, 3.5
+    AddLabel frm.Name, "Order Date:", 0.5, 1.3, 3:  AddBox frm.Name, "Order_Date", 3.7, 1.3, 5.5
+    AddLabel frm.Name, "Status:", 0.5, 2.1, 3:      AddBox frm.Name, "Status", 3.7, 2.1, 5.5
 
     Dim sub1 As Control
     Set sub1 = CreateControl(frm.Name, acSubform, acDetail, , "", CM(0.5), CM(3), CM(14), CM(5))
@@ -291,13 +304,13 @@ Public Sub BuildResultsSub()
     Dim c As Control
     Set c = AddCombo(frm.Name, "Test_ID", _
         "SELECT Test_ID, Test_Name FROM Tests ORDER BY Test_Name;", _
-        2, "0cm;6cm", 0.2, 0.2, 6)
+        2, "0cm;6cm", 0.2, 0.2, 6, "Test")
 
     Dim v As Control
-    Set v = AddBox(frm.Name, "Result_Value", 6.4, 0.2, 3)
+    Set v = AddBox(frm.Name, "Result_Value", 6.4, 0.2, 3, 0.6, "Result")
     v.AfterUpdate = "=OnResultEntered()"
-    AddBox frm.Name, "Result_Status", 9.6, 0.2, 2.5
-    AddBox frm.Name, "Result_Date", 12.2, 0.2, 2.5
+    AddBox frm.Name, "Result_Status", 9.6, 0.2, 2.5, 0.6, "Flag"
+    AddBox frm.Name, "Result_Date", 12.2, 0.2, 2.5, 0.6, "Result Date"
 
     SaveForm frm, "sfrmResults"
 End Sub
@@ -350,11 +363,11 @@ Public Sub BuildSearchSub()
     frm.DefaultView = 2
     frm.Caption = "Patient Orders"
 
-    AddBox frm.Name, "Order_ID", 0.2, 0.2, 2
-    AddBox frm.Name, "Order_Date", 2.4, 0.2, 3
-    AddBox frm.Name, "Status", 5.6, 0.2, 2.5
-    AddBox frm.Name, "Total_Price", 8.3, 0.2, 2.5
-    AddBox frm.Name, "Amount_Paid", 11, 0.2, 2.5
+    AddBox frm.Name, "Order_ID", 0.2, 0.2, 2, 0.6, "Order #"
+    AddBox frm.Name, "Order_Date", 2.4, 0.2, 3, 0.6, "Date"
+    AddBox frm.Name, "Status", 5.6, 0.2, 2.5, 0.6, "Status"
+    AddBox frm.Name, "Total_Price", 8.3, 0.2, 2.5, 0.6, "Total"
+    AddBox frm.Name, "Amount_Paid", 11, 0.2, 2.5, 0.6, "Paid"
 
     SaveForm frm, "sfrmSearch"
 End Sub

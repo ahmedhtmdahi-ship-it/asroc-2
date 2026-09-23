@@ -95,6 +95,11 @@ Private Sub AddYesNo(td As DAO.TableDef, fname As String, Optional defaultYes As
     td.Fields.Append f
 End Sub
 
+' Long text (memo) field
+Private Sub AddMemo(td As DAO.TableDef, fname As String)
+    td.Fields.Append td.CreateField(fname, dbMemo)
+End Sub
+
 Private Sub AddAutoPK(td As DAO.TableDef, fname As String)
     Dim f As DAO.Field
     Set f = td.CreateField(fname, dbLong)
@@ -142,6 +147,7 @@ Private Sub CreateTests(db As DAO.Database)
     AddText td, "Normal_Range_Notes", 255
     AddCurrency td, "Price", True
     AddText td, "Sample_Type", 150
+    AddText td, "Test_Method", 60                ' e.g. "CLIA/e CLIA", printed on the report
     AddYesNo td, "Is_Active", True
     db.TableDefs.Append td
 End Sub
@@ -156,6 +162,11 @@ Private Sub CreateOrders(db As DAO.Database)
     AddCurrency td, "Total_Price"
     AddCurrency td, "Amount_Paid"
     AddText td, "Notes", 255
+    ' fields that make the printed report match the lab's existing layout
+    AddText td, "Patient_No", 30                 ' per-visit patient number
+    AddText td, "Lab_Code", 30                   ' referring lab / branch code
+    AddDate td, "Reporting_Date"                 ' when the report was issued
+    AddMemo td, "Comments"                       ' free text printed on the report
     db.TableDefs.Append td
 
     AddForeignIndex db, "Orders", "Patient_ID"
